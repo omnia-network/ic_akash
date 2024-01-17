@@ -4,15 +4,6 @@
       "candid": "src/ic_side_services_akash_backend/ic_side_services_akash_backend.did",
       "package": "ic_side_services_akash_backend",
       "type": "rust"
-    },
-    "ic_side_services_akash_frontend": {
-      "dependencies": [
-        "ic_side_services_akash_backend"
-      ],
-      "source": [
-        "src/ic_side_services_akash_frontend/assets"
-      ],
-      "type": "assets"
     }
   },
   "defaults": {
