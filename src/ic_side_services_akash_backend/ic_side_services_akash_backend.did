@@ -1,3 +1,20 @@
+type AddressResult = variant {
+    Ok : text;
+    Err : text;
+};
+
+type SignatureReply = record {
+    signature_hex : text;
+};
+
+type SignatureResult = variant {
+    Ok : SignatureReply;
+    Err : text;
+};
+
 service : {
-    "greet": (text) -> (text) query;
-}
+    "address" : () -> (AddressResult);
+    "create_transaction" : () -> (text);
+    "create_certificate_transaction" : (text, text) -> (text);
+    "sign" : (text) -> (SignatureResult);
+};
