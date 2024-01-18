@@ -56,7 +56,7 @@ async fn create_transaction() -> String {
         AccountId::from_str("akash13gtrvjrzx8tst260ucszcflt4wny68shwdmrxs").unwrap();
 
     // We'll be doing a simple send transaction.
-    // First we'll create a "Coin" amount to be sent, in this case 1 million uatoms.
+    // First we'll create a "Coin" amount to be sent.
     let amount = Coin {
         amount: 250_000u128,
         denom: Denom::from_str("uakt").unwrap(),
@@ -71,10 +71,10 @@ async fn create_transaction() -> String {
     };
 
     let gas = 100_000u64;
-
     let fee = Fee::from_amount_and_gas(amount, gas);
+    let sequence_num = 0;
 
-    create_tx(&public_key, msg_send.to_any().unwrap(), fee)
+    create_tx(&public_key, msg_send.to_any().unwrap(), fee, sequence_num)
         .await
         .unwrap()
 }

@@ -1870,6 +1870,7 @@ dependencies = [
  "base64",
  "bytes",
  "chrono",
+ "cosmrs",
  "hex",
  "openssl",
  "pem",

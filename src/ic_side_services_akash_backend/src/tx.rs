@@ -5,7 +5,7 @@ use cosmrs::{
     crypto::PublicKey,
     proto::cosmos::tx::v1beta1::TxRaw,
     tendermint::chain::Id,
-    tx::{self, Fee, MessageExt, Msg, SignDoc, SignerInfo},
+    tx::{self, Fee, Msg, SignDoc, SignerInfo},
     AccountId, Any, Coin, Denom, ErrorReport, Tx,
 };
 use ic_cdk::{
@@ -77,6 +77,7 @@ pub async fn create_tx(
     sender_public_key: &PublicKey,
     msg: Any,
     fee: Fee,
+    sequence_number: u64,
 ) -> Result<String, String> {
     // Transaction metadata: chain, account, sequence, gas, fee, timeout, and memo.
     // from:
@@ -87,7 +88,6 @@ pub async fn create_tx(
     // see also: https://docs.akash.network/guides/sandbox/detailed-steps/part-4.-configure-your-network
     let chain_id = Id::from_str("sandbox-01").map_err(|e| e.to_string())?;
     let account_number = 263; // TODO: figure out how to obtain this
-    let sequence_number = 0;
     let timeout_height = 0u16;
     let memo = "created from canister";
 
@@ -196,8 +196,8 @@ impl From<&MsgCreateCertificate> for proto::MsgCreateCertificate {
     fn from(msg: &MsgCreateCertificate) -> proto::MsgCreateCertificate {
         proto::MsgCreateCertificate {
             owner: msg.owner.to_string(),
-            cert: msg.cert.to_bytes().unwrap(),
-            pubkey: msg.pubkey.to_bytes().unwrap(),
+            cert: msg.cert.clone(),
+            pubkey: msg.pubkey.clone(),
         }
     }
 }
@@ -219,8 +219,14 @@ pub async fn create_certificate_tx(
     };
 
     let gas = 100_000u64;
-
     let fee = Fee::from_amount_and_gas(amount, gas);
+    let sequence_number = 1;
 
-    create_tx(&sender_public_key, msg_send.to_any().unwrap(), fee).await
+    create_tx(
+        &sender_public_key,
+        msg_send.to_any().unwrap(),
+        fee,
+        sequence_number,
+    )
+    .await
 }
