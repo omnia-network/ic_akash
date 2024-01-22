@@ -16,11 +16,12 @@ use ic_cdk::{
 };
 use serde::Serialize;
 use sha2::Digest;
-use tx::{create_certificate_tx, create_tx};
+use tx::{create_certificate_tx, create_deployment_tx, create_tx};
 
 mod address;
 mod ecdsa;
 mod proto;
+mod sdl;
 mod tx;
 mod utils;
 
@@ -89,6 +90,13 @@ async fn create_certificate_transaction(
     create_certificate_tx(&public_key, cert_pem_base64, pub_key_pem_base64)
         .await
         .unwrap()
+}
+
+#[update]
+async fn create_deployment_transaction() -> String {
+    let public_key = get_public_key().await.unwrap();
+
+    create_deployment_tx(&public_key).await.unwrap()
 }
 
 #[update]

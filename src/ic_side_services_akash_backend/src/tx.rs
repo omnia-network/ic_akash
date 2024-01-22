@@ -13,7 +13,15 @@ use ic_cdk::{
     print,
 };
 
-use crate::{address::get_account_id_from_public_key, proto, sha256, EcdsaKeyIds};
+use crate::{
+    address::get_account_id_from_public_key,
+    proto::{
+        self,
+        deployment::{deployment::DeploymentID, deploymentmsg::MsgCreateDeployment},
+    },
+    sdl::SdlV3,
+    sha256, EcdsaKeyIds,
+};
 
 /// from https://docs.rs/cosmrs/latest/cosmrs/tx/index.html#usage
 ///
@@ -163,21 +171,25 @@ pub struct MsgCreateCertificate {
 }
 
 impl Msg for MsgCreateCertificate {
-    type Proto = proto::MsgCreateCertificate;
+    type Proto = proto::cert::cert::MsgCreateCertificate;
 }
 
-impl TryFrom<proto::MsgCreateCertificate> for MsgCreateCertificate {
+impl TryFrom<proto::cert::cert::MsgCreateCertificate> for MsgCreateCertificate {
     type Error = ErrorReport;
 
-    fn try_from(proto: proto::MsgCreateCertificate) -> Result<MsgCreateCertificate, Self::Error> {
+    fn try_from(
+        proto: proto::cert::cert::MsgCreateCertificate,
+    ) -> Result<MsgCreateCertificate, Self::Error> {
         MsgCreateCertificate::try_from(&proto)
     }
 }
 
-impl TryFrom<&proto::MsgCreateCertificate> for MsgCreateCertificate {
+impl TryFrom<&proto::cert::cert::MsgCreateCertificate> for MsgCreateCertificate {
     type Error = ErrorReport;
 
-    fn try_from(proto: &proto::MsgCreateCertificate) -> Result<MsgCreateCertificate, Self::Error> {
+    fn try_from(
+        proto: &proto::cert::cert::MsgCreateCertificate,
+    ) -> Result<MsgCreateCertificate, Self::Error> {
         Ok(MsgCreateCertificate {
             owner: proto.owner.parse()?,
             cert: proto.cert.clone(),
@@ -186,15 +198,15 @@ impl TryFrom<&proto::MsgCreateCertificate> for MsgCreateCertificate {
     }
 }
 
-impl From<MsgCreateCertificate> for proto::MsgCreateCertificate {
-    fn from(msg: MsgCreateCertificate) -> proto::MsgCreateCertificate {
-        proto::MsgCreateCertificate::from(&msg)
+impl From<MsgCreateCertificate> for proto::cert::cert::MsgCreateCertificate {
+    fn from(msg: MsgCreateCertificate) -> proto::cert::cert::MsgCreateCertificate {
+        proto::cert::cert::MsgCreateCertificate::from(&msg)
     }
 }
 
-impl From<&MsgCreateCertificate> for proto::MsgCreateCertificate {
-    fn from(msg: &MsgCreateCertificate) -> proto::MsgCreateCertificate {
-        proto::MsgCreateCertificate {
+impl From<&MsgCreateCertificate> for proto::cert::cert::MsgCreateCertificate {
+    fn from(msg: &MsgCreateCertificate) -> proto::cert::cert::MsgCreateCertificate {
+        proto::cert::cert::MsgCreateCertificate {
             owner: msg.owner.to_string(),
             cert: msg.cert.clone(),
             pubkey: msg.pubkey.clone(),
@@ -207,7 +219,7 @@ pub async fn create_certificate_tx(
     cert_pem_base64: String,
     pub_key_pem_base64: String,
 ) -> Result<String, String> {
-    let msg_send = MsgCreateCertificate {
+    let msg = MsgCreateCertificate {
         owner: get_account_id_from_public_key(sender_public_key).unwrap(),
         cert: STANDARD.decode(cert_pem_base64).unwrap(),
         pubkey: STANDARD.decode(pub_key_pem_base64).unwrap(),
@@ -224,7 +236,97 @@ pub async fn create_certificate_tx(
 
     create_tx(
         &sender_public_key,
-        msg_send.to_any().unwrap(),
+        msg.to_any().unwrap(),
+        fee,
+        sequence_number,
+    )
+    .await
+}
+
+pub async fn create_deployment_tx(sender_public_key: &PublicKey) -> Result<String, String> {
+    let sdl_str = r#"
+    version: "3.0"
+    services:
+      ic-websocket-gateway:
+        image: omniadevs/ic-websocket-gateway
+        expose:
+          - port: 8080
+            as: 80
+            accept:
+              - "akash-gateway.icws.io"
+            to:
+              - global: true
+        command:
+          - "/ic-ws-gateway/ic_websocket_gateway"
+          - "--gateway-address"
+          - "0.0.0.0:8080"
+          - "--ic-network-url"
+          - "https://icp-api.io"
+          - "--polling-interval"
+          - "400"
+          - "--telemetry-jaeger-agent-endpoint"
+          - "3.126.110.116:6831"
+    profiles:
+      compute:
+        ic-websocket-gateway:
+          resources:
+            cpu:
+              units: 0.5
+            memory:
+              size: 512Mi
+            storage:
+              - size: 512Mi
+      placement:
+        dcloud:
+          pricing:
+            ic-websocket-gateway:
+              denom: uakt
+              amount: 1000
+    deployment:
+      ic-websocket-gateway:
+        dcloud:
+          profile: ic-websocket-gateway
+          count: 1
+    "#;
+
+    let sdl = SdlV3::try_from_str(sdl_str).unwrap();
+    print(format!("sdl: {:?}", sdl));
+
+    // see https://github.com/akash-network/cloudmos/blob/8a8098b7e371e801dad3aad81ef92b8dfe387e4c/deploy-web/src/utils/deploymentData/v1beta3.ts#L230
+    let msg = MsgCreateDeployment {
+        id: Some(DeploymentID {
+            owner: get_account_id_from_public_key(sender_public_key)
+                .unwrap()
+                .to_string(),
+            // see https://github.com/akash-network/cloudmos/blob/8a8098b7e371e801dad3aad81ef92b8dfe387e4c/deploy-web/src/utils/deploymentData/v1beta3.ts#L248C27-L248C27
+            dseq: 2893944, // obtained from /blocks/latest RPC call
+        }),
+        groups: sdl.groups(),
+        version: "1.0.0".as_bytes().to_vec(), // hash of the SDL
+        deposit: Some(
+            Coin {
+                amount: 5_000_000u128,
+                denom: Denom::from_str("uakt").unwrap(),
+            }
+            .into(),
+        ),
+        depositor: get_account_id_from_public_key(sender_public_key)
+            .unwrap()
+            .to_string(),
+    };
+
+    let amount = Coin {
+        amount: 3_000u128,
+        denom: Denom::from_str("uakt").unwrap(),
+    };
+
+    let gas = 100_000u64;
+    let fee = Fee::from_amount_and_gas(amount, gas);
+    let sequence_number = 1;
+
+    create_tx(
+        &sender_public_key,
+        Any::from_msg(&msg).unwrap(),
         fee,
         sequence_number,
     )
