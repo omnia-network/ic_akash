@@ -220,7 +220,7 @@ pub struct ResourceStorageV2 {
 impl Into<Storage> for ResourceStorageV2 {
     fn into(self) -> Storage {
         Storage {
-            name: self.name.unwrap(),
+            name: self.name.unwrap_or("".to_string()), // TODO: figure out if this default is correct
             quantity: Some(ResourceValue {
                 val: self.size.as_bytes().to_vec(),
             }),
@@ -415,16 +415,10 @@ impl SdlV3 {
                     }
                 });
 
-                if group.bound_computes.get(placement_name).is_none() {
-                    group
-                        .bound_computes
-                        .insert(service_name.clone(), HashMap::new());
-                }
-
                 let location = *(group
                     .bound_computes
-                    .get_mut(placement_name)
-                    .unwrap()
+                    .entry(placement_name.clone())
+                    .or_insert(HashMap::new())
                     .entry(svc_depl.profile.clone())
                     .or_insert_with(|| {
                         let mut res = compute.resources.clone();
