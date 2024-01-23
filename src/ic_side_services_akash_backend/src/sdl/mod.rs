@@ -1,6 +1,6 @@
 mod sizes;
 
-use std::collections::HashMap;
+use std::{cmp::Ordering, collections::HashMap};
 
 use cosmrs::proto::cosmos::base::v1beta1::DecCoin;
 use serde::{Deserialize, Serialize};
@@ -224,8 +224,8 @@ impl Into<ManifestServiceParamsV3> for ServiceParamsV2 {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ServiceStorageParamsV2 {
-    pub name: String,
     pub mount: String,
+    pub name: String,
     #[serde(rename = "readOnly", default)]
     pub read_only: bool,
 }
@@ -482,8 +482,14 @@ impl SdlV3 {
 
     pub fn groups(&self) -> Vec<GroupSpec> {
         let mut groups: HashMap<String, Group> = HashMap::new();
+        let mut services = self
+            .services
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect::<Vec<_>>();
+        services.sort_by_key(|(k, _)| k.clone());
 
-        for (service_name, service) in self.services.iter() {
+        for (service_name, service) in services.iter() {
             for (placement_name, svc_depl) in self.deployment.get(service_name).unwrap() {
                 let compute = self.profiles.compute.get(&svc_depl.profile).unwrap();
                 let infra = self.profiles.placement.get(placement_name).unwrap();
@@ -537,7 +543,7 @@ impl SdlV3 {
                         .service_resource_endpoints_v3(self.compute_endpoint_sequence_numbers())
                         .as_mut(),
                 );
-                // TODO: sort?
+                group.dgroup.resources[location].endpoints.sort();
             }
         }
 
@@ -560,15 +566,21 @@ impl SdlV3 {
             .values()
             .flat_map(|service| {
                 service.expose.iter().flat_map(|expose| {
-                    expose
+                    let mut expose_entries = expose
                         .to
                         .as_ref()
                         .unwrap_or(&vec![])
                         .iter()
                         .filter(|to| to.global() && to.ip.is_some())
+                        .map(|to| to.ip.clone())
+                        .collect::<Vec<_>>();
+
+                    expose_entries.sort();
+
+                    expose_entries
+                        .iter()
                         .enumerate()
-                        // TODO: sort?
-                        .map(|(index, to)| (to.ip.clone().unwrap(), index as u32 + 1))
+                        .map(|(index, ip)| (ip.clone().unwrap(), index as u32 + 1))
                         .collect::<Vec<_>>()
                 })
             })
@@ -609,7 +621,7 @@ impl SdlV3 {
     }
 
     fn manifest_expose_v3(&self, service: &ServiceV2) -> Vec<ServiceExposeV3> {
-        service
+        let mut expose_vec = service
             .expose
             .iter()
             .flat_map(|expose| {
@@ -635,8 +647,30 @@ impl SdlV3 {
                     })
                     .collect::<Vec<_>>()
             })
-            // TODO: sort?
-            .collect()
+            .collect::<Vec<_>>();
+
+        expose_vec.sort_by(|a, b| {
+            if a.service != b.service {
+                return a.service.cmp(&b.service);
+            }
+            if a.port != b.port {
+                return a.port.cmp(&b.port);
+            }
+            if a.proto != b.proto {
+                return a.proto.cmp(&b.proto);
+            }
+            if a.global != b.global {
+                return if a.global {
+                    Ordering::Less
+                } else {
+                    Ordering::Greater
+                };
+            }
+
+            Ordering::Equal
+        });
+
+        expose_vec
     }
 
     fn manifest_service_v3(&self, id: u32, placement: String, name: String) -> ManifestServiceV3 {
@@ -674,7 +708,7 @@ impl SdlV3 {
             .enumerate()
             .map(|(p_idx, name)| {
                 let mut services = self.deployments_by_placement(name.clone());
-                services.sort_by(|a, b| a.0.cmp(&b.0));
+                services.sort_by_key(|(svc_name, _)| svc_name.clone());
 
                 GroupV3 {
                     name: name.clone(),
@@ -747,7 +781,7 @@ impl Into<ProtobufResourceUnit> for DeploymentGroupResourceV3 {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct DeploymentGroupResourceEndpointV3 {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kind: Option<EndpointKind>,
@@ -763,7 +797,7 @@ impl Into<Endpoint> for DeploymentGroupResourceEndpointV3 {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub enum EndpointKind {
     SharedHttp = 0,
     RandomPort = 1,
@@ -792,57 +826,57 @@ impl Into<PlacementRequirements> for DeploymentGroupRequirementsV3 {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ManifestServiceV3 {
-    pub name: String,
-    pub image: String,
-    pub command: Option<Vec<String>>,
     pub args: Option<Vec<String>>,
-    pub env: Option<Vec<String>>,
-    pub resources: ResourceUnits,
+    pub command: Option<Vec<String>>,
     pub count: u32,
+    pub env: Option<Vec<String>>,
     pub expose: Vec<ServiceExposeV3>,
+    pub image: String,
+    pub name: String,
     pub params: Option<ManifestServiceParamsV3>,
+    pub resources: ResourceUnits,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ResourceUnits {
-    pub id: u32,
     pub cpu: GenericResource,
-    pub memory: GenericResource,
-    pub storage: Vec<GenericResource>,
     pub endpoints: Vec<DeploymentGroupResourceEndpointV3>,
     pub gpu: GenericResource,
+    pub id: u32,
+    pub memory: GenericResource,
+    pub storage: Vec<GenericResource>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ServiceExposeV3 {
-    pub port: u32,
+    #[serde(rename = "endpointSequenceNumber")]
+    pub endpoint_sequence_number: u32,
     #[serde(rename = "externalPort")]
     pub external_port: u32,
-    pub proto: String,
-    pub service: String,
     pub global: bool,
     pub hosts: Option<AcceptV2>,
     #[serde(rename = "httpOptions")]
     pub http_options: ServiceExposeHttpOptionsV3,
     pub ip: String,
-    #[serde(rename = "endpointSequenceNumber")]
-    pub endpoint_sequence_number: u32,
+    pub port: u32,
+    pub proto: String,
+    pub service: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ServiceExposeHttpOptionsV3 {
     #[serde(rename = "maxBodySize")]
     pub max_body_size: u32,
+    #[serde(rename = "nextCases")]
+    pub next_cases: Vec<String>,
+    #[serde(rename = "nextTimeout")]
+    pub next_timeout: u32,
+    #[serde(rename = "nextTries")]
+    pub next_tries: u32,
     #[serde(rename = "readTimeout")]
     pub read_timeout: u32,
     #[serde(rename = "sendTimeout")]
     pub send_timeout: u32,
-    #[serde(rename = "nextTries")]
-    pub next_tries: u32,
-    #[serde(rename = "nextTimeout")]
-    pub next_timeout: u32,
-    #[serde(rename = "nextCases")]
-    pub next_cases: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -860,8 +894,14 @@ pub type ManifestV3 = Vec<GroupV3>;
 
 fn service_resource_attributes(attributes: &Option<HashMap<String, String>>) -> Option<Attributes> {
     attributes.as_ref().map(|attrs| {
-        attrs
+        let mut attrs = attrs
             .into_iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect::<Vec<_>>();
+        attrs.sort_by_key(|(k, _)| k.clone());
+        attrs
+            .iter()
+            .cloned()
             .map(|(k, v)| Attribute {
                 key: k.clone(),
                 value: v.clone(),
@@ -873,13 +913,13 @@ fn service_resource_attributes(attributes: &Option<HashMap<String, String>>) -> 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct GenericResource {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub units: Option<GenericResourceUnits>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub quantity: Option<GenericResourceUnits>,
+    pub attributes: Option<Attributes>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub attributes: Option<Attributes>,
+    pub quantity: Option<GenericResourceUnits>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub units: Option<GenericResourceUnits>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
