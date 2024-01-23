@@ -3,20 +3,23 @@ use std::collections::HashMap;
 use cosmrs::proto::cosmos::base::v1beta1::DecCoin;
 use serde::{Deserialize, Serialize};
 
-use crate::proto::{
-    base::{
-        attribute::{
-            Attribute as ProtobufAttribute, PlacementRequirements, SignedBy as ProtobufSignedBy,
+use crate::{
+    proto::{
+        base::{
+            attribute::{
+                Attribute as ProtobufAttribute, PlacementRequirements, SignedBy as ProtobufSignedBy,
+            },
+            cpu::CPU,
+            endpoint::Endpoint,
+            gpu::GPU,
+            memory::Memory,
+            resources::Resources,
+            resourcevalue::ResourceValue,
+            storage::Storage,
         },
-        cpu::CPU,
-        endpoint::Endpoint,
-        gpu::GPU,
-        memory::Memory,
-        resources::Resources,
-        resourcevalue::ResourceValue,
-        storage::Storage,
+        deployment::{groupspec::GroupSpec, resourceunit::ResourceUnit as ProtobufResourceUnit},
     },
-    deployment::{groupspec::GroupSpec, resourceunit::ResourceUnit},
+    sha256,
 };
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -45,11 +48,7 @@ impl ServiceV2 {
                     .iter()
                     .filter(|to| to.global())
                     .flat_map(|to| {
-                        let kind = match expose_should_be_ingress(
-                            expose.external_port(),
-                            expose.proto(),
-                            to.clone(),
-                        ) {
+                        let kind = match expose.should_be_ingress(to.clone()) {
                             true => EndpointKind::SharedHttp,
                             false => EndpointKind::RandomPort,
                         };
@@ -82,10 +81,6 @@ impl ServiceV2 {
     }
 }
 
-fn expose_should_be_ingress(external_port: u32, proto: String, to: ExposeToV2) -> bool {
-    to.global() && proto == "TCP" && external_port == 80
-}
-
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ExposeV2 {
     pub port: u32,
@@ -104,6 +99,14 @@ impl ExposeV2 {
     pub fn proto(&self) -> String {
         self.proto.clone().unwrap_or("TCP".to_string())
     }
+
+    pub fn should_be_ingress(&self, to: ExposeToV2) -> bool {
+        to.global() && self.proto() == "TCP" && self.external_port() == 80
+    }
+
+    pub fn http_options(&self) -> HttpOptionsV2 {
+        self.http_options.clone().unwrap_or_default()
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -118,6 +121,14 @@ impl ExposeToV2 {
     pub fn global(&self) -> bool {
         self.global.unwrap_or(false)
     }
+
+    pub fn service(&self) -> String {
+        self.service.clone().unwrap_or("".to_string())
+    }
+
+    pub fn ip(&self) -> String {
+        self.ip.clone().unwrap_or("".to_string())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -128,6 +139,32 @@ pub struct HttpOptionsV2 {
     pub next_tries: u32,
     pub next_timeout: u32,
     pub next_cases: Vec<String>,
+}
+
+impl Default for HttpOptionsV2 {
+    fn default() -> Self {
+        Self {
+            max_body_size: 1048576,
+            read_timeout: 60_000,
+            send_timeout: 60_000,
+            next_tries: 3,
+            next_timeout: 0,
+            next_cases: vec!["error".to_string(), "timeout".to_string()],
+        }
+    }
+}
+
+impl Into<ServiceExposeHttpOptionsV3> for HttpOptionsV2 {
+    fn into(self) -> ServiceExposeHttpOptionsV3 {
+        ServiceExposeHttpOptionsV3 {
+            max_body_size: self.max_body_size,
+            read_timeout: self.read_timeout,
+            send_timeout: self.send_timeout,
+            next_tries: self.next_tries,
+            next_timeout: self.next_timeout,
+            next_cases: self.next_cases,
+        }
+    }
 }
 
 // doesn't work
@@ -147,11 +184,42 @@ pub struct ServiceParamsV2 {
     pub storage: Option<HashMap<String, ServiceStorageParamsV2>>,
 }
 
+impl Into<ManifestServiceParamsV3> for ServiceParamsV2 {
+    fn into(self) -> ManifestServiceParamsV3 {
+        ManifestServiceParamsV3 {
+            storage: self
+                .storage
+                .clone()
+                .unwrap_or_default()
+                .keys()
+                .map(|name| ServiceStorageParamsV2 {
+                    name: name.clone(),
+                    mount: self
+                        .storage
+                        .as_ref()
+                        .expect("Storage must be defined")
+                        .get(name)
+                        .unwrap()
+                        .mount
+                        .clone(),
+                    read_only: self
+                        .storage
+                        .as_ref()
+                        .expect("Storage must be defined")
+                        .get(name)
+                        .unwrap()
+                        .read_only,
+                })
+                .collect(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ServiceStorageParamsV2 {
     pub name: String,
     pub mount: String,
-    #[serde(rename = "readOnly")]
+    #[serde(rename = "readOnly", default)]
     pub read_only: bool,
 }
 
@@ -281,7 +349,7 @@ impl Into<GPU> for ResourceGpuV3 {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct GpuAttributesV3 {
-    pub vendor: HashMap<String, Vec<GpuModelV3>>,
+    pub vendor: HashMap<String, Option<Vec<GpuModelV3>>>,
 }
 
 impl Default for GpuAttributesV3 {
@@ -289,6 +357,27 @@ impl Default for GpuAttributesV3 {
         Self {
             vendor: HashMap::new(),
         }
+    }
+}
+
+impl Into<Attributes> for GpuAttributesV3 {
+    fn into(self) -> Attributes {
+        self.vendor
+            .into_iter()
+            .flat_map(|(vendor, models)| match models {
+                Some(models) => models
+                    .iter()
+                    .map(|model| Attribute {
+                        key: format!("vendor/{}/model/{}", vendor, model.model),
+                        value: "true".to_string(),
+                    })
+                    .collect(),
+                None => vec![Attribute {
+                    key: format!("vendor/{}/model/*", vendor),
+                    value: "true".to_string(),
+                }],
+            })
+            .collect()
     }
 }
 
@@ -482,6 +571,125 @@ impl SdlV3 {
 
         map
     }
+
+    fn placements(&self) -> HashMap<String, ProfilePlacementV2> {
+        self.profiles.placement.clone()
+    }
+
+    fn deployments_by_placement(&self, placement: String) -> Vec<(String, DeploymentV2)> {
+        self.deployment
+            .iter()
+            .filter(|(_, deployment)| deployment.contains_key(&placement))
+            .map(|(name, deployment)| (name.clone(), deployment.clone()))
+            .collect()
+    }
+
+    fn service_resources_beta3(
+        &self,
+        id: u32,
+        profile: &ProfileComputeV3,
+        service: &ServiceV2,
+    ) -> ResourceUnits {
+        ResourceUnits {
+            id,
+            cpu: service_resource_cpu(&profile.resources.cpu),
+            memory: service_resource_memory(&profile.resources.memory),
+            storage: service_resource_storage(&profile.resources.storage),
+            endpoints: service
+                .service_resource_endpoints_v3(self.compute_endpoint_sequence_numbers()),
+            gpu: service_resource_gpu(&profile.resources.gpu),
+        }
+    }
+
+    fn manifest_expose_v3(&self, service: &ServiceV2) -> Vec<ServiceExposeV3> {
+        service
+            .expose
+            .iter()
+            .flat_map(|expose| {
+                expose
+                    .to
+                    .as_ref()
+                    .unwrap_or(&vec![])
+                    .iter()
+                    .map(|to| ServiceExposeV3 {
+                        port: expose.port,
+                        external_port: expose.r#as.unwrap_or(0),
+                        proto: expose.proto(),
+                        service: to.service(),
+                        global: to.global(),
+                        hosts: expose.accept.clone(),
+                        http_options: expose.http_options().into(),
+                        ip: to.ip(),
+                        endpoint_sequence_number: self
+                            .compute_endpoint_sequence_numbers()
+                            .get(&to.ip())
+                            .unwrap_or(&0)
+                            .to_owned(),
+                    })
+                    .collect::<Vec<_>>()
+            })
+            // TODO: sort?
+            .collect()
+    }
+
+    fn manifest_service_v3(&self, id: u32, placement: String, name: String) -> ManifestServiceV3 {
+        let service = self.services.get(&name).unwrap();
+        let deployment = self.deployment.get(&name).unwrap();
+        let svc_deployment = deployment.get(&placement).unwrap();
+        let profile = self.profiles.compute.get(&svc_deployment.profile).unwrap();
+
+        ManifestServiceV3 {
+            name,
+            image: service.image.to_owned(),
+            command: service.command.to_owned(),
+            args: service.args.to_owned(),
+            env: service.env.to_owned(),
+            resources: self.service_resources_beta3(id, profile, service),
+            count: svc_deployment.count,
+            expose: self.manifest_expose_v3(service),
+            params: service.params.to_owned().map(|params| params.into()),
+        }
+    }
+
+    pub fn manifest_sorted_json(&self) -> String {
+        let manifest = self.manifest();
+        serde_json::to_string(&manifest)
+            .unwrap()
+            // TODO: can we use the `size` field instead?
+            .replace("\"quantity\":{\"val\"", "\"size\":{\"val\"")
+    }
+
+    pub fn manifest(&self) -> ManifestV3 {
+        let groups = self.groups();
+
+        self.placements()
+            .keys()
+            .enumerate()
+            .map(|(p_idx, name)| {
+                let mut services = self.deployments_by_placement(name.clone());
+                services.sort_by(|a, b| a.0.cmp(&b.0));
+
+                GroupV3 {
+                    name: name.clone(),
+                    services: services
+                        .iter()
+                        .enumerate()
+                        .map(|(s_idx, (service, _))| {
+                            self.manifest_service_v3(
+                                groups[p_idx].resources[s_idx].resource.as_ref().unwrap().ID,
+                                name.clone(),
+                                service.clone(),
+                            )
+                        })
+                        .collect(),
+                }
+            })
+            .collect()
+    }
+
+    pub fn manifest_version(&self) -> Vec<u8> {
+        sha256(self.manifest_sorted_json().as_bytes()).to_vec()
+    }
 }
 
 struct Group {
@@ -516,9 +724,9 @@ pub struct DeploymentGroupResourceV3 {
     pub endpoints: Vec<DeploymentGroupResourceEndpointV3>,
 }
 
-impl Into<ResourceUnit> for DeploymentGroupResourceV3 {
-    fn into(self) -> ResourceUnit {
-        ResourceUnit {
+impl Into<ProtobufResourceUnit> for DeploymentGroupResourceV3 {
+    fn into(self) -> ProtobufResourceUnit {
+        ProtobufResourceUnit {
             resource: Some(Resources {
                 Endpoints: self.endpoints.into_iter().map(|e| e.into()).collect(),
                 ..self.resource.into()
@@ -571,5 +779,152 @@ impl Into<PlacementRequirements> for DeploymentGroupRequirementsV3 {
                 .collect(),
             signed_by: Some(self.signed_by.into()),
         }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct ManifestServiceV3 {
+    pub name: String,
+    pub image: String,
+    pub command: Option<Vec<String>>,
+    pub args: Option<Vec<String>>,
+    pub env: Option<Vec<String>>,
+    pub resources: ResourceUnits,
+    pub count: u32,
+    pub expose: Vec<ServiceExposeV3>,
+    pub params: Option<ManifestServiceParamsV3>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct ResourceUnits {
+    pub id: u32,
+    pub cpu: GenericResource,
+    pub memory: GenericResource,
+    pub storage: Vec<GenericResource>,
+    pub endpoints: Vec<DeploymentGroupResourceEndpointV3>,
+    pub gpu: GenericResource,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct ServiceExposeV3 {
+    pub port: u32,
+    #[serde(rename = "externalPort")]
+    pub external_port: u32,
+    pub proto: String,
+    pub service: String,
+    pub global: bool,
+    pub hosts: Option<AcceptV2>,
+    #[serde(rename = "httpOptions")]
+    pub http_options: ServiceExposeHttpOptionsV3,
+    pub ip: String,
+    #[serde(rename = "endpointSequenceNumber")]
+    pub endpoint_sequence_number: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct ServiceExposeHttpOptionsV3 {
+    #[serde(rename = "maxBodySize")]
+    pub max_body_size: u32,
+    #[serde(rename = "readTimeout")]
+    pub read_timeout: u32,
+    #[serde(rename = "sendTimeout")]
+    pub send_timeout: u32,
+    #[serde(rename = "nextTries")]
+    pub next_tries: u32,
+    #[serde(rename = "nextTimeout")]
+    pub next_timeout: u32,
+    #[serde(rename = "nextCases")]
+    pub next_cases: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct ManifestServiceParamsV3 {
+    pub storage: Vec<ServiceStorageParamsV2>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct GroupV3 {
+    pub name: String,
+    pub services: Vec<ManifestServiceV3>,
+}
+
+pub type ManifestV3 = Vec<GroupV3>;
+
+fn service_resource_attributes(attributes: &Option<HashMap<String, String>>) -> Option<Attributes> {
+    attributes.as_ref().map(|attrs| {
+        attrs
+            .into_iter()
+            .map(|(k, v)| Attribute {
+                key: k.clone(),
+                value: v.clone(),
+            })
+            .collect()
+    })
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct GenericResource {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub units: Option<GenericResourceUnits>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quantity: Option<GenericResourceUnits>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attributes: Option<Attributes>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct GenericResourceUnits {
+    pub val: String,
+}
+
+fn service_resource_cpu(resource: &ResourceCpuV2) -> GenericResource {
+    GenericResource {
+        units: Some(GenericResourceUnits {
+            val: resource.units.clone(),
+        }),
+        quantity: None,
+        name: None,
+        attributes: service_resource_attributes(&resource.attributes),
+    }
+}
+
+fn service_resource_memory(resource: &ResourceMemoryV2) -> GenericResource {
+    GenericResource {
+        units: None,
+        quantity: Some(GenericResourceUnits {
+            val: resource.size.clone(),
+        }),
+        name: None,
+        attributes: service_resource_attributes(&resource.attributes),
+    }
+}
+
+fn service_resource_storage(resource: &Vec<ResourceStorageV2>) -> Vec<GenericResource> {
+    resource
+        .iter()
+        .map(|resource| GenericResource {
+            units: None,
+            quantity: Some(GenericResourceUnits {
+                val: resource.size.clone(),
+            }),
+            name: resource.name.clone().or(Some("default".to_string())),
+            attributes: service_resource_attributes(&resource.attributes),
+        })
+        .collect()
+}
+
+fn service_resource_gpu(resource: &Option<ResourceGpuV3>) -> GenericResource {
+    GenericResource {
+        units: Some(GenericResourceUnits {
+            val: resource.clone().map(|r| r.units).unwrap_or("0".to_string()),
+        }),
+        quantity: None,
+        name: None,
+        attributes: resource
+            .clone()
+            .map(|r| r.attributes.map(|a| a.into()))
+            .flatten(),
     }
 }

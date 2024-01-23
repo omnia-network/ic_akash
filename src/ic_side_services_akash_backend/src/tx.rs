@@ -102,7 +102,7 @@ pub async fn create_tx(
     // Create transaction body from the MsgSend, memo, and timeout height.
     let tx_body = tx::Body::new(vec![msg], memo, timeout_height);
 
-    print(format!("tx_body: {:?}", tx_body));
+    // print(format!("tx_body: {:?}", tx_body));
 
     // Create signer info from public key and sequence number.
     // This uses a standard "direct" signature from a single signer.
@@ -134,7 +134,7 @@ pub async fn create_tx(
     assert_eq!(tx_parsed.body, tx_body);
     assert_eq!(tx_parsed.auth_info, auth_info);
 
-    print(format!("tx_parsed: {:?}", tx_parsed));
+    // print(format!("tx_parsed: {:?}", tx_parsed));
 
     Ok(hex::encode(&tx_bytes))
 }
@@ -244,53 +244,57 @@ pub async fn create_certificate_tx(
 }
 
 pub async fn create_deployment_tx(sender_public_key: &PublicKey) -> Result<String, String> {
+    // hash of this deployment (base64): TGNKUw/ffyyB/d0EaY9FWMEIhsBzcjY3PLBRHYDqszs=
+    // see https://deploy.cloudmos.io/transactions/268DEE51F9FAB84B1BABCD916092D380784A483EA088345CF7B86657BBC8A4DA?network=sandbox
     let sdl_str = r#"
-    version: "3.0"
-    services:
-      ic-websocket-gateway:
-        image: omniadevs/ic-websocket-gateway
-        expose:
-          - port: 8080
-            as: 80
-            accept:
-              - "akash-gateway.icws.io"
-            to:
-              - global: true
-        command:
-          - "/ic-ws-gateway/ic_websocket_gateway"
-          - "--gateway-address"
-          - "0.0.0.0:8080"
-          - "--ic-network-url"
-          - "https://icp-api.io"
-          - "--polling-interval"
-          - "400"
-          - "--telemetry-jaeger-agent-endpoint"
-          - "3.126.110.116:6831"
-    profiles:
-      compute:
+version: "3.0"
+services:
+  ic-websocket-gateway:
+    image: omniadevs/ic-websocket-gateway
+    expose:
+      - port: 8080
+        as: 80
+        accept:
+          - "akash-gateway.icws.io"
+        to:
+          - global: true
+    command:
+      - "/ic-ws-gateway/ic_websocket_gateway"
+      - "--gateway-address"
+      - "0.0.0.0:8080"
+      - "--ic-network-url"
+      - "https://icp-api.io"
+      - "--polling-interval"
+      - "400"
+profiles:
+  compute:
+    ic-websocket-gateway:
+      resources:
+        cpu:
+          units: 0.5
+        memory:
+          size: 512Mi
+        storage:
+          - size: 512Mi
+  placement:
+    dcloud:
+      pricing:
         ic-websocket-gateway:
-          resources:
-            cpu:
-              units: 0.5
-            memory:
-              size: 512Mi
-            storage:
-              - size: 512Mi
-      placement:
-        dcloud:
-          pricing:
-            ic-websocket-gateway:
-              denom: uakt
-              amount: 1000
-    deployment:
-      ic-websocket-gateway:
-        dcloud:
-          profile: ic-websocket-gateway
-          count: 1
+          denom: uakt
+          amount: 1000
+deployment:
+  ic-websocket-gateway:
+    dcloud:
+      profile: ic-websocket-gateway
+      count: 1
     "#;
 
     let sdl = SdlV3::try_from_str(sdl_str).unwrap();
     print(format!("sdl: {:?}", sdl));
+    print(format!(
+        "sdl version (base64): {}",
+        STANDARD.encode(sdl.manifest_version())
+    ));
 
     // see https://github.com/akash-network/cloudmos/blob/8a8098b7e371e801dad3aad81ef92b8dfe387e4c/deploy-web/src/utils/deploymentData/v1beta3.ts#L230
     let msg = MsgCreateDeployment {
@@ -302,7 +306,7 @@ pub async fn create_deployment_tx(sender_public_key: &PublicKey) -> Result<Strin
             dseq: 2893944, // obtained from /blocks/latest RPC call
         }),
         groups: sdl.groups(),
-        version: "1.0.0".as_bytes().to_vec(), // hash of the SDL
+        version: sdl.manifest_version(),
         deposit: Some(
             Coin {
                 amount: 5_000_000u128,
