@@ -276,6 +276,8 @@ profiles:
           size: 512Mi
         storage:
           - size: 512Mi
+        gpu:
+          units: 0
   placement:
     dcloud:
       pricing:
@@ -291,6 +293,10 @@ deployment:
 
     let sdl = SdlV3::try_from_str(sdl_str).unwrap();
     print(format!("sdl: {:?}", sdl));
+    print(format!(
+        "sdl manifest sorted: {}",
+        sdl.manifest_sorted_json()
+    ));
     print(format!(
         "sdl version (base64): {}",
         STANDARD.encode(sdl.manifest_version())

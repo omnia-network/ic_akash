@@ -1,3 +1,5 @@
+mod sizes;
+
 use std::collections::HashMap;
 
 use cosmrs::proto::cosmos::base::v1beta1::DecCoin;
@@ -21,6 +23,8 @@ use crate::{
     },
     sha256,
 };
+
+use self::sizes::{convert_cpu_resource_string, convert_resource_string};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ServiceV2 {
@@ -54,7 +58,10 @@ impl ServiceV2 {
                         };
 
                         let default_ep = DeploymentGroupResourceEndpointV3 {
-                            kind,
+                            kind: match kind {
+                                EndpointKind::SharedHttp => None,
+                                _ => Some(kind),
+                            },
                             sequence_number: 0,
                         };
 
@@ -63,7 +70,7 @@ impl ServiceV2 {
                                 vec![
                                     default_ep,
                                     DeploymentGroupResourceEndpointV3 {
-                                        kind: EndpointKind::LeasedIp,
+                                        kind: Some(EndpointKind::LeasedIp),
                                         sequence_number: *endpoint_sequence_numbers
                                             .get(to.ip.as_ref().unwrap())
                                             .unwrap_or(&0),
@@ -742,14 +749,15 @@ impl Into<ProtobufResourceUnit> for DeploymentGroupResourceV3 {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct DeploymentGroupResourceEndpointV3 {
-    pub kind: EndpointKind,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<EndpointKind>,
     pub sequence_number: u32,
 }
 
 impl Into<Endpoint> for DeploymentGroupResourceEndpointV3 {
     fn into(self) -> Endpoint {
         Endpoint {
-            kind: self.kind as i32,
+            kind: self.kind.unwrap_or(EndpointKind::SharedHttp) as i32, // TODO: is this the right default value?
             SequenceNumber: self.sequence_number,
         }
     }
@@ -879,10 +887,18 @@ pub struct GenericResourceUnits {
     pub val: String,
 }
 
+fn resource_unit(val: &str) -> GenericResourceUnits {
+    GenericResourceUnits {
+        val: convert_resource_string(val).unwrap().to_string(),
+    }
+}
+
 fn service_resource_cpu(resource: &ResourceCpuV2) -> GenericResource {
     GenericResource {
         units: Some(GenericResourceUnits {
-            val: resource.units.clone(),
+            val: convert_cpu_resource_string(&resource.units)
+                .unwrap()
+                .to_string(),
         }),
         quantity: None,
         name: None,
@@ -893,9 +909,7 @@ fn service_resource_cpu(resource: &ResourceCpuV2) -> GenericResource {
 fn service_resource_memory(resource: &ResourceMemoryV2) -> GenericResource {
     GenericResource {
         units: None,
-        quantity: Some(GenericResourceUnits {
-            val: resource.size.clone(),
-        }),
+        quantity: Some(resource_unit(&resource.size)),
         name: None,
         attributes: service_resource_attributes(&resource.attributes),
     }
@@ -906,9 +920,7 @@ fn service_resource_storage(resource: &Vec<ResourceStorageV2>) -> Vec<GenericRes
         .iter()
         .map(|resource| GenericResource {
             units: None,
-            quantity: Some(GenericResourceUnits {
-                val: resource.size.clone(),
-            }),
+            quantity: Some(resource_unit(&resource.size)),
             name: resource.name.clone().or(Some("default".to_string())),
             attributes: service_resource_attributes(&resource.attributes),
         })
