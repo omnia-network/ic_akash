@@ -8,18 +8,11 @@ use cosmrs::{
     tx::{self, Fee, Msg, SignDoc, SignerInfo},
     AccountId, Any, Coin, Denom, ErrorReport, Tx,
 };
-use ic_cdk::{
-    api::management_canister::ecdsa::{sign_with_ecdsa, SignWithEcdsaArgument},
-    print,
-};
+use ic_cdk::api::management_canister::ecdsa::{sign_with_ecdsa, SignWithEcdsaArgument};
 
 use crate::{
     address::get_account_id_from_public_key,
-    proto::{
-        self,
-        deployment::{deployment::DeploymentID, deploymentmsg::MsgCreateDeployment},
-    },
-    sdl::SdlV3,
+    proto::{self},
     sha256, EcdsaKeyIds,
 };
 
@@ -95,7 +88,7 @@ pub async fn create_tx(
     // more config params from: https://github.com/akash-network/net/blob/main/sandbox/meta.json
     // see also: https://docs.akash.network/guides/sandbox/detailed-steps/part-4.-configure-your-network
     let chain_id = Id::from_str("sandbox-01").map_err(|e| e.to_string())?;
-    let account_number = 263; // TODO: figure out how to obtain this
+    let account_number = 267; // TODO: figure out how to obtain this
     let timeout_height = 0u16;
     let memo = "created from canister";
 
@@ -232,111 +225,11 @@ pub async fn create_certificate_tx(
 
     let gas = 100_000u64;
     let fee = Fee::from_amount_and_gas(amount, gas);
-    let sequence_number = 1;
+    let sequence_number = 0;
 
     create_tx(
         &sender_public_key,
         msg.to_any().unwrap(),
-        fee,
-        sequence_number,
-    )
-    .await
-}
-
-pub async fn create_deployment_tx(sender_public_key: &PublicKey) -> Result<String, String> {
-    // hash of this deployment (base64): TGNKUw/ffyyB/d0EaY9FWMEIhsBzcjY3PLBRHYDqszs=
-    // see https://deploy.cloudmos.io/transactions/268DEE51F9FAB84B1BABCD916092D380784A483EA088345CF7B86657BBC8A4DA?network=sandbox
-    let sdl_str = r#"
-version: "3.0"
-services:
-  ic-websocket-gateway:
-    image: omniadevs/ic-websocket-gateway
-    expose:
-      - port: 8080
-        as: 80
-        accept:
-          - "akash-gateway.icws.io"
-        to:
-          - global: true
-    command:
-      - "/ic-ws-gateway/ic_websocket_gateway"
-      - "--gateway-address"
-      - "0.0.0.0:8080"
-      - "--ic-network-url"
-      - "https://icp-api.io"
-      - "--polling-interval"
-      - "400"
-profiles:
-  compute:
-    ic-websocket-gateway:
-      resources:
-        cpu:
-          units: 0.5
-        memory:
-          size: 512Mi
-        storage:
-          - size: 512Mi
-        gpu:
-          units: 0
-  placement:
-    dcloud:
-      pricing:
-        ic-websocket-gateway:
-          denom: uakt
-          amount: 1000
-deployment:
-  ic-websocket-gateway:
-    dcloud:
-      profile: ic-websocket-gateway
-      count: 1
-    "#;
-
-    let sdl = SdlV3::try_from_str(sdl_str).unwrap();
-    print(format!("sdl: {:?}", sdl));
-    print(format!(
-        "sdl manifest sorted: {}",
-        sdl.manifest_sorted_json()
-    ));
-    print(format!(
-        "sdl version (base64): {}",
-        STANDARD.encode(sdl.manifest_version())
-    ));
-
-    // see https://github.com/akash-network/cloudmos/blob/8a8098b7e371e801dad3aad81ef92b8dfe387e4c/deploy-web/src/utils/deploymentData/v1beta3.ts#L230
-    let msg = MsgCreateDeployment {
-        id: Some(DeploymentID {
-            owner: get_account_id_from_public_key(sender_public_key)
-                .unwrap()
-                .to_string(),
-            // see https://github.com/akash-network/cloudmos/blob/8a8098b7e371e801dad3aad81ef92b8dfe387e4c/deploy-web/src/utils/deploymentData/v1beta3.ts#L248C27-L248C27
-            dseq: 2893944, // obtained from /blocks/latest RPC call
-        }),
-        groups: sdl.groups(),
-        version: sdl.manifest_version(),
-        deposit: Some(
-            Coin {
-                amount: 5_000_000u128,
-                denom: Denom::from_str("uakt").unwrap(),
-            }
-            .into(),
-        ),
-        depositor: get_account_id_from_public_key(sender_public_key)
-            .unwrap()
-            .to_string(),
-    };
-
-    let amount = Coin {
-        amount: 3_000u128,
-        denom: Denom::from_str("uakt").unwrap(),
-    };
-
-    let gas = 100_000u64;
-    let fee = Fee::from_amount_and_gas(amount, gas);
-    let sequence_number = 1;
-
-    create_tx(
-        &sender_public_key,
-        Any::from_msg(&msg).unwrap(),
         fee,
         sequence_number,
     )

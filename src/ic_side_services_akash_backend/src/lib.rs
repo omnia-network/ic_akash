@@ -1,13 +1,11 @@
 use std::str::FromStr;
 
-use address::get_account_id_from_public_key;
 use candid::CandidType;
 use cosmrs::{
     bank::MsgSend,
     tx::{Fee, Msg},
     AccountId, Coin, Denom,
 };
-use ecdsa::get_public_key;
 use ic_cdk::{
     api::management_canister::ecdsa::{
         sign_with_ecdsa, EcdsaCurve, EcdsaKeyId, SignWithEcdsaArgument,
@@ -16,9 +14,16 @@ use ic_cdk::{
 };
 use serde::Serialize;
 use sha2::Digest;
-use tx::{create_certificate_tx, create_deployment_tx, create_tx};
+
+use address::get_account_id_from_public_key;
+use bids::bids_request;
+use deployment::{close_deployment_tx, create_deployment_tx};
+use ecdsa::get_public_key;
+use tx::{create_certificate_tx, create_tx};
 
 mod address;
+mod bids;
+mod deployment;
 mod ecdsa;
 mod proto;
 mod sdl;
@@ -93,10 +98,28 @@ async fn create_certificate_transaction(
 }
 
 #[update]
-async fn create_deployment_transaction() -> String {
+async fn create_deployment_transaction(height: u64, sequence_number: u64) -> String {
     let public_key = get_public_key().await.unwrap();
 
-    create_deployment_tx(&public_key).await.unwrap()
+    create_deployment_tx(&public_key, height, sequence_number)
+        .await
+        .unwrap()
+}
+
+#[update]
+async fn close_deployment_transaction(height: u64, sequence_number: u64) -> String {
+    let public_key = get_public_key().await.unwrap();
+
+    close_deployment_tx(&public_key, height, sequence_number)
+        .await
+        .unwrap()
+}
+
+#[update]
+async fn fetch_bids(dseq: u64) -> String {
+    let public_key = get_public_key().await.unwrap();
+
+    bids_request(&public_key, dseq).unwrap()
 }
 
 #[update]

@@ -16,6 +16,8 @@ service : {
     "address" : () -> (AddressResult);
     "create_transaction" : () -> (text);
     "create_certificate_transaction" : (text, text) -> (text);
-    "create_deployment_transaction" : () -> (text);
+    "create_deployment_transaction" : (nat64, nat64) -> (text);
+    "close_deployment_transaction" : (nat64, nat64) -> (text);
+    "fetch_bids" : (nat64) -> (text);
     "sign" : (text) -> (SignatureResult);
 };

@@ -24,3 +24,18 @@ impl Name for MsgCreateDeployment {
     const NAME: &'static str = "MsgCreateDeployment";
     const PACKAGE: &'static str = "akash.deployment.v1beta3";
 }
+
+/// MsgCloseDeployment defines an SDK message for closing deployment.
+///
+/// from https://github.com/akash-network/akash-api/blob/40e1584bc52f8753296e07a562265a034bf35bef/proto/node/akash/deployment/v1beta3/deploymentmsg.proto#L94
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MsgCloseDeployment {
+    #[prost(message, tag = "1")]
+    pub ID: ::core::option::Option<DeploymentID>,
+}
+
+// from https://github.com/akash-network/cloudmos/blob/d644be8430a57ebbf195afd2c460946b38e5a56f/deploy-web/src/utils/TransactionMessageData.ts#L9
+impl Name for MsgCloseDeployment {
+    const NAME: &'static str = "MsgCloseDeployment";
+    const PACKAGE: &'static str = "akash.deployment.v1beta3";
+}
