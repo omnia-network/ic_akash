@@ -4,6 +4,7 @@ use std::{cmp::Ordering, collections::HashMap};
 
 use cosmrs::proto::cosmos::base::v1beta1::DecCoin;
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::{
     proto::{
@@ -273,7 +274,10 @@ impl Into<CPU> for ResourceCpuV2 {
     fn into(self) -> CPU {
         CPU {
             units: Some(ResourceValue {
-                val: self.units.as_bytes().to_vec(),
+                val: convert_cpu_resource_string(&self.units)
+                    .unwrap()
+                    .to_string()
+                    .into_bytes(),
             }),
             Attributes: self
                 .attributes
@@ -292,12 +296,21 @@ pub struct ResourceStorageV2 {
     pub attributes: Option<StorageAttributesV2>,
 }
 
+impl ResourceStorageV2 {
+    pub fn name(&self) -> String {
+        self.name.clone().unwrap_or("default".to_string())
+    }
+}
+
 impl Into<Storage> for ResourceStorageV2 {
     fn into(self) -> Storage {
         Storage {
-            name: self.name.unwrap_or("".to_string()), // TODO: figure out if this default is correct
+            name: self.name(),
             quantity: Some(ResourceValue {
-                val: self.size.as_bytes().to_vec(),
+                val: convert_resource_string(&self.size)
+                    .unwrap()
+                    .to_string()
+                    .into_bytes(),
             }),
             Attributes: self
                 .attributes
@@ -321,7 +334,10 @@ impl Into<Memory> for ResourceMemoryV2 {
     fn into(self) -> Memory {
         Memory {
             quantity: Some(ResourceValue {
-                val: self.size.as_bytes().to_vec(),
+                val: convert_resource_string(&self.size)
+                    .unwrap()
+                    .to_string()
+                    .into_bytes(),
             }),
             Attributes: self
                 .attributes
@@ -341,15 +357,29 @@ pub struct ResourceGpuV3 {
     pub attributes: Option<GpuAttributesV3>,
 }
 
+impl ResourceGpuV3 {
+    pub fn units(&self) -> String {
+        if self.units.is_empty() {
+            "0".to_string()
+        } else {
+            self.units.clone()
+        }
+    }
+}
+
 impl Into<GPU> for ResourceGpuV3 {
     fn into(self) -> GPU {
         GPU {
             units: Some(ResourceValue {
-                val: self.units.as_bytes().to_vec(),
+                val: self.units().into_bytes(),
             }),
-            // TODO: figure out how to map to proto
-            // Attributes: self.attributes.unwrap_or_default().vendor.into_iter().map(|(k, v)| ProtobufAttribute { key: k, value: v }).collect(),
-            Attributes: vec![],
+            Attributes: match self.attributes {
+                Some(attributes) => Into::<Attributes>::into(attributes)
+                    .into_iter()
+                    .map(|attr| attr.into())
+                    .collect(),
+                None => vec![],
+            },
         }
     }
 }
@@ -494,10 +524,6 @@ impl SdlV3 {
                 let compute = self.profiles.compute.get(&svc_depl.profile).unwrap();
                 let infra = self.profiles.placement.get(placement_name).unwrap();
                 let pricing = infra.pricing.get(&svc_depl.profile).unwrap();
-                let price = DecCoin {
-                    denom: pricing.denom.clone(),
-                    amount: pricing.amount.to_string(),
-                };
 
                 let group = groups.entry(placement_name.to_string()).or_insert_with(|| {
                     let mut attributes = infra.attributes.clone().unwrap_or(vec![]);
@@ -517,33 +543,46 @@ impl SdlV3 {
                     }
                 });
 
-                let location = *(group
+                match group
                     .bound_computes
                     .entry(placement_name.clone())
                     .or_insert(HashMap::new())
-                    .entry(svc_depl.profile.clone())
-                    .or_insert_with(|| {
+                    .get(&svc_depl.profile)
+                {
+                    None => {
                         let mut res = compute.resources.clone();
 
                         res.id = Some(group.dgroup.resources.len() as u32 + 1);
 
                         group.dgroup.resources.push(DeploymentGroupResourceV3 {
                             resource: res,
-                            price: price.amount.parse().unwrap(),
+                            price: pricing.amount.try_into().unwrap(),
                             count: svc_depl.count,
                             endpoints: vec![],
                         });
 
-                        (group.dgroup.resources.len() - 1) as u32
-                    })) as usize;
-
-                group.dgroup.resources[location].count += svc_depl.count;
-                group.dgroup.resources[location].endpoints.append(
-                    service
-                        .service_resource_endpoints_v3(self.compute_endpoint_sequence_numbers())
-                        .as_mut(),
-                );
-                group.dgroup.resources[location].endpoints.sort();
+                        group
+                            .bound_computes
+                            .get_mut(placement_name)
+                            .unwrap()
+                            .insert(
+                                svc_depl.profile.clone(),
+                                group.dgroup.resources.len() as u32 - 1,
+                            );
+                    }
+                    Some(&location) => {
+                        let location = location as usize;
+                        group.dgroup.resources[location].count += svc_depl.count;
+                        group.dgroup.resources[location].endpoints.append(
+                            service
+                                .service_resource_endpoints_v3(
+                                    self.compute_endpoint_sequence_numbers(),
+                                )
+                                .as_mut(),
+                        );
+                        group.dgroup.resources[location].endpoints.sort();
+                    }
+                };
             }
         }
 
@@ -774,7 +813,7 @@ impl Into<ProtobufResourceUnit> for DeploymentGroupResourceV3 {
             }),
             price: Some(DecCoin {
                 denom: "uakt".to_string(),
-                amount: self.price.to_string(),
+                amount: format!("{:0<23}", self.price).to_string(),
             }),
             count: self.count,
         }
@@ -797,7 +836,8 @@ impl Into<Endpoint> for DeploymentGroupResourceEndpointV3 {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
+#[derive(Serialize_repr, Deserialize_repr, Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
+#[repr(u32)]
 pub enum EndpointKind {
     SharedHttp = 0,
     RandomPort = 1,
@@ -961,7 +1001,7 @@ fn service_resource_storage(resource: &Vec<ResourceStorageV2>) -> Vec<GenericRes
         .map(|resource| GenericResource {
             units: None,
             quantity: Some(resource_unit(&resource.size)),
-            name: resource.name.clone().or(Some("default".to_string())),
+            name: Some(resource.name()),
             attributes: service_resource_attributes(&resource.attributes),
         })
         .collect()
@@ -970,7 +1010,10 @@ fn service_resource_storage(resource: &Vec<ResourceStorageV2>) -> Vec<GenericRes
 fn service_resource_gpu(resource: &Option<ResourceGpuV3>) -> GenericResource {
     GenericResource {
         units: Some(GenericResourceUnits {
-            val: resource.clone().map(|r| r.units).unwrap_or("0".to_string()),
+            val: resource
+                .clone()
+                .map(|r| r.units())
+                .unwrap_or("0".to_string()),
         }),
         quantity: None,
         name: None,
