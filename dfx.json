@@ -6,7 +6,7 @@
       "type": "rust"
     },
     "tendermint_rpc_canister": {
-      "candid": "tendermint_rpc_canister/src/tendermint_rpc_canister.did",
+      "candid": "src/tendermint_rpc_canister/src/tendermint_rpc_canister.did",
       "package": "tendermint_rpc_canister",
       "type": "rust"
     }

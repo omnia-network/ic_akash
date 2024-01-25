@@ -2,6 +2,6 @@
 members = [
     "src/ic_side_services_akash_backend",
     "tendermint_client",
-    "tendermint_rpc_canister",
+    "src/tendermint_rpc_canister",
 ]
 resolver = "2"
