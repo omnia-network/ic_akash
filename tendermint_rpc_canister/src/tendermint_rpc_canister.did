@@ -1,0 +1,8 @@
+type Result = variant {
+    Ok;
+    Err : text;
+};
+
+service : {
+    "broadcast_tx_sync" : (text) -> (Result);
+};
