@@ -125,7 +125,6 @@ async fn main() {
     // let query_res = client
     //     .abci_query(
     //         Some(String::from("/akash.market.v1beta4.Query/Bids")),
-    //         // hex::decode(String::from("0a330a2c616b61736831343335646a347a6a667a353972757839616b746864636636637937683639336674653667653210f6b7b501")).unwrap(),
     //         hex::decode(String::from("0a330a2c616b61736831343335646a347a6a667a353972757839616b746864636636637937683639336674653667653210d2a3b601")).unwrap(),
     //         None,
     //         false,

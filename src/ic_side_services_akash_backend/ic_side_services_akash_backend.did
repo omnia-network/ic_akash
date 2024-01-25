@@ -19,6 +19,7 @@ service : {
     "create_deployment_transaction" : (nat64, nat64) -> (text);
     "close_deployment_transaction" : (nat64, nat64) -> (text);
     "fetch_bids" : (nat64) -> (text);
+    "decode_bids_response" : (text) -> ();
     "get_account" : () -> (text);
     "decode_account_response" : (text) -> () query;
     "sign" : (text) -> (SignatureResult);

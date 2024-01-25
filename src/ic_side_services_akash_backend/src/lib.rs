@@ -17,7 +17,7 @@ use serde::Serialize;
 use sha2::Digest;
 
 use address::get_account_id_from_public_key;
-use bids::bids_request;
+use bids::{bids_request, bids_response};
 use deployment::{close_deployment_tx, create_deployment_tx};
 use ecdsa::get_public_key;
 use tx::{create_certificate_tx, create_tx};
@@ -124,6 +124,11 @@ async fn fetch_bids(dseq: u64) -> String {
     bids_request(&public_key, dseq).unwrap()
 }
 
+#[query]
+fn decode_bids_response(hex_data: String) {
+    bids_response(hex_data);
+}
+
 #[update]
 async fn get_account() -> String {
     let public_key = get_public_key().await.unwrap();
@@ -132,7 +137,7 @@ async fn get_account() -> String {
 }
 
 #[query]
-async fn decode_account_response(hex_data: String) {
+fn decode_account_response(hex_data: String) {
     account_response(hex_data);
 }
 
