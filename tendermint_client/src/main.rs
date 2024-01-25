@@ -99,6 +99,17 @@ async fn main() {
         latest_block.block.header.height
     );
 
+    let query_res = client
+        .abci_query(
+            Some(String::from("/cosmos.auth.v1beta1.Query/Account")),
+            hex::decode(String::from("0a2c616b617368317a686436373538673874686c7363726e347532306879783770347a3978616b6678767a703037")).unwrap(),
+            None,
+            false,
+        )
+        .await
+        .unwrap();
+    println!("account response (hex): {}", hex::encode(query_res.value));
+
     // let tx_hex =
     //     hex::decode("042D2C79D9E16D1F6F78236D51E8E807ADEC94F90BB7749C0ABF7867E39BBDBE").unwrap();
     // let found_tx = client

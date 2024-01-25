@@ -88,7 +88,7 @@ pub async fn create_tx(
     // more config params from: https://github.com/akash-network/net/blob/main/sandbox/meta.json
     // see also: https://docs.akash.network/guides/sandbox/detailed-steps/part-4.-configure-your-network
     let chain_id = Id::from_str("sandbox-01").map_err(|e| e.to_string())?;
-    let account_number = 267; // TODO: figure out how to obtain this
+    let account_number = 270; // use the get_account function to obtain it
     let timeout_height = 0u16;
     let memo = "created from canister";
 

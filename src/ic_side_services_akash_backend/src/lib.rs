@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use auth::{account_request, account_response};
 use candid::CandidType;
 use cosmrs::{
     bank::MsgSend,
@@ -10,7 +11,7 @@ use ic_cdk::{
     api::management_canister::ecdsa::{
         sign_with_ecdsa, EcdsaCurve, EcdsaKeyId, SignWithEcdsaArgument,
     },
-    update,
+    query, update,
 };
 use serde::Serialize;
 use sha2::Digest;
@@ -22,6 +23,7 @@ use ecdsa::get_public_key;
 use tx::{create_certificate_tx, create_tx};
 
 mod address;
+mod auth;
 mod bids;
 mod deployment;
 mod ecdsa;
@@ -120,6 +122,18 @@ async fn fetch_bids(dseq: u64) -> String {
     let public_key = get_public_key().await.unwrap();
 
     bids_request(&public_key, dseq).unwrap()
+}
+
+#[update]
+async fn get_account() -> String {
+    let public_key = get_public_key().await.unwrap();
+
+    account_request(&public_key).unwrap()
+}
+
+#[query]
+async fn decode_account_response(hex_data: String) {
+    account_response(hex_data);
 }
 
 #[update]
