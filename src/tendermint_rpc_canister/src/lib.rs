@@ -2,10 +2,15 @@ use ic_cdk::api::management_canister::http_request::{
     http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, HttpResponse,
     TransformContext,
 };
-mod base64string;
 mod endpoints;
 mod request;
-use endpoints::{block::Request as BlockRequest, tx_sync::Request as TxSyncRequest};
+mod serializers;
+use endpoints::{
+    abci_info::Request as AbciInfoRequest,
+    abci_query::Request as AbciQueryRequest,
+    block::{Height, Request as BlockRequest},
+    tx_sync::Request as TxSyncRequest,
+};
 use request::Wrapper;
 
 #[ic_cdk::update]
@@ -14,6 +19,42 @@ async fn latest_block() -> Result<(), String> {
     let request_body = Wrapper::new(request).into_json().into_bytes();
 
     let response = make_rpc_request(HttpMethod::GET, Some(request_body), None).await?;
+    let str_body =
+        String::from_utf8(response.body).expect("Transformed response is not UTF-8 encoded.");
+    ic_cdk::api::print(format!("{:?}", str_body));
+
+    Ok(())
+}
+
+#[ic_cdk::update]
+async fn abci_info() -> Result<(), String> {
+    let request_body = Wrapper::new(AbciInfoRequest).into_json().into_bytes();
+
+    let response = make_rpc_request(HttpMethod::GET, Some(request_body), None).await?;
+    let str_body =
+        String::from_utf8(response.body).expect("Transformed response is not UTF-8 encoded.");
+    ic_cdk::api::print(format!("{:?}", str_body));
+
+    Ok(())
+}
+
+#[ic_cdk::update]
+async fn abci_query(
+    path: Option<String>,
+    str_data: String,
+    height: Option<u64>,
+    prove: bool,
+) -> Result<(), String> {
+    let data = hex::decode(str_data).map_err(|e| e.to_string())?;
+    let request = AbciQueryRequest {
+        path,
+        data,
+        height: height.map(|h| Height::new(h)),
+        prove,
+    };
+    let request_body = Wrapper::new(request).into_json().into_bytes();
+
+    let response = make_rpc_request(HttpMethod::POST, Some(request_body), None).await?;
     let str_body =
         String::from_utf8(response.body).expect("Transformed response is not UTF-8 encoded.");
     ic_cdk::api::print(format!("{:?}", str_body));

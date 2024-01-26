@@ -1,6 +1,6 @@
 use crate::{
-    base64string,
     request::{Method, RequestMessage},
+    serializers::base64string,
 };
 use serde::{Deserialize, Serialize};
 

@@ -5,5 +5,12 @@ type Result = variant {
 
 service : {
     "latest_block" : () -> (Result);
+    "abci_info" : () -> (Result);
+    "abci_query" : (
+        opt text,
+        text,
+        opt nat64,
+        bool,
+    ) -> (Result);
     "broadcast_tx_sync" : (text) -> (Result);
 };
