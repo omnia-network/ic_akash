@@ -3,7 +3,7 @@ use std::str::FromStr;
 use cosmrs::{crypto::PublicKey, tx::Fee, Coin, Denom};
 use prost_types::Any;
 
-use crate::{
+use super::{
     proto::market::{bid::BidId, lease::MsgCreateLease},
     tx::create_tx,
 };

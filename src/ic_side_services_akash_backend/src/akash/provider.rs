@@ -1,7 +1,7 @@
 use ic_cdk::print;
 use prost::Message;
 
-use crate::proto::provider::query::{QueryProviderRequest, QueryProviderResponse};
+use super::proto::provider::query::{QueryProviderRequest, QueryProviderResponse};
 
 pub fn provider_request() -> Result<String, String> {
     let query = QueryProviderRequest {

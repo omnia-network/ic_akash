@@ -5,7 +5,7 @@ use cosmrs::{
 use ic_cdk::print;
 use prost::Message;
 
-use crate::address::get_account_id_from_public_key;
+use super::address::get_account_id_from_public_key;
 
 pub fn account_request(sender_public_key: &PublicKey) -> Result<String, String> {
     let query = QueryAccountRequest {

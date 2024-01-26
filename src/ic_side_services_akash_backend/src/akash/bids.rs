@@ -2,7 +2,7 @@ use cosmrs::crypto::PublicKey;
 use ic_cdk::print;
 use prost::Message;
 
-use crate::{
+use super::{
     address::get_account_id_from_public_key,
     proto::market::{
         bid::BidFilters,

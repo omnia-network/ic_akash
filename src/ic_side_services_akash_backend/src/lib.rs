@@ -1,54 +1,41 @@
 use std::str::FromStr;
 
-use candid::CandidType;
+use candid::Principal;
 use cosmrs::{
     bank::MsgSend,
     tx::{Fee, Msg},
     AccountId, Coin, Denom,
 };
-use ic_cdk::{
-    api::management_canister::ecdsa::{
-        sign_with_ecdsa, EcdsaCurve, EcdsaKeyId, SignWithEcdsaArgument,
-    },
-    query, update,
+use ic_cdk::{init, post_upgrade, query, update};
+
+use akash::{
+    address::get_account_id_from_public_key,
+    auth::{account_request, account_response},
+    bids::{bids_request, bids_response},
+    deployment::{close_deployment_tx, create_deployment_tx},
+    lease::create_lease_tx,
+    provider::{provider_request, provider_response},
+    tx::{create_certificate_tx, create_tx},
 };
-use serde::Serialize;
-use sha2::Digest;
-
-use address::get_account_id_from_public_key;
-use auth::{account_request, account_response};
-use bids::{bids_request, bids_response};
-use deployment::{close_deployment_tx, create_deployment_tx};
+use config::{set_config, Config};
 use ecdsa::get_public_key;
-use lease::create_lease_tx;
-use provider::{provider_request, provider_response};
-use tx::{create_certificate_tx, create_tx};
 
-mod address;
-mod auth;
-mod bids;
-mod deployment;
+mod akash;
+mod config;
 mod ecdsa;
-mod lease;
-mod proto;
-mod provider;
-mod sdl;
-mod tx;
+mod hash;
 mod utils;
 
-#[derive(CandidType, Serialize, Debug)]
-struct PublicKeyReply {
-    pub public_key_hex: String,
+#[init]
+fn init(tendermint_rpc_canister_id: Principal) {
+    let config = Config::new(tendermint_rpc_canister_id);
+
+    set_config(config);
 }
 
-#[derive(CandidType, Serialize, Debug)]
-struct SignatureReply {
-    pub signature_hex: String,
-}
-
-#[derive(CandidType, Serialize, Debug)]
-struct SignatureVerificationReply {
-    pub is_signature_valid: bool,
+#[post_upgrade]
+fn post_upgrade(tendermint_rpc_canister_id: Principal) {
+    init(tendermint_rpc_canister_id);
 }
 
 #[update]
@@ -162,80 +149,10 @@ fn decode_provider_response(hex_data: String) {
     provider_response(hex_data);
 }
 
-#[update]
-async fn sign(message: String) -> Result<SignatureReply, String> {
-    let request = SignWithEcdsaArgument {
-        message_hash: sha256(&message.into_bytes()).to_vec(),
-        derivation_path: vec![],
-        key_id: EcdsaKeyIds::TestKeyLocalDevelopment.to_key_id(),
-    };
-
-    let (response,) = sign_with_ecdsa(request)
-        .await
-        .map_err(|e| format!("sign_with_ecdsa failed {}", e.1))?;
-
-    Ok(SignatureReply {
-        signature_hex: hex::encode(&response.signature),
-    })
-}
-
-// #[query]
-// async fn verify(
-//     signature_hex: String,
-//     message: String,
-//     public_key_hex: String,
-// ) -> Result<SignatureVerificationReply, String> {
-//     let signature_bytes = hex::decode(&signature_hex).expect("failed to hex-decode signature");
-//     let pubkey_bytes = hex::decode(&public_key_hex).expect("failed to hex-decode public key");
-//     let message_bytes = message.as_bytes();
-
-//     use k256::ecdsa::signature::Verifier;
-//     let signature = k256::ecdsa::Signature::try_from(signature_bytes.as_slice())
-//         .expect("failed to deserialize signature");
-//     let is_signature_valid = k256::ecdsa::VerifyingKey::from_sec1_bytes(&pubkey_bytes)
-//         .expect("failed to deserialize sec1 encoding into public key")
-//         .verify(message_bytes, &signature)
-//         .is_ok();
-
-//     Ok(SignatureVerificationReply { is_signature_valid })
-// }
-
-fn sha256(input: &[u8]) -> [u8; 32] {
-    let mut hasher = sha2::Sha256::new();
-    hasher.update(input);
-    hasher.finalize().into()
-}
-
-enum EcdsaKeyIds {
-    #[allow(unused)]
-    TestKeyLocalDevelopment,
-    #[allow(unused)]
-    TestKey1,
-    #[allow(unused)]
-    ProductionKey1,
-}
-
-impl EcdsaKeyIds {
-    fn to_key_id(&self) -> EcdsaKeyId {
-        EcdsaKeyId {
-            curve: EcdsaCurve::Secp256k1,
-            name: match self {
-                Self::TestKeyLocalDevelopment => "dfx_test_key",
-                Self::TestKey1 => "test_key_1",
-                Self::ProductionKey1 => "key_1",
-            }
-            .to_string(),
-        }
-    }
-}
-
 // In the following, we register a custom getrandom implementation because
 // otherwise getrandom (which is a dependency of k256) fails to compile.
 // This is necessary because getrandom by default fails to compile for the
 // wasm32-unknown-unknown target (which is required for deploying a canister).
-// Our custom implementation always fails, which is sufficient here because
-// we only use the k256 crate for verifying secp256k1 signatures, and such
-// signature verification does not require any randomness.
 getrandom::register_custom_getrandom!(always_fail);
 pub fn always_fail(_buf: &mut [u8]) -> Result<(), getrandom::Error> {
     Err(getrandom::Error::UNSUPPORTED)

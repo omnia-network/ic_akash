@@ -8,12 +8,15 @@ use cosmrs::{
     tx::{self, Fee, Msg, SignDoc, SignerInfo},
     AccountId, Any, Coin, Denom, ErrorReport, Tx,
 };
-use ic_cdk::api::management_canister::ecdsa::{sign_with_ecdsa, SignWithEcdsaArgument};
 
-use crate::{
+use super::{
     address::get_account_id_from_public_key,
     proto::{self},
-    sha256, EcdsaKeyIds,
+};
+
+use crate::{
+    ecdsa::{self},
+    hash::sha256,
 };
 
 /// from https://docs.rs/cosmrs/latest/cosmrs/tx/index.html#usage
@@ -137,20 +140,12 @@ async fn sign_tx(sign_doc: SignDoc) -> Result<tx::Raw, String> {
     let sign_doc_bytes = sign_doc.clone().into_bytes().map_err(|e| e.to_string())?;
     let hash = sha256(&sign_doc_bytes);
 
-    let request = SignWithEcdsaArgument {
-        message_hash: hash.to_vec(),
-        derivation_path: vec![],
-        key_id: EcdsaKeyIds::TestKeyLocalDevelopment.to_key_id(),
-    };
-
-    let (response,) = sign_with_ecdsa(request)
-        .await
-        .map_err(|e| format!("sign_with_ecdsa failed {}", e.1))?;
+    let signature = ecdsa::sign(hash.to_vec()).await.unwrap();
 
     Ok(TxRaw {
         body_bytes: sign_doc.body_bytes,
         auth_info_bytes: sign_doc.auth_info_bytes,
-        signatures: vec![response.signature],
+        signatures: vec![signature],
     }
     .into())
 }

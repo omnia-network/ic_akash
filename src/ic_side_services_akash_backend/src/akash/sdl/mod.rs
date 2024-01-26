@@ -6,26 +6,25 @@ use cosmrs::proto::cosmos::base::v1beta1::DecCoin;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-use crate::{
-    proto::{
-        base::{
-            attribute::{
-                Attribute as ProtobufAttribute, PlacementRequirements, SignedBy as ProtobufSignedBy,
-            },
-            cpu::CPU,
-            endpoint::Endpoint,
-            gpu::GPU,
-            memory::Memory,
-            resources::Resources,
-            resourcevalue::ResourceValue,
-            storage::Storage,
+use crate::hash::sha256;
+
+use super::proto::{
+    base::{
+        attribute::{
+            Attribute as ProtobufAttribute, PlacementRequirements, SignedBy as ProtobufSignedBy,
         },
-        deployment::{groupspec::GroupSpec, resourceunit::ResourceUnit as ProtobufResourceUnit},
+        cpu::CPU,
+        endpoint::Endpoint,
+        gpu::GPU,
+        memory::Memory,
+        resources::Resources,
+        resourcevalue::ResourceValue,
+        storage::Storage,
     },
-    sha256,
+    deployment::{groupspec::GroupSpec, resourceunit::ResourceUnit as ProtobufResourceUnit},
 };
 
-use self::sizes::{convert_cpu_resource_string, convert_resource_string};
+use sizes::{convert_cpu_resource_string, convert_resource_string};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ServiceV2 {

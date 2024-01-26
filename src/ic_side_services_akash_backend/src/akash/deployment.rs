@@ -4,7 +4,7 @@ use base64::{engine::general_purpose::STANDARD, Engine as _};
 use cosmrs::{crypto::PublicKey, tx::Fee, Any, Coin, Denom};
 use ic_cdk::print;
 
-use crate::{
+use super::{
     address::get_account_id_from_public_key,
     proto::deployment::{
         deployment::DeploymentID,
