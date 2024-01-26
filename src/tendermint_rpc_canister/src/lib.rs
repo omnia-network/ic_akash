@@ -6,7 +6,7 @@ use ic_cdk::api::management_canister::http_request::{
     http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, HttpResponse, TransformArgs,
     TransformContext,
 };
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use serde::{de::Error as _, Deserializer, Serializer};
 
@@ -255,21 +255,45 @@ pub mod base64string {
 pub struct Request {
     /// Transaction to broadcast
     // #[serde(with = "base64string")]
-    // pub tx: Vec<u8>,
-    pub height: Option<u64>,
+    pub tx: Vec<u8>,
+    // pub height: Option<u64>,
 }
 
 impl Request {
     /// Create a new sync transaction broadcast RPC request
     pub fn new(tx: impl Into<Vec<u8>>) -> Request {
-        // Request { tx: tx.into() }
-        Request { height: None }
+        Request { tx: tx.into() }
+        // Request { height: None }
+    }
+}
+
+impl RequestMessage for Request {
+    fn method(&self) -> crate::Method {
+        Method::BroadcastTxSync
+        // Method::Block
+    }
+}
+/// Serialization for JSON-RPC requests
+pub trait RequestMessage: DeserializeOwned + Serialize + Sized {
+    /// Request method
+    fn method(&self) -> Method;
+
+    /// Serialize this request as JSON
+    fn into_json(self) -> String {
+        Wrapper::new(self).into_json()
+    }
+
+    /// Parse a JSON-RPC request from a JSON string.
+    fn from_string(s: impl AsRef<[u8]>) -> Result<Self, String> {
+        let wrapper: Wrapper<Self> =
+            serde_json::from_slice(s.as_ref()).map_err(|e| e.to_string())?;
+        Ok(wrapper.params)
     }
 }
 
 /// JSON-RPC request wrapper (i.e. message envelope)
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Wrapper {
+pub struct Wrapper<R> {
     /// JSON-RPC version
     jsonrpc: Version,
 
@@ -280,24 +304,27 @@ pub struct Wrapper {
     method: Method,
 
     /// Request parameters (i.e. request object)
-    params: Request,
+    params: R,
 }
 
-impl Wrapper {
+impl<R> Wrapper<R>
+where
+    R: RequestMessage,
+{
     /// Create a new request wrapper from the given request.
     ///
     /// The ID of the request is set to a random [UUIDv4] value.
     ///
     /// [UUIDv4]: https://en.wikipedia.org/wiki/Universally_unique_identifier#Version_4_(random)
-    pub fn new(request: Request) -> Self {
+    pub fn new(request: R) -> Self {
         Self::new_with_id(0, request)
     }
 
-    pub(crate) fn new_with_id(id: u64, request: Request) -> Self {
+    pub(crate) fn new_with_id(id: u64, request: R) -> Self {
         Self {
             jsonrpc: Version::current(),
             id,
-            method: Method::Block,
+            method: request.method(),
             params: request,
         }
     }
@@ -306,7 +333,7 @@ impl Wrapper {
         &self.id
     }
 
-    pub fn params(&self) -> &Request {
+    pub fn params(&self) -> &R {
         &self.params
     }
 
