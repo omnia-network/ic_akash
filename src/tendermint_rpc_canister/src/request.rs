@@ -5,6 +5,8 @@ use core::{
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde::{de::Error as _, Deserializer, Serializer};
 
+use crate::uuid::Uuid;
+
 /// Supported JSON-RPC version
 const SUPPORTED_VERSION: &str = "2.0";
 
@@ -213,8 +215,8 @@ pub trait RequestMessage: DeserializeOwned + Serialize + Sized {
     fn method(&self) -> Method;
 
     /// Serialize this request as JSON
-    fn into_json(self) -> String {
-        Wrapper::new(self).into_json()
+    async fn into_json(self) -> String {
+        Wrapper::new(self).await.into_json()
     }
 
     /// Parse a JSON-RPC request from a JSON string.
@@ -232,7 +234,7 @@ pub struct Wrapper<R> {
     jsonrpc: Version,
 
     /// Identifier included in request
-    id: u64,
+    id: Uuid,
 
     /// Request method
     method: Method,
@@ -250,11 +252,11 @@ where
     /// The ID of the request is set to a random [UUIDv4] value.
     ///
     /// [UUIDv4]: https://en.wikipedia.org/wiki/Universally_unique_identifier#Version_4_(random)
-    pub fn new(request: R) -> Self {
-        Self::new_with_id(0, request)
+    pub async fn new(request: R) -> Self {
+        Self::new_with_id(Uuid::new().await.unwrap(), request)
     }
 
-    pub(crate) fn new_with_id(id: u64, request: R) -> Self {
+    pub(crate) fn new_with_id(id: Uuid, request: R) -> Self {
         Self {
             jsonrpc: Version::current(),
             id,
@@ -263,7 +265,7 @@ where
         }
     }
 
-    pub fn id(&self) -> &u64 {
+    pub fn id(&self) -> &Uuid {
         &self.id
     }
 

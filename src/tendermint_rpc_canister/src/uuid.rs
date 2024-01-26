@@ -1,11 +1,12 @@
 use candid::Deserialize;
+use serde::Serialize;
 use uuid::{Builder, Uuid as UuidImpl};
 
 use crate::rand::with_random_bytes;
 
 const UUID_SIZE: usize = 16;
 
-#[derive(Debug, Deserialize, Clone, Copy, Default, Ord, PartialOrd, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, Default, Ord, PartialOrd, PartialEq, Eq)]
 pub struct Uuid(UuidImpl);
 
 impl Uuid {

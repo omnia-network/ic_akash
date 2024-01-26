@@ -19,7 +19,7 @@ use request::Wrapper;
 #[ic_cdk::update]
 async fn latest_block() -> Result<(), String> {
     let request = BlockRequest::default();
-    let request_body = Wrapper::new(request).into_json().into_bytes();
+    let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
     let response = make_rpc_request(HttpMethod::GET, Some(request_body), None).await?;
     let str_body =
@@ -31,7 +31,7 @@ async fn latest_block() -> Result<(), String> {
 
 #[ic_cdk::update]
 async fn abci_info() -> Result<(), String> {
-    let request_body = Wrapper::new(AbciInfoRequest).into_json().into_bytes();
+    let request_body = Wrapper::new(AbciInfoRequest).await.into_json().into_bytes();
 
     let response = make_rpc_request(HttpMethod::GET, Some(request_body), None).await?;
     let str_body =
@@ -55,7 +55,7 @@ async fn abci_query(
         height: height.map(|h| Height::new(h)),
         prove,
     };
-    let request_body = Wrapper::new(request).into_json().into_bytes();
+    let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
     let response = make_rpc_request(HttpMethod::POST, Some(request_body), None).await?;
     let str_body =
@@ -69,7 +69,7 @@ async fn abci_query(
 async fn broadcast_tx_sync(tx_raw: String) -> Result<(), String> {
     let tx = hex::decode(tx_raw).map_err(|e| e.to_string())?;
     let request = TxSyncRequest::new(tx);
-    let request_body = Wrapper::new(request).into_json().into_bytes();
+    let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
     let response = make_rpc_request(HttpMethod::POST, Some(request_body), None).await?;
     let str_body =
@@ -86,18 +86,10 @@ async fn make_rpc_request(
 ) -> Result<HttpResponse, String> {
     let url = "https://rpc.sandbox-01.aksh.pw";
 
-    let request_headers = vec![
-        // //For the purposes of this exercise, Idempotency-Key" is hard coded, but in practice
-        // //it should be generated via code and unique to each POST request. Common to create helper methods for this
-        // HttpHeader {
-        //     name: "Idempotency-Key".to_string(),
-        //     value: "UUID-123456789".to_string(),
-        // },
-        HttpHeader {
-            name: "Content-Type".to_string(),
-            value: "application/json".to_string(),
-        },
-    ];
+    let request_headers = vec![HttpHeader {
+        name: "Content-Type".to_string(),
+        value: "application/json".to_string(),
+    }];
 
     let request = CanisterHttpRequestArgument {
         url: url.to_string(),
