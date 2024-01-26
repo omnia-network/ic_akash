@@ -11,5 +11,8 @@ crate-type = ["cdylib"]
 [dependencies]
 candid = "0.8"
 ic-cdk = "0.7"
-ic-cdk-timers = "0.1" # Feel free to remove this dependency if you don't need timers
+ic-cdk-timers = "0.1"     # Feel free to remove this dependency if you don't need timers
 hex = "0.4.3"
+serde = "1.0"
+serde_json = "1.0.111"
+subtle-encoding = "0.5.1"

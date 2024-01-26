@@ -2407,6 +2407,9 @@ dependencies = [
  "hex",
  "ic-cdk 0.7.4",
  "ic-cdk-timers",
+ "serde",
+ "serde_json",
+ "subtle-encoding",
 ]
 
 [[package]]
