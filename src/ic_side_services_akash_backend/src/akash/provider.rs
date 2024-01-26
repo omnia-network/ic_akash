@@ -1,17 +1,18 @@
-use ic_cdk::print;
 use prost::Message;
 
-use super::proto::provider::query::{QueryProviderRequest, QueryProviderResponse};
+use super::proto::provider::{
+    provider::Provider,
+    query::{QueryProviderRequest, QueryProviderResponse},
+};
 
-pub fn provider_request() -> Result<String, String> {
+pub async fn fetch_provider(provider_address: String) -> Result<Provider, String> {
     let query = QueryProviderRequest {
-        owner: String::from("provider"),
+        owner: provider_address,
     };
 
-    Ok(hex::encode(&query.encode_to_vec()))
-}
+    // abci_query
 
-pub fn provider_response(hex_data: String) {
-    let res = QueryProviderResponse::decode(hex::decode(hex_data).unwrap().as_slice()).unwrap();
-    print(format!("provider_response: {:?}", res));
+    let res = QueryProviderResponse::decode(vec![].as_slice()).map_err(|e| e.to_string())?;
+
+    Ok(res.provider.unwrap())
 }

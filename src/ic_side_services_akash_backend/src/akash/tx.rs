@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use base64::{engine::general_purpose::STANDARD, Engine as _};
 use cosmrs::{
     crypto::PublicKey,
     proto::cosmos::tx::v1beta1::TxRaw,
@@ -204,13 +203,13 @@ impl From<&MsgCreateCertificate> for proto::cert::cert::MsgCreateCertificate {
 
 pub async fn create_certificate_tx(
     sender_public_key: &PublicKey,
-    cert_pem_base64: String,
-    pub_key_pem_base64: String,
+    cert_pem: Vec<u8>,
+    pub_key_pem: Vec<u8>,
 ) -> Result<String, String> {
     let msg = MsgCreateCertificate {
         owner: get_account_id_from_public_key(sender_public_key).unwrap(),
-        cert: STANDARD.decode(cert_pem_base64).unwrap(),
-        pubkey: STANDARD.decode(pub_key_pem_base64).unwrap(),
+        cert: cert_pem,
+        pubkey: pub_key_pem,
     };
 
     let amount = Coin {

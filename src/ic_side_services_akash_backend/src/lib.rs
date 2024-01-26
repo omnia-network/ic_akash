@@ -1,24 +1,18 @@
-use std::str::FromStr;
-
 use candid::Principal;
-use cosmrs::{
-    bank::MsgSend,
-    tx::{Fee, Msg},
-    AccountId, Coin, Denom,
-};
-use ic_cdk::{init, post_upgrade, query, update};
+use ic_cdk::{init, post_upgrade, update};
 
 use akash::{
     address::get_account_id_from_public_key,
-    auth::{account_request, account_response},
-    bids::{bids_request, bids_response},
+    auth::get_account,
+    bids::fetch_bids,
     deployment::{close_deployment_tx, create_deployment_tx},
     lease::create_lease_tx,
-    provider::{provider_request, provider_response},
-    tx::{create_certificate_tx, create_tx},
+    provider::fetch_provider,
+    tx::create_certificate_tx,
 };
 use config::{set_config, Config};
 use ecdsa::get_public_key;
+use utils::base64_decode;
 
 mod akash;
 mod config;
@@ -40,113 +34,123 @@ fn post_upgrade(tendermint_rpc_canister_id: Principal) {
 
 #[update]
 async fn address() -> Result<String, String> {
-    let public_key = get_public_key().await.unwrap();
+    let public_key = get_public_key().await?;
 
-    let sender_account_id = get_account_id_from_public_key(&public_key).unwrap();
+    let sender_account_id = get_account_id_from_public_key(&public_key)?;
     Ok(sender_account_id.to_string())
 }
 
 #[update]
-async fn create_transaction() -> String {
-    let public_key = get_public_key().await.unwrap();
-
-    let sender_account_id = get_account_id_from_public_key(&public_key).unwrap();
-    let recipient_account_id =
-        AccountId::from_str("akash13gtrvjrzx8tst260ucszcflt4wny68shwdmrxs").unwrap();
-
-    // We'll be doing a simple send transaction.
-    // First we'll create a "Coin" amount to be sent.
-    let amount = Coin {
-        amount: 250_000u128,
-        denom: Denom::from_str("uakt").unwrap(),
-    };
-
-    // Next we'll create a send message (from the "bank" module) for the coin
-    // amount we created above.
-    let msg_send = MsgSend {
-        from_address: sender_account_id.clone(),
-        to_address: recipient_account_id,
-        amount: vec![amount.clone()],
-    };
-
-    let gas = 100_000u64;
-    let fee = Fee::from_amount_and_gas(amount, gas);
-    let sequence_num = 0;
-
-    create_tx(&public_key, msg_send.to_any().unwrap(), fee, sequence_num)
-        .await
-        .unwrap()
-}
-
-#[update]
-async fn create_certificate_transaction(
+async fn create_certificate(
     cert_pem_base64: String,
     pub_key_pem_base64: String,
-) -> String {
-    let public_key = get_public_key().await.unwrap();
+) -> Result<(), String> {
+    let public_key = get_public_key().await?;
 
-    create_certificate_tx(&public_key, cert_pem_base64, pub_key_pem_base64)
-        .await
-        .unwrap()
+    let cert_pem = base64_decode(&cert_pem_base64)?;
+    let pub_key_pem = base64_decode(&pub_key_pem_base64)?;
+
+    let tx_raw = create_certificate_tx(&public_key, cert_pem, pub_key_pem).await?;
+    // broadcast tx
+
+    Ok(())
 }
 
 #[update]
-async fn create_deployment_transaction(height: u64, sequence_number: u64) -> String {
-    let public_key = get_public_key().await.unwrap();
+async fn deploy() -> Result<(String, String), String> {
+    let public_key = get_public_key().await?;
 
-    create_deployment_tx(&public_key, height, sequence_number)
-        .await
-        .unwrap()
+    let account = get_account(&public_key).await?;
+    let mut sequence_number = account.sequence + 1;
+
+    let height = 1u64; // get it from the latest_block RPC call
+
+    let sdl_raw = example_sdl();
+
+    let (sdl, tx_raw) = create_deployment_tx(&public_key, height, sequence_number, sdl_raw).await?;
+    // broadcast tx
+    sequence_number += 1;
+
+    let bid = fetch_bids(&public_key, height).await?[0]
+        .bid
+        .clone()
+        .unwrap();
+    let bid_id = bid.bid_id.unwrap();
+
+    let tx_raw = create_lease_tx(&public_key, sequence_number, bid_id.clone()).await?;
+    // broadcast tx
+    sequence_number += 1;
+
+    let provider = fetch_provider(bid_id.owner).await?;
+
+    let deployment_url = format!(
+        "https://{}/deployment/{}/manifest",
+        provider.hostURI, bid_id.dseq
+    );
+
+    Ok((deployment_url, sdl.manifest_sorted_json()))
 }
 
 #[update]
-async fn close_deployment_transaction(height: u64, sequence_number: u64) -> String {
+async fn close_deployment(dseq: u64) -> Result<(), String> {
     let public_key = get_public_key().await.unwrap();
 
-    close_deployment_tx(&public_key, height, sequence_number)
-        .await
-        .unwrap()
+    let account = get_account(&public_key).await?;
+    let sequence_number = account.sequence + 1;
+
+    let tx_raw = close_deployment_tx(&public_key, dseq, sequence_number).await?;
+    // broadcast tx
+
+    Ok(())
 }
 
-#[update]
-async fn fetch_bids(dseq: u64) -> String {
-    let public_key = get_public_key().await.unwrap();
-
-    bids_request(&public_key, dseq).unwrap()
-}
-
-#[query]
-fn decode_bids_response(hex_data: String) {
-    bids_response(hex_data);
-}
-
-#[update]
-async fn get_account() -> String {
-    let public_key = get_public_key().await.unwrap();
-
-    account_request(&public_key).unwrap()
-}
-
-#[query]
-fn decode_account_response(hex_data: String) {
-    account_response(hex_data);
-}
-
-#[update]
-async fn create_lease(sequence_number: u64) -> String {
-    let public_key = get_public_key().await.unwrap();
-
-    create_lease_tx(&public_key, sequence_number).await.unwrap()
-}
-
-#[query]
-fn get_provider() -> String {
-    provider_request().unwrap()
-}
-
-#[query]
-fn decode_provider_response(hex_data: String) {
-    provider_response(hex_data);
+fn example_sdl<'a>() -> &'a str {
+    // hash of this deployment (base64): TGNKUw/ffyyB/d0EaY9FWMEIhsBzcjY3PLBRHYDqszs=
+    // see https://deploy.cloudmos.io/transactions/268DEE51F9FAB84B1BABCD916092D380784A483EA088345CF7B86657BBC8A4DA?network=sandbox
+    r#"
+version: "3.0"
+services:
+  ic-websocket-gateway:
+    image: omniadevs/ic-websocket-gateway
+    expose:
+      - port: 8080
+        as: 80
+        accept:
+          - "akash-gateway.icws.io"
+        to:
+          - global: true
+    command:
+      - "/ic-ws-gateway/ic_websocket_gateway"
+      - "--gateway-address"
+      - "0.0.0.0:8080"
+      - "--ic-network-url"
+      - "https://icp-api.io"
+      - "--polling-interval"
+      - "400"
+profiles:
+  compute:
+    ic-websocket-gateway:
+      resources:
+        cpu:
+          units: 0.5
+        memory:
+          size: 512Mi
+        storage:
+          - size: 512Mi
+        gpu:
+          units: 0
+  placement:
+    dcloud:
+      pricing:
+        ic-websocket-gateway:
+          denom: uakt
+          amount: 1000
+deployment:
+  ic-websocket-gateway:
+    dcloud:
+      profile: ic-websocket-gateway
+      count: 1
+    "#
 }
 
 // In the following, we register a custom getrandom implementation because

@@ -1,16 +1,18 @@
 use cosmrs::crypto::PublicKey;
-use ic_cdk::print;
 use prost::Message;
 
 use super::{
     address::get_account_id_from_public_key,
     proto::market::{
         bid::BidFilters,
-        query::{QueryBidsRequest, QueryBidsResponse},
+        query::{QueryBidResponse, QueryBidsRequest, QueryBidsResponse},
     },
 };
 
-pub fn bids_request(sender_public_key: &PublicKey, dseq: u64) -> Result<String, String> {
+pub async fn fetch_bids(
+    sender_public_key: &PublicKey,
+    dseq: u64,
+) -> Result<Vec<QueryBidResponse>, String> {
     let query = QueryBidsRequest {
         filters: Some(BidFilters {
             owner: get_account_id_from_public_key(sender_public_key)
@@ -25,10 +27,9 @@ pub fn bids_request(sender_public_key: &PublicKey, dseq: u64) -> Result<String, 
         pagination: None,
     };
 
-    Ok(hex::encode(&query.encode_to_vec()))
-}
+    // abci_query
 
-pub fn bids_response(hex_data: String) {
-    let res = QueryBidsResponse::decode(hex::decode(hex_data).unwrap().as_slice()).unwrap();
-    print(format!("account_response: {:?}", res));
+    let res = QueryBidsResponse::decode(vec![].as_slice()).map_err(|e| e.to_string())?;
+
+    Ok(res.bids)
 }

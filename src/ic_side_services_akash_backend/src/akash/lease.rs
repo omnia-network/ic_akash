@@ -11,15 +11,10 @@ use super::{
 pub async fn create_lease_tx(
     sender_public_key: &PublicKey,
     sequence_number: u64,
+    bid_id: BidId,
 ) -> Result<String, String> {
     let msg = MsgCreateLease {
-        bid_id: Some(BidId {
-            owner: String::from(""),
-            dseq: 0,
-            gseq: 0,
-            oseq: 0,
-            provider: String::from(""),
-        }),
+        bid_id: Some(bid_id),
     };
 
     let amount = Coin {

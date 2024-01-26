@@ -3,26 +3,14 @@ type AddressResult = variant {
     Err : text;
 };
 
-type SignatureReply = record {
-    signature_hex : text;
-};
-
-type SignatureResult = variant {
-    Ok : SignatureReply;
+type GenericResult = variant {
+    Ok;
     Err : text;
 };
 
 service : (principal) -> {
     "address" : () -> (AddressResult);
-    "create_transaction" : () -> (text);
-    "create_certificate_transaction" : (text, text) -> (text);
-    "create_deployment_transaction" : (nat64, nat64) -> (text);
-    "close_deployment_transaction" : (nat64, nat64) -> (text);
-    "fetch_bids" : (nat64) -> (text);
-    "decode_bids_response" : (text) -> ();
-    "get_account" : () -> (text);
-    "decode_account_response" : (text) -> () query;
-    "create_lease" : (nat64) -> (text);
-    "get_provider" : () -> (text);
-    "decode_provider_response" : (text) -> ();
+    "create_certificate" : (text, text) -> (GenericResult);
+    "deploy" : () -> (GenericResult);
+    "close_deployment" : (nat64) -> (GenericResult);
 };
