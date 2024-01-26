@@ -5,6 +5,7 @@ use ic_cdk::api::management_canister::http_request::{
 mod endpoints;
 mod rand;
 mod request;
+mod response;
 mod serializers;
 mod uuid;
 
@@ -14,7 +15,8 @@ use endpoints::{
     block::{Height, Request as BlockRequest},
     tx_sync::Request as TxSyncRequest,
 };
-use request::Wrapper;
+use request::{Request, Wrapper};
+use response::Response;
 
 #[ic_cdk::update]
 async fn latest_block() -> Result<(), String> {

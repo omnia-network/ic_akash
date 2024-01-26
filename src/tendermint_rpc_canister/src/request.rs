@@ -1,11 +1,10 @@
+use crate::uuid::Uuid;
 use core::{
     fmt::{self, Display},
     str::FromStr,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde::{de::Error as _, Deserializer, Serializer};
-
-use crate::uuid::Uuid;
 
 /// Supported JSON-RPC version
 const SUPPORTED_VERSION: &str = "2.0";
@@ -24,6 +23,19 @@ impl Version {
     /// Is this JSON-RPC version supported?
     pub fn is_supported(&self) -> bool {
         self.0.eq(SUPPORTED_VERSION)
+    }
+
+    /// Ensure we have a supported version or return an error
+    pub fn ensure_supported(&self) -> Result<(), String> {
+        if self.is_supported() {
+            Ok(())
+        } else {
+            Err(format!(
+                "Unsupported JSON-RPC version: {} (supported: {})",
+                self.0.to_string(),
+                SUPPORTED_VERSION.to_string(),
+            ))
+        }
     }
 }
 
@@ -225,6 +237,12 @@ pub trait RequestMessage: DeserializeOwned + Serialize + Sized {
             serde_json::from_slice(s.as_ref()).map_err(|e| e.to_string())?;
         Ok(wrapper.params)
     }
+}
+
+/// JSON-RPC requests
+pub trait Request: RequestMessage + Send {
+    /// Response type for this command
+    type Response: super::response::Response;
 }
 
 /// JSON-RPC request wrapper (i.e. message envelope)

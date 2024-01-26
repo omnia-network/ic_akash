@@ -2377,6 +2377,7 @@ dependencies = [
 name = "tendermint_rpc_canister"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "candid 0.8.4",
  "hex",
  "ic-cdk 0.7.4",
@@ -2385,6 +2386,7 @@ dependencies = [
  "serde",
  "serde_json",
  "subtle-encoding",
+ "thiserror",
  "uuid 1.7.0",
 ]
 

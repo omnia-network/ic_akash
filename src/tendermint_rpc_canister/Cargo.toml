@@ -15,6 +15,8 @@ hex = "0.4.3"
 serde = "1.0"
 serde_json = "1.0.111"
 subtle-encoding = "0.5.1"
+thiserror = "1.0.56"
+bytes = "1.5.0"
 rand = { version = "0.8", default-features = false }
 rand_chacha = { version = "0.3", default-features = false }
 uuid = { version = "1.6", features = ["serde"] }
