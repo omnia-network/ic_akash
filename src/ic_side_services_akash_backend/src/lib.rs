@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use auth::{account_request, account_response};
 use candid::CandidType;
 use cosmrs::{
     bank::MsgSend,
@@ -17,9 +16,11 @@ use serde::Serialize;
 use sha2::Digest;
 
 use address::get_account_id_from_public_key;
+use auth::{account_request, account_response};
 use bids::{bids_request, bids_response};
 use deployment::{close_deployment_tx, create_deployment_tx};
 use ecdsa::get_public_key;
+use lease::create_lease_tx;
 use tx::{create_certificate_tx, create_tx};
 
 mod address;
@@ -27,6 +28,7 @@ mod auth;
 mod bids;
 mod deployment;
 mod ecdsa;
+mod lease;
 mod proto;
 mod sdl;
 mod tx;
@@ -139,6 +141,13 @@ async fn get_account() -> String {
 #[query]
 fn decode_account_response(hex_data: String) {
     account_response(hex_data);
+}
+
+#[update]
+async fn create_lease(sequence_number: u64) -> String {
+    let public_key = get_public_key().await.unwrap();
+
+    create_lease_tx(&public_key, sequence_number).await.unwrap()
 }
 
 #[update]

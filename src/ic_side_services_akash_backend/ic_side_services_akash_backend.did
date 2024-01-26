@@ -22,5 +22,6 @@ service : {
     "decode_bids_response" : (text) -> ();
     "get_account" : () -> (text);
     "decode_account_response" : (text) -> () query;
+    "create_lease" : (nat64) -> (text);
     "sign" : (text) -> (SignatureResult);
 };
