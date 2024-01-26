@@ -33,6 +33,11 @@ impl RequestMessage for Request {
 pub struct Height(u64);
 
 impl Height {
+    /// Create a new height
+    pub fn new(height: u64) -> Self {
+        Self(height)
+    }
+
     /// Get inner integer value. Alternative to `.0` or `.into()`
     pub fn value(&self) -> u64 {
         self.0
