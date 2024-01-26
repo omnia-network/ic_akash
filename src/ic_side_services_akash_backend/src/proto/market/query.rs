@@ -27,8 +27,8 @@ pub struct QueryBidsResponse {
 /// https://github.com/akash-network/akash-api/blob/40e1584bc52f8753296e07a562265a034bf35bef/proto/node/akash/market/v1beta4/query.proto#L110
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryBidResponse {
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, tag = "1")]
     pub bid: ::core::option::Option<super::bid::Bid>,
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, tag = "2")]
     pub escrow_account: ::core::option::Option<super::super::escrow::types::Account>,
 }

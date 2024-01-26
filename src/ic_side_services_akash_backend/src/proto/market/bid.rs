@@ -40,11 +40,11 @@ pub struct BidId {
 /// https://github.com/akash-network/akash-api/blob/40e1584bc52f8753296e07a562265a034bf35bef/proto/node/akash/market/v1beta4/bid.proto#L110
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Bid {
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, tag = "1")]
     pub bid_id: ::core::option::Option<BidId>,
     #[prost(enumeration = "State", tag = "2")]
     pub state: i32,
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, tag = "3")]
     pub price: ::core::option::Option<cosmrs::proto::cosmos::base::v1beta1::DecCoin>,
     #[prost(int64, tag = "4")]
     pub created_at: i64,
@@ -58,7 +58,7 @@ pub struct Bid {
 /// from https://github.com/akash-network/akash-api/blob/40e1584bc52f8753296e07a562265a034bf35bef/proto/node/akash/market/v1beta4/bid.proto#L14
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResourceOffer {
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, tag = "1")]
     pub resources: ::core::option::Option<super::super::base::resources::Resources>,
     #[prost(uint32, tag = "2")]
     pub count: u32,

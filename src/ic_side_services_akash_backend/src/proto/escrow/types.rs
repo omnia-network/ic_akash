@@ -3,21 +3,21 @@
 /// https://github.com/akash-network/akash-api/blob/40e1584bc52f8753296e07a562265a034bf35bef/proto/node/akash/escrow/v1beta3/types.proto#L23
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Account {
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, tag = "1")]
     pub id: ::core::option::Option<AccountId>,
     #[prost(string, tag = "2")]
     pub owner: ::prost::alloc::string::String,
     #[prost(enumeration = "State", tag = "3")]
     pub state: i32,
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, tag = "4")]
     pub balance: ::core::option::Option<cosmrs::proto::cosmos::base::v1beta1::DecCoin>,
-    #[prost(message, optional, tag = "5")]
+    #[prost(message, tag = "5")]
     pub transferred: ::core::option::Option<cosmrs::proto::cosmos::base::v1beta1::DecCoin>,
     #[prost(int64, tag = "6")]
     pub settled_at: i64,
     #[prost(string, tag = "7")]
     pub depositor: ::prost::alloc::string::String,
-    #[prost(message, optional, tag = "8")]
+    #[prost(message, tag = "8")]
     pub funds: ::core::option::Option<cosmrs::proto::cosmos::base::v1beta1::DecCoin>,
 }
 
