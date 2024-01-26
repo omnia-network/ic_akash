@@ -23,5 +23,7 @@ service : {
     "get_account" : () -> (text);
     "decode_account_response" : (text) -> () query;
     "create_lease" : (nat64) -> (text);
+    "get_provider" : () -> (text);
+    "decode_provider_response" : (text) -> ();
     "sign" : (text) -> (SignatureResult);
 };

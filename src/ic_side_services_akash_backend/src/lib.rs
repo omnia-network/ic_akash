@@ -21,6 +21,7 @@ use bids::{bids_request, bids_response};
 use deployment::{close_deployment_tx, create_deployment_tx};
 use ecdsa::get_public_key;
 use lease::create_lease_tx;
+use provider::{provider_request, provider_response};
 use tx::{create_certificate_tx, create_tx};
 
 mod address;
@@ -30,6 +31,7 @@ mod deployment;
 mod ecdsa;
 mod lease;
 mod proto;
+mod provider;
 mod sdl;
 mod tx;
 mod utils;
@@ -148,6 +150,16 @@ async fn create_lease(sequence_number: u64) -> String {
     let public_key = get_public_key().await.unwrap();
 
     create_lease_tx(&public_key, sequence_number).await.unwrap()
+}
+
+#[query]
+fn get_provider() -> String {
+    provider_request().unwrap()
+}
+
+#[query]
+fn decode_provider_response(hex_data: String) {
+    provider_response(hex_data);
 }
 
 #[update]
