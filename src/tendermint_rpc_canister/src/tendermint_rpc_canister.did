@@ -4,5 +4,6 @@ type Result = variant {
 };
 
 service : {
+    "latest_block" : () -> (Result);
     "broadcast_tx_sync" : (text) -> (Result);
 };
