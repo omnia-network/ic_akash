@@ -4,7 +4,10 @@ use ic_cdk::api::management_canister::http_request::{
 };
 mod base64string;
 mod endpoints;
+mod rand;
 mod request;
+mod uuid;
+
 use endpoints::{block::Request as BlockRequest, tx_sync::Request as TxSyncRequest};
 use request::Wrapper;
 
