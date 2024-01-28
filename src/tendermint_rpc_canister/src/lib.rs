@@ -8,6 +8,7 @@ mod method;
 mod rand;
 mod request;
 mod response;
+mod response_error;
 mod serializers;
 mod uuid;
 mod version;
