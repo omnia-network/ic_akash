@@ -20,3 +20,4 @@ bytes = "1.5.0"
 rand = { version = "0.8", default-features = false }
 rand_chacha = { version = "0.3", default-features = false }
 uuid = { version = "1.6", features = ["serde"] }
+tendermint-proto = { version = "0.34.0", path = "../proto" }
