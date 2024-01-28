@@ -8,8 +8,8 @@ const main = async () => {
   console.log("Pub Key PEM:", publicKey);
   console.log("Priv Key PEM:", privateKey);
 
-  console.log("Cert HEX:", Buffer.from(csr).toString("hex"));
-  console.log("Pub Key HEX:", Buffer.from(publicKey).toString("hex"));
+  console.log("Cert base64:", Buffer.from(csr).toString("base64"));
+  console.log("Pub Key base64:", Buffer.from(publicKey).toString("base64"));
 
   const sortedJSONManifest = "";
   const path = `/deployment/${0}/manifest`;
