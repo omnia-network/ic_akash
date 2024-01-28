@@ -60,9 +60,8 @@ async fn abci_query(
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
     let response = make_rpc_request(HttpMethod::POST, Some(request_body), None).await?;
-    let str_body =
-        String::from_utf8(response.body).expect("Transformed response is not UTF-8 encoded.");
-    ic_cdk::api::print(format!("{:?}", str_body));
+    let parsed_response = <AbciQueryRequest as Request>::Response::from_string(&response.body);
+    ic_cdk::api::print(format!("{:?}", parsed_response));
 
     Ok(())
 }

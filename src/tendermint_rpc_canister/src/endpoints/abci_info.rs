@@ -83,7 +83,7 @@ impl Protobuf<pb::ResponseInfo> for Info {}
 #[derive(Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct AppHash(Vec<u8>);
 
-// impl Protobuf<Vec<u8>> for AppHash {}
+impl Protobuf<Vec<u8>> for AppHash {}
 
 impl TryFrom<Vec<u8>> for AppHash {
     type Error = String;
