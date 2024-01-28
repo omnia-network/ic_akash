@@ -11,13 +11,12 @@ mod serializers;
 mod uuid;
 
 use endpoints::{
-    abci_info::Request as AbciInfoRequest,
-    abci_query::Request as AbciQueryRequest,
-    block::{Height, Request as BlockRequest},
-    tx_sync::Request as TxSyncRequest,
+    abci_info::Request as AbciInfoRequest, abci_query::Request as AbciQueryRequest,
+    block::Request as BlockRequest, tx_sync::Request as TxSyncRequest,
 };
 use request::{Request, Wrapper};
 use response::Response;
+use tendermint::block::Height;
 
 #[ic_cdk::update]
 async fn latest_block() -> Result<(), String> {

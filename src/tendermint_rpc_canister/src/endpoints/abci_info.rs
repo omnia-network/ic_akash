@@ -1,4 +1,3 @@
-use super::block::Height;
 use crate::request::{Method, Request as RequestTrait, RequestMessage};
 use crate::response::Response as ResponseTrait;
 use bytes::Bytes;
@@ -6,6 +5,7 @@ use core::fmt::{self, Debug};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use subtle_encoding::{Encoding, Hex};
+use tendermint::block::Height;
 use tendermint_proto::v0_37::abci as pb;
 use tendermint_proto::Protobuf;
 
@@ -71,7 +71,7 @@ impl TryFrom<pb::ResponseInfo> for Info {
             data: info.data,
             version: info.version,
             app_version: info.app_version,
-            last_block_height: info.last_block_height.try_into()?,
+            last_block_height: info.last_block_height.try_into().unwrap(),
             last_block_app_hash: info.last_block_app_hash.try_into()?,
         })
     }

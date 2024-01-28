@@ -68,6 +68,11 @@ impl From<u8> for Height {
 }
 
 impl Height {
+    /// Create a new `Height`
+    pub fn new(value: u64) -> Self {
+        Height(value)
+    }
+
     /// Get inner integer value. Alternative to `.0` or `.into()`
     pub fn value(&self) -> u64 {
         self.0

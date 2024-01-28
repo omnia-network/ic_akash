@@ -1,4 +1,3 @@
-use super::block::Height;
 use crate::{
     request::{Method, Request as RequestTrait, RequestMessage},
     serializers,
@@ -11,6 +10,7 @@ use std::{
     str::FromStr,
 };
 use subtle_encoding::{Encoding, Hex};
+use tendermint::block::Height;
 
 use serde::{
     de::{Deserializer, Visitor},
