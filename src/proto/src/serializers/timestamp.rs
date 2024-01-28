@@ -64,18 +64,19 @@ where
 /// This reproduces the behavior of Go's `time.RFC3339Nano` format,
 /// ie. a RFC3339 date-time with left-padded subsecond digits without
 ///     trailing zeros and no trailing dot.
-// pub fn to_rfc3339_nanos(t: OffsetDateTime) -> String {
-//     // Can't use OffsetDateTime::format because the feature enabling it
-//     // currently requires std (https://github.com/time-rs/time/issues/400)
+pub fn to_rfc3339_nanos() -> String {
+    // Can't use OffsetDateTime::format because the feature enabling it
+    // currently requires std (https://github.com/time-rs/time/issues/400)
 
-//     // Preallocate enough string capacity to fit the shortest possible form,
-//     // yyyy-mm-ddThh:mm:ssZ
-//     let mut buf = String::with_capacity(20);
+    // Preallocate enough string capacity to fit the shortest possible form,
+    // yyyy-mm-ddThh:mm:ssZ
+    // let mut buf = String::with_capacity(20);
 
-//     fmt_as_rfc3339_nanos(t, &mut buf).unwrap();
+    // fmt_as_rfc3339_nanos(t, &mut buf).unwrap();
 
-//     buf
-// }
+    // buf
+    String::from("2022-12-01T15:30:45.123456789Z")
+}
 
 /// Helper for formatting an [`OffsetDateTime`] value.
 ///

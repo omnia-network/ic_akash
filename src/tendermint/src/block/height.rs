@@ -4,54 +4,10 @@ use core::{
     str::FromStr,
 };
 
-use crate::request::{Method, Request as RequestTrait, RequestMessage};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use tendermint::block::{Block, Id};
+use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
 use tendermint_proto::Protobuf;
 
-/// Get information about a specific block
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub struct Request {
-    /// Height of the block to request.
-    ///
-    /// If no height is provided, it will fetch results for the latest block.
-    pub height: Option<Height>,
-}
-
-impl Request {
-    /// Create a new request for information about a particular block
-    pub fn new(height: Height) -> Self {
-        Self {
-            height: Some(height),
-        }
-    }
-}
-
-impl RequestMessage for Request {
-    fn method(&self) -> Method {
-        Method::Block
-    }
-}
-
-impl RequestTrait for Request {
-    type Response = Response;
-}
-
-// impl SimpleRequest for Request {
-//     type Output = Response;
-// }
-
-/// Block responses
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Response {
-    /// Block ID
-    pub block_id: Id,
-
-    /// Block data
-    pub block: Block,
-}
-
-impl crate::Response for Response {}
+use crate::{error::Error, prelude::*};
 
 /// Block height for a particular chain (i.e. number of blocks created since
 /// the chain began)
@@ -63,10 +19,10 @@ pub struct Height(u64);
 impl Protobuf<i64> for Height {}
 
 impl TryFrom<i64> for Height {
-    type Error = String;
+    type Error = Error;
 
     fn try_from(value: i64) -> Result<Self, Self::Error> {
-        Ok(Height(value.try_into().map_err(|_| "negative height")?))
+        Ok(Height(value.try_into().map_err(Error::negative_height)?))
     }
 }
 
@@ -77,11 +33,11 @@ impl From<Height> for i64 {
 }
 
 impl TryFrom<u64> for Height {
-    type Error = String;
+    type Error = Error;
 
     fn try_from(value: u64) -> Result<Self, Self::Error> {
         // Make sure the u64 value can be converted safely to i64
-        let _ival: i64 = value.try_into().map_err(|_| "integer overflow")?;
+        let _ival: i64 = value.try_into().map_err(Error::integer_overflow)?;
 
         Ok(Height(value))
     }
@@ -112,11 +68,6 @@ impl From<u8> for Height {
 }
 
 impl Height {
-    /// Create a new height
-    pub fn new(height: u64) -> Self {
-        Self(height)
-    }
-
     /// Get inner integer value. Alternative to `.0` or `.into()`
     pub fn value(&self) -> u64 {
         self.0
@@ -147,16 +98,20 @@ impl Display for Height {
 }
 
 impl FromStr for Height {
-    type Err = String;
+    type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self, String> {
-        Height::try_from(s.parse::<u64>().map_err(|e| e.to_string())?)
+    fn from_str(s: &str) -> Result<Self, Error> {
+        Height::try_from(
+            s.parse::<u64>()
+                .map_err(|e| Error::parse_int(s.to_string(), e))?,
+        )
     }
 }
 
 impl<'de> Deserialize<'de> for Height {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        Ok(Self::from_str(&String::deserialize(deserializer)?).unwrap())
+        Self::from_str(&String::deserialize(deserializer)?)
+            .map_err(|e| D::Error::custom(format!("{e}")))
     }
 }
 
@@ -169,5 +124,23 @@ impl Serialize for Height {
 /// Parse `block::Height` from a type
 pub trait ParseHeight {
     /// Parse `block::Height`, or return an `Error` if parsing failed
-    fn parse_block_height(&self) -> Result<Height, String>;
+    fn parse_block_height(&self) -> Result<Height, Error>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn increment_by_one() {
+        assert_eq!(Height::default().increment().value(), 2);
+    }
+
+    #[test]
+    fn avoid_try_unwrap_dance() {
+        assert_eq!(
+            Height::try_from(2_u64).unwrap().value(),
+            Height::from(2_u32).value()
+        );
+    }
 }

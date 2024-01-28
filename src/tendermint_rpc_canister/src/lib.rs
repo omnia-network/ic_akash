@@ -25,9 +25,8 @@ async fn latest_block() -> Result<(), String> {
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
     let response = make_rpc_request(HttpMethod::GET, Some(request_body), None).await?;
-    let str_body =
-        String::from_utf8(response.body).expect("Transformed response is not UTF-8 encoded.");
-    ic_cdk::api::print(format!("{:?}", str_body));
+    let parsed_response = <BlockRequest as Request>::Response::from_string(&response.body);
+    ic_cdk::api::print(format!("{:?}", parsed_response));
 
     Ok(())
 }
@@ -73,9 +72,8 @@ async fn broadcast_tx_sync(tx_raw: String) -> Result<(), String> {
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
     let response = make_rpc_request(HttpMethod::POST, Some(request_body), None).await?;
-    let str_body =
-        String::from_utf8(response.body).expect("Transformed response is not UTF-8 encoded.");
-    ic_cdk::api::print(format!("{:?}", str_body));
+    let parsed_response = <TxSyncRequest as Request>::Response::from_string(&response.body);
+    ic_cdk::api::print(format!("{:?}", parsed_response));
 
     Ok(())
 }
