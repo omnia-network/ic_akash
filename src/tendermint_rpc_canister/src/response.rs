@@ -61,7 +61,7 @@ impl<R> Wrapper<R> {
         self.version().ensure_supported()?;
 
         if let Some(e) = self.error {
-            Err("response error".to_string())
+            Err(format!("response error: {}", e))
         } else if let Some(result) = self.result {
             Ok(result)
         } else {
