@@ -3,7 +3,10 @@
 use serde::{Deserialize, Serialize};
 use tendermint::block::{self, Block};
 
-use crate::request::{Method, Request as RequestTrait, RequestMessage};
+use crate::{
+    method::Method,
+    request::{Request as RequestTrait, RequestMessage},
+};
 
 /// Get information about a specific block
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]

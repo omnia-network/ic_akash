@@ -3,12 +3,14 @@ use ic_cdk::api::management_canister::http_request::{
     TransformContext,
 };
 mod endpoints;
-mod proto;
+mod id;
+mod method;
 mod rand;
 mod request;
 mod response;
 mod serializers;
 mod uuid;
+mod version;
 
 use endpoints::{
     abci_info::Request as AbciInfoRequest, abci_query::Request as AbciQueryRequest,

@@ -1,5 +1,6 @@
 use crate::{
-    request::{Method, Request as RequestTrait, RequestMessage},
+    method::Method,
+    request::{Request as RequestTrait, RequestMessage},
     serializers::{self, base64string},
 };
 use bytes::Bytes;

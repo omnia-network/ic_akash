@@ -1,6 +1,5 @@
 //! JSON-RPC response types
-use crate::request::Version;
-use crate::uuid::Uuid;
+use crate::{uuid::Uuid, version::Version};
 use core::fmt::Display;
 use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize, Serializer};
 use std::io::Read;
