@@ -1,5 +1,6 @@
 pub mod address;
 pub mod auth;
+pub mod bank;
 pub mod bids;
 pub mod deployment;
 pub mod lease;

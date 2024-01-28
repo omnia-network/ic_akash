@@ -10,6 +10,7 @@ type GenericResult = variant {
 
 service : (principal) -> {
     "address" : () -> (AddressResult);
+    "send" : (text, nat64) -> (GenericResult);
     "create_certificate" : (text, text) -> (GenericResult);
     "deploy" : () -> (GenericResult);
     "close_deployment" : (nat64) -> (GenericResult);

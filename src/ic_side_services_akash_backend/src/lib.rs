@@ -1,9 +1,10 @@
 use candid::Principal;
-use ic_cdk::{init, post_upgrade, update};
+use ic_cdk::{init, post_upgrade, print, update};
 
 use akash::{
     address::get_account_id_from_public_key,
     auth::get_account,
+    bank::create_send_tx,
     bids::fetch_bids,
     deployment::{close_deployment_tx, create_deployment_tx},
     lease::create_lease_tx,
@@ -38,6 +39,22 @@ async fn address() -> Result<String, String> {
 
     let sender_account_id = get_account_id_from_public_key(&public_key)?;
     Ok(sender_account_id.to_string())
+}
+
+#[update]
+async fn send(to_address: String, amount: u64) -> Result<(), String> {
+    let public_key = get_public_key().await?;
+
+    let account = get_account(&public_key).await?;
+    let sequence_number = account.sequence + 1;
+
+    let tx_raw = create_send_tx(&public_key, to_address, amount, sequence_number)
+        .await
+        .unwrap();
+    print(format!("tx_raw: {}", tx_raw));
+    // broadcast tx
+
+    Ok(())
 }
 
 #[update]
