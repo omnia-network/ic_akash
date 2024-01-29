@@ -21,17 +21,18 @@ use request::{Request, Wrapper};
 use response::Response;
 use tendermint::block::Height;
 
-#[ic_cdk::update]
-async fn latest_block() -> Result<(), String> {
-    let request = BlockRequest::default();
-    let request_body = Wrapper::new(request).await.into_json().into_bytes();
+// TODO: fix deserialization
+// #[ic_cdk::update]
+// async fn latest_block() -> Result<(), String> {
+//     let request = BlockRequest::default();
+//     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
-    let response = make_rpc_request(HttpMethod::GET, Some(request_body), None).await?;
-    let parsed_response = <BlockRequest as Request>::Response::from_string(&response.body);
-    ic_cdk::api::print(format!("{:?}", parsed_response));
+//     let response = make_rpc_request(HttpMethod::GET, Some(request_body), None).await?;
+//     let parsed_response = <BlockRequest as Request>::Response::from_string(&response.body);
+//     ic_cdk::api::print(format!("{:?}", parsed_response));
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 #[ic_cdk::update]
 async fn abci_info() -> Result<(), String> {

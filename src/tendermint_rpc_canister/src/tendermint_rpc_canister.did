@@ -4,7 +4,7 @@ type Result = variant {
 };
 
 service : {
-    "latest_block" : () -> (Result);
+    // "latest_block" : () -> (Result);
     "abci_info" : () -> (Result);
     "abci_query" : (
         opt text,
