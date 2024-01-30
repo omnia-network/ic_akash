@@ -45,9 +45,20 @@ async fn send(to_address: String, amount: u64) -> Result<(), String> {
     let public_key = get_public_key().await?;
 
     let account = get_account(&public_key).await?;
-    let sequence_number = account.sequence + 1;
+    let sequence_number = if account.sequence > 0 {
+        account.sequence + 1
+    } else {
+        0
+    };
 
-    let tx_raw = create_send_tx(&public_key, to_address, amount, sequence_number).await?;
+    let tx_raw = create_send_tx(
+        &public_key,
+        to_address,
+        amount,
+        sequence_number,
+        account.account_number,
+    )
+    .await?;
     // print(format!("tx_raw: {}", hex_encode(&tx_raw)));
     let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
 
@@ -66,7 +77,21 @@ async fn create_certificate(
     let cert_pem = base64_decode(&cert_pem_base64)?;
     let pub_key_pem = base64_decode(&pub_key_pem_base64)?;
 
-    let tx_raw = create_certificate_tx(&public_key, cert_pem, pub_key_pem).await?;
+    let account = get_account(&public_key).await?;
+    let sequence_number = if account.sequence > 0 {
+        account.sequence + 1
+    } else {
+        0
+    };
+
+    let tx_raw = create_certificate_tx(
+        &public_key,
+        cert_pem,
+        pub_key_pem,
+        sequence_number,
+        account.account_number,
+    )
+    .await?;
     let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
 
     print(format!("[create_certificate] tx_res: {:?}", tx_res));
@@ -79,15 +104,25 @@ async fn deploy() -> Result<(String, String), String> {
     let public_key = get_public_key().await?;
 
     let account = get_account(&public_key).await?;
-    let mut sequence_number = account.sequence + 1;
+    let mut sequence_number = if account.sequence > 0 {
+        account.sequence + 1
+    } else {
+        0
+    };
 
     let abci_info_res = ic_tendermint_rpc::abci_info().await?;
     let height = abci_info_res.response.last_block_height;
 
     let sdl_raw = example_sdl();
 
-    let (sdl, tx_raw) =
-        create_deployment_tx(&public_key, height.value(), sequence_number, sdl_raw).await?;
+    let (sdl, tx_raw) = create_deployment_tx(
+        &public_key,
+        height.value(),
+        sequence_number,
+        sdl_raw,
+        account.account_number,
+    )
+    .await?;
     let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
     print(format!("[create_deployment] tx_res: {:?}", tx_res));
 
@@ -99,7 +134,13 @@ async fn deploy() -> Result<(String, String), String> {
         .unwrap();
     let bid_id = bid.bid_id.unwrap();
 
-    let tx_raw = create_lease_tx(&public_key, sequence_number, bid_id.clone()).await?;
+    let tx_raw = create_lease_tx(
+        &public_key,
+        sequence_number,
+        bid_id.clone(),
+        account.account_number,
+    )
+    .await?;
     let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
     print(format!("[create_lease] tx_res: {:?}", tx_res));
 
@@ -118,9 +159,14 @@ async fn close_deployment(dseq: u64) -> Result<(), String> {
     let public_key = get_public_key().await.unwrap();
 
     let account = get_account(&public_key).await?;
-    let sequence_number = account.sequence + 1;
+    let sequence_number = if account.sequence > 0 {
+        account.sequence + 1
+    } else {
+        0
+    };
 
-    let tx_raw = close_deployment_tx(&public_key, dseq, sequence_number).await?;
+    let tx_raw =
+        close_deployment_tx(&public_key, dseq, sequence_number, account.account_number).await?;
     let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
     print(format!("[close_deployment] tx_res: {:?}", tx_res));
 

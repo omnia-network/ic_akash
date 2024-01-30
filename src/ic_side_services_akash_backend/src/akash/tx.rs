@@ -81,6 +81,7 @@ pub async fn create_tx(
     msg: Any,
     fee: Fee,
     sequence_number: u64,
+    account_number: u64,
 ) -> Result<Vec<u8>, String> {
     // Transaction metadata: chain, account, sequence, gas, fee, timeout, and memo.
     // from:
@@ -90,7 +91,6 @@ pub async fn create_tx(
     // more config params from: https://github.com/akash-network/net/blob/main/sandbox/meta.json
     // see also: https://docs.akash.network/guides/sandbox/detailed-steps/part-4.-configure-your-network
     let chain_id = Id::from_str("sandbox-01").map_err(|e| e.to_string())?;
-    let account_number = 270; // use the get_account function to obtain it
     let timeout_height = 0u16;
     let memo = "created from canister";
 
@@ -205,6 +205,8 @@ pub async fn create_certificate_tx(
     sender_public_key: &PublicKey,
     cert_pem: Vec<u8>,
     pub_key_pem: Vec<u8>,
+    sequence_number: u64,
+    account_number: u64,
 ) -> Result<Vec<u8>, String> {
     let msg = MsgCreateCertificate {
         owner: get_account_id_from_public_key(sender_public_key).unwrap(),
@@ -219,13 +221,13 @@ pub async fn create_certificate_tx(
 
     let gas = 100_000u64;
     let fee = Fee::from_amount_and_gas(amount, gas);
-    let sequence_number = 0;
 
     create_tx(
         &sender_public_key,
         msg.to_any().unwrap(),
         fee,
         sequence_number,
+        account_number,
     )
     .await
 }

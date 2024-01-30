@@ -19,6 +19,7 @@ pub async fn create_deployment_tx(
     height: u64,
     sequence_number: u64,
     sdl: &str,
+    account_number: u64,
 ) -> Result<(SdlV3, Vec<u8>), String> {
     let sdl = SdlV3::try_from_str(sdl).unwrap();
     print(format!("sdl: {:?}", sdl));
@@ -68,6 +69,7 @@ pub async fn create_deployment_tx(
         Any::from_msg(&msg).unwrap(),
         fee,
         sequence_number,
+        account_number,
     )
     .await?;
 
@@ -78,6 +80,7 @@ pub async fn close_deployment_tx(
     sender_public_key: &PublicKey,
     dseq: u64,
     sequence_number: u64,
+    account_number: u64,
 ) -> Result<Vec<u8>, String> {
     let msg = MsgCloseDeployment {
         ID: Some(DeploymentID {
@@ -101,6 +104,7 @@ pub async fn close_deployment_tx(
         Any::from_msg(&msg).unwrap(),
         fee,
         sequence_number,
+        account_number,
     )
     .await
 }

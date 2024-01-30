@@ -12,6 +12,7 @@ pub async fn create_lease_tx(
     sender_public_key: &PublicKey,
     sequence_number: u64,
     bid_id: BidId,
+    account_number: u64,
 ) -> Result<Vec<u8>, String> {
     let msg = MsgCreateLease {
         bid_id: Some(bid_id),
@@ -30,6 +31,7 @@ pub async fn create_lease_tx(
         Any::from_msg(&msg).unwrap(),
         fee,
         sequence_number,
+        account_number,
     )
     .await
 }
