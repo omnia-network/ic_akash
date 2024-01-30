@@ -136,7 +136,7 @@ async fn create_lease(dseq: u64) -> Result<String, String> {
     let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
     print(format!("[create_lease] tx_res: {:?}", tx_res));
 
-    let provider = fetch_provider(bid_id.owner).await?;
+    let provider = fetch_provider(bid_id.provider).await?;
 
     let deployment_url = format!("{}/deployment/{}/manifest", provider.hostURI, bid_id.DSeq);
 
