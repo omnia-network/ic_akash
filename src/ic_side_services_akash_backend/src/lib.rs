@@ -45,11 +45,7 @@ async fn send(to_address: String, amount: u64) -> Result<(), String> {
     let public_key = get_public_key().await?;
 
     let account = get_account(&public_key).await?;
-    let sequence_number = if account.sequence > 0 {
-        account.sequence + 1
-    } else {
-        0
-    };
+    let sequence_number = account.sequence;
 
     let tx_raw = create_send_tx(
         &public_key,
@@ -78,11 +74,7 @@ async fn create_certificate(
     let pub_key_pem = base64_decode(&pub_key_pem_base64)?;
 
     let account = get_account(&public_key).await?;
-    let sequence_number = if account.sequence > 0 {
-        account.sequence + 1
-    } else {
-        0
-    };
+    let sequence_number = account.sequence;
 
     let tx_raw = create_certificate_tx(
         &public_key,
@@ -100,15 +92,10 @@ async fn create_certificate(
 }
 
 #[update]
-async fn deploy() -> Result<(String, String), String> {
+async fn create_deployment() -> Result<String, String> {
     let public_key = get_public_key().await?;
 
     let account = get_account(&public_key).await?;
-    let mut sequence_number = if account.sequence > 0 {
-        account.sequence + 1
-    } else {
-        0
-    };
 
     let abci_info_res = ic_tendermint_rpc::abci_info().await?;
     let height = abci_info_res.response.last_block_height;
@@ -118,7 +105,7 @@ async fn deploy() -> Result<(String, String), String> {
     let (sdl, tx_raw) = create_deployment_tx(
         &public_key,
         height.value(),
-        sequence_number,
+        account.sequence,
         sdl_raw,
         account.account_number,
     )
@@ -126,17 +113,21 @@ async fn deploy() -> Result<(String, String), String> {
     let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
     print(format!("[create_deployment] tx_res: {:?}", tx_res));
 
-    sequence_number += 1;
+    Ok(sdl.manifest_sorted_json())
+}
 
-    let bid = fetch_bids(&public_key, height.value()).await?[0]
-        .bid
-        .clone()
-        .unwrap();
+#[update]
+async fn create_lease(dseq: u64) -> Result<String, String> {
+    let public_key = get_public_key().await?;
+
+    let account = get_account(&public_key).await?;
+
+    let bid = fetch_bids(&public_key, dseq).await?[0].bid.clone().unwrap();
     let bid_id = bid.bid_id.unwrap();
 
     let tx_raw = create_lease_tx(
         &public_key,
-        sequence_number,
+        account.sequence,
         bid_id.clone(),
         account.account_number,
     )
@@ -151,7 +142,7 @@ async fn deploy() -> Result<(String, String), String> {
         provider.hostURI, bid_id.dseq
     );
 
-    Ok((deployment_url, sdl.manifest_sorted_json()))
+    Ok(deployment_url)
 }
 
 #[update]
@@ -159,11 +150,7 @@ async fn close_deployment(dseq: u64) -> Result<(), String> {
     let public_key = get_public_key().await.unwrap();
 
     let account = get_account(&public_key).await?;
-    let sequence_number = if account.sequence > 0 {
-        account.sequence + 1
-    } else {
-        0
-    };
+    let sequence_number = account.sequence;
 
     let tx_raw =
         close_deployment_tx(&public_key, dseq, sequence_number, account.account_number).await?;

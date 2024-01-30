@@ -8,10 +8,16 @@ type GenericResult = variant {
     Err : text;
 };
 
+type StringResult = variant {
+    Ok : text;
+    Err : text;
+};
+
 service : {
     "address" : () -> (AddressResult);
     "send" : (text, nat64) -> (GenericResult);
     "create_certificate" : (text, text) -> (GenericResult);
-    "deploy" : () -> (GenericResult);
+    "create_deployment" : () -> (StringResult);
+    "create_lease" : (nat64) -> (StringResult);
     "close_deployment" : (nat64) -> (GenericResult);
 };
