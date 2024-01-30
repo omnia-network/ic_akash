@@ -87,7 +87,7 @@ pub async fn make_rpc_request(
     };
 
     // TODO: configure the amount of cycles properly
-    match http_request(request, 100_000_000).await {
+    match http_request(request, 5_000_000_000).await {
         Ok((response,)) => Ok(response),
         Err((r, m)) => Err(format!(
             "The http_request resulted into error. RejectionCode: {r:?}, Error: {m}"
