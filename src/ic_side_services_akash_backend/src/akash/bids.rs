@@ -18,9 +18,9 @@ pub async fn fetch_bids(
             owner: get_account_id_from_public_key(sender_public_key)
                 .unwrap()
                 .to_string(),
-            dseq, // same as in the CreateDeployment transaction
-            gseq: 0,
-            oseq: 0,
+            DSeq: dseq, // same as in the CreateDeployment transaction
+            GSeq: 0,
+            OSeq: 0,
             provider: "".to_string(),
             state: "".to_string(),
         }),
@@ -28,7 +28,7 @@ pub async fn fetch_bids(
     };
 
     let abci_res = ic_tendermint_rpc::abci_query(
-        Some(String::from("/akash.market.v1beta4.QueryBidsRequest")),
+        Some(String::from("/akash.market.v1beta4.Query/Bids")),
         query.encode_to_vec(),
         None,
         false,

@@ -139,7 +139,7 @@ async fn create_lease(dseq: u64) -> Result<String, String> {
 
     let deployment_url = format!(
         "https://{}/deployment/{}/manifest",
-        provider.hostURI, bid_id.dseq
+        provider.hostURI, bid_id.DSeq
     );
 
     Ok(deployment_url)

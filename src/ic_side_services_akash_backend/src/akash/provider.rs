@@ -11,7 +11,7 @@ pub async fn fetch_provider(provider_address: String) -> Result<Provider, String
     };
 
     let abci_res = ic_tendermint_rpc::abci_query(
-        Some(String::from("/akash.provider.v1beta3.QueryProviderRequest")),
+        Some(String::from("/akash.provider.v1beta3.Query/Provider")),
         query.encode_to_vec(),
         None,
         false,
