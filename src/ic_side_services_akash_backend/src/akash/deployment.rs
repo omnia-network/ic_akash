@@ -4,7 +4,7 @@ use base64::{engine::general_purpose::STANDARD, Engine as _};
 use cosmrs::{crypto::PublicKey, tx::Fee, Any, Coin, Denom};
 use ic_cdk::print;
 
-use crate::{
+use super::{
     address::get_account_id_from_public_key,
     proto::deployment::{
         deployment::DeploymentID,
@@ -18,55 +18,9 @@ pub async fn create_deployment_tx(
     sender_public_key: &PublicKey,
     height: u64,
     sequence_number: u64,
-) -> Result<String, String> {
-    // hash of this deployment (base64): TGNKUw/ffyyB/d0EaY9FWMEIhsBzcjY3PLBRHYDqszs=
-    // see https://deploy.cloudmos.io/transactions/268DEE51F9FAB84B1BABCD916092D380784A483EA088345CF7B86657BBC8A4DA?network=sandbox
-    let sdl_str = r#"
-version: "3.0"
-services:
-  ic-websocket-gateway:
-    image: omniadevs/ic-websocket-gateway
-    expose:
-      - port: 8080
-        as: 80
-        accept:
-          - "akash-gateway.icws.io"
-        to:
-          - global: true
-    command:
-      - "/ic-ws-gateway/ic_websocket_gateway"
-      - "--gateway-address"
-      - "0.0.0.0:8080"
-      - "--ic-network-url"
-      - "https://icp-api.io"
-      - "--polling-interval"
-      - "400"
-profiles:
-  compute:
-    ic-websocket-gateway:
-      resources:
-        cpu:
-          units: 0.5
-        memory:
-          size: 512Mi
-        storage:
-          - size: 512Mi
-        gpu:
-          units: 0
-  placement:
-    dcloud:
-      pricing:
-        ic-websocket-gateway:
-          denom: uakt
-          amount: 1000
-deployment:
-  ic-websocket-gateway:
-    dcloud:
-      profile: ic-websocket-gateway
-      count: 1
-    "#;
-
-    let sdl = SdlV3::try_from_str(sdl_str).unwrap();
+    sdl: &str,
+) -> Result<(SdlV3, String), String> {
+    let sdl = SdlV3::try_from_str(sdl).unwrap();
     print(format!("sdl: {:?}", sdl));
     print(format!("sdl groups: {:?}", sdl.groups()));
     print(format!(
@@ -109,13 +63,15 @@ deployment:
     let gas = 150_000u64;
     let fee = Fee::from_amount_and_gas(amount, gas);
 
-    create_tx(
+    let tx_raw = create_tx(
         &sender_public_key,
         Any::from_msg(&msg).unwrap(),
         fee,
         sequence_number,
     )
-    .await
+    .await?;
+
+    Ok((sdl, tx_raw))
 }
 
 pub async fn close_deployment_tx(

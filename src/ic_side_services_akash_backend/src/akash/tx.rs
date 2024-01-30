@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use base64::{engine::general_purpose::STANDARD, Engine as _};
 use cosmrs::{
     crypto::PublicKey,
     proto::cosmos::tx::v1beta1::TxRaw,
@@ -8,12 +7,15 @@ use cosmrs::{
     tx::{self, Fee, Msg, SignDoc, SignerInfo},
     AccountId, Any, Coin, Denom, ErrorReport, Tx,
 };
-use ic_cdk::api::management_canister::ecdsa::{sign_with_ecdsa, SignWithEcdsaArgument};
 
-use crate::{
+use super::{
     address::get_account_id_from_public_key,
     proto::{self},
-    sha256, EcdsaKeyIds,
+};
+
+use crate::{
+    ecdsa::{self},
+    hash::sha256,
 };
 
 /// from https://docs.rs/cosmrs/latest/cosmrs/tx/index.html#usage
@@ -137,20 +139,12 @@ async fn sign_tx(sign_doc: SignDoc) -> Result<tx::Raw, String> {
     let sign_doc_bytes = sign_doc.clone().into_bytes().map_err(|e| e.to_string())?;
     let hash = sha256(&sign_doc_bytes);
 
-    let request = SignWithEcdsaArgument {
-        message_hash: hash.to_vec(),
-        derivation_path: vec![],
-        key_id: EcdsaKeyIds::TestKeyLocalDevelopment.to_key_id(),
-    };
-
-    let (response,) = sign_with_ecdsa(request)
-        .await
-        .map_err(|e| format!("sign_with_ecdsa failed {}", e.1))?;
+    let signature = ecdsa::sign(hash.to_vec()).await.unwrap();
 
     Ok(TxRaw {
         body_bytes: sign_doc.body_bytes,
         auth_info_bytes: sign_doc.auth_info_bytes,
-        signatures: vec![response.signature],
+        signatures: vec![signature],
     }
     .into())
 }
@@ -209,13 +203,13 @@ impl From<&MsgCreateCertificate> for proto::cert::cert::MsgCreateCertificate {
 
 pub async fn create_certificate_tx(
     sender_public_key: &PublicKey,
-    cert_pem_base64: String,
-    pub_key_pem_base64: String,
+    cert_pem: Vec<u8>,
+    pub_key_pem: Vec<u8>,
 ) -> Result<String, String> {
     let msg = MsgCreateCertificate {
         owner: get_account_id_from_public_key(sender_public_key).unwrap(),
-        cert: STANDARD.decode(cert_pem_base64).unwrap(),
-        pubkey: STANDARD.decode(pub_key_pem_base64).unwrap(),
+        cert: cert_pem,
+        pubkey: pub_key_pem,
     };
 
     let amount = Coin {
