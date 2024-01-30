@@ -92,19 +92,19 @@ async fn create_certificate(
 }
 
 #[update]
-async fn create_deployment() -> Result<String, String> {
+async fn create_deployment() -> Result<(u64, String), String> {
     let public_key = get_public_key().await?;
 
     let account = get_account(&public_key).await?;
 
     let abci_info_res = ic_tendermint_rpc::abci_info().await?;
-    let height = abci_info_res.response.last_block_height;
+    let dseq = abci_info_res.response.last_block_height.value();
 
     let sdl_raw = example_sdl();
 
     let (sdl, tx_raw) = create_deployment_tx(
         &public_key,
-        height.value(),
+        dseq,
         account.sequence,
         sdl_raw,
         account.account_number,
@@ -113,7 +113,7 @@ async fn create_deployment() -> Result<String, String> {
     let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
     print(format!("[create_deployment] tx_res: {:?}", tx_res));
 
-    Ok(sdl.manifest_sorted_json())
+    Ok((dseq, sdl.manifest_sorted_json()))
 }
 
 #[update]
@@ -123,6 +123,7 @@ async fn create_lease(dseq: u64) -> Result<String, String> {
     let account = get_account(&public_key).await?;
 
     let bid = fetch_bids(&public_key, dseq).await?[0].bid.clone().unwrap();
+    print(format!("[create_lease] bid: {:?}", bid));
     let bid_id = bid.bid_id.unwrap();
 
     let tx_raw = create_lease_tx(
