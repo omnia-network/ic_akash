@@ -1,7 +1,3 @@
 [workspace]
-members = [
-    "src/ic_side_services_akash_backend",
-    "tendermint_client",
-    "src/tendermint_rpc_canister",
-]
+members = ["src/ic_side_services_akash_backend", "src/tendermint_rpc_canister"]
 resolver = "2"
