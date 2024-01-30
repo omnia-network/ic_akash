@@ -81,7 +81,7 @@ pub async fn create_tx(
     msg: Any,
     fee: Fee,
     sequence_number: u64,
-) -> Result<String, String> {
+) -> Result<Vec<u8>, String> {
     // Transaction metadata: chain, account, sequence, gas, fee, timeout, and memo.
     // from:
     // - sandbox: https://raw.githubusercontent.com/akash-network/net/main/sandbox/chain-id.txt
@@ -131,7 +131,7 @@ pub async fn create_tx(
 
     // print(format!("tx_parsed: {:?}", tx_parsed));
 
-    Ok(hex::encode(&tx_bytes))
+    Ok(tx_bytes)
 }
 
 /// adapted form https://docs.rs/cosmrs/latest/cosmrs/tx/struct.SignDoc.html#method.sign
@@ -205,7 +205,7 @@ pub async fn create_certificate_tx(
     sender_public_key: &PublicKey,
     cert_pem: Vec<u8>,
     pub_key_pem: Vec<u8>,
-) -> Result<String, String> {
+) -> Result<Vec<u8>, String> {
     let msg = MsgCreateCertificate {
         owner: get_account_id_from_public_key(sender_public_key).unwrap(),
         cert: cert_pem,

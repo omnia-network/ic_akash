@@ -14,7 +14,7 @@ pub async fn create_send_tx(
     to_address: String,
     amount: u64,
     sequence_number: u64,
-) -> Result<String, String> {
+) -> Result<Vec<u8>, String> {
     let recipient_account_id = AccountId::from_str(to_address.as_str()).unwrap();
 
     let amount = Coin {

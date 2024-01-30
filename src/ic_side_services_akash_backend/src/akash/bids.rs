@@ -27,9 +27,16 @@ pub async fn fetch_bids(
         pagination: None,
     };
 
-    // abci_query
+    let abci_res = ic_tendermint_rpc::abci_query(
+        Some(String::from("/akash.market.v1beta4.QueryBidsRequest")),
+        query.encode_to_vec(),
+        None,
+        false,
+    )
+    .await?;
 
-    let res = QueryBidsResponse::decode(vec![].as_slice()).map_err(|e| e.to_string())?;
+    let res =
+        QueryBidsResponse::decode(abci_res.response.value.as_slice()).map_err(|e| e.to_string())?;
 
     Ok(res.bids)
 }

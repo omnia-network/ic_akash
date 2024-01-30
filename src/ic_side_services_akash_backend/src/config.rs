@@ -1,33 +1,21 @@
 use std::cell::RefCell;
 
-use candid::Principal;
-
 thread_local! {
     /* flexible */ static CONFIG: RefCell<Config> = RefCell::new(Config::default());
 }
 
 #[derive(Clone)]
-pub struct Config {
-    tendermint_rpc_canister_id: Principal,
-}
+pub struct Config {}
 
 impl Config {
-    pub fn new(tendermint_rpc_canister_id: Principal) -> Self {
-        Self {
-            tendermint_rpc_canister_id,
-        }
-    }
-
-    pub fn tendermint_rpc_canister_id(&self) -> Principal {
-        self.tendermint_rpc_canister_id
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Self {
-            tendermint_rpc_canister_id: Principal::anonymous(),
-        }
+        Self {}
     }
 }
 

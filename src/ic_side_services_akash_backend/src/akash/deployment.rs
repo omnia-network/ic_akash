@@ -19,7 +19,7 @@ pub async fn create_deployment_tx(
     height: u64,
     sequence_number: u64,
     sdl: &str,
-) -> Result<(SdlV3, String), String> {
+) -> Result<(SdlV3, Vec<u8>), String> {
     let sdl = SdlV3::try_from_str(sdl).unwrap();
     print(format!("sdl: {:?}", sdl));
     print(format!("sdl groups: {:?}", sdl.groups()));
@@ -78,7 +78,7 @@ pub async fn close_deployment_tx(
     sender_public_key: &PublicKey,
     dseq: u64,
     sequence_number: u64,
-) -> Result<String, String> {
+) -> Result<Vec<u8>, String> {
     let msg = MsgCloseDeployment {
         ID: Some(DeploymentID {
             owner: get_account_id_from_public_key(sender_public_key)

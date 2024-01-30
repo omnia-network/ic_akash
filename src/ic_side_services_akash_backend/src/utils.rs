@@ -15,3 +15,7 @@ pub fn get_time_millis() -> u64 {
 pub fn base64_decode(data: &str) -> Result<Vec<u8>, String> {
     STANDARD.decode(&data).map_err(|e| e.to_string())
 }
+
+pub fn hex_encode(data: &[u8]) -> String {
+    hex::encode(data)
+}

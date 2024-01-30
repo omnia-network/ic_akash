@@ -8,7 +8,7 @@ type GenericResult = variant {
     Err : text;
 };
 
-service : (principal) -> {
+service : {
     "address" : () -> (AddressResult);
     "send" : (text, nat64) -> (GenericResult);
     "create_certificate" : (text, text) -> (GenericResult);

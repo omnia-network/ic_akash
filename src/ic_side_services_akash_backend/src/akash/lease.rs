@@ -12,7 +12,7 @@ pub async fn create_lease_tx(
     sender_public_key: &PublicKey,
     sequence_number: u64,
     bid_id: BidId,
-) -> Result<String, String> {
+) -> Result<Vec<u8>, String> {
     let msg = MsgCreateLease {
         bid_id: Some(bid_id),
     };

@@ -4,11 +4,6 @@
       "candid": "src/ic_side_services_akash_backend/ic_side_services_akash_backend.did",
       "package": "ic_side_services_akash_backend",
       "type": "rust"
-    },
-    "tendermint_rpc_canister": {
-      "candid": "src/tendermint_rpc_canister/src/tendermint_rpc_canister.did",
-      "package": "tendermint_rpc_canister",
-      "type": "rust"
     }
   },
   "defaults": {

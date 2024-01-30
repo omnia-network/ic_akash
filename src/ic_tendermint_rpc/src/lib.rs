@@ -22,37 +22,27 @@ use response::Response;
 use tendermint::block::Height;
 
 // TODO: fix deserialization
-// #[ic_cdk::update]
-// async fn latest_block() -> Result<(), String> {
+// pub async fn latest_block() -> Result<<BlockRequest as Request>::Response, String> {
 //     let request = BlockRequest::default();
 //     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
 //     let response = make_rpc_request(HttpMethod::GET, Some(request_body), None).await?;
-//     let parsed_response = <BlockRequest as Request>::Response::from_string(&response.body);
-//     ic_cdk::api::print(format!("{:?}", parsed_response));
-
-//     Ok(())
+//     <BlockRequest as Request>::Response::from_string(&response.body)
 // }
 
-#[ic_cdk::update]
-async fn abci_info() -> Result<(), String> {
+pub async fn abci_info() -> Result<<AbciInfoRequest as Request>::Response, String> {
     let request_body = Wrapper::new(AbciInfoRequest).await.into_json().into_bytes();
 
     let response = make_rpc_request(HttpMethod::GET, Some(request_body), None).await?;
-    let parsed_response = <AbciInfoRequest as Request>::Response::from_string(&response.body);
-    ic_cdk::api::print(format!("{:?}", parsed_response));
-
-    Ok(())
+    <AbciInfoRequest as Request>::Response::from_string(&response.body)
 }
 
-#[ic_cdk::update]
-async fn abci_query(
+pub async fn abci_query(
     path: Option<String>,
-    str_data: String,
+    data: Vec<u8>,
     height: Option<u64>,
     prove: bool,
-) -> Result<(), String> {
-    let data = hex::decode(str_data).map_err(|e| e.to_string())?;
+) -> Result<<AbciQueryRequest as Request>::Response, String> {
     let request = AbciQueryRequest {
         path,
         data,
@@ -62,26 +52,20 @@ async fn abci_query(
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
     let response = make_rpc_request(HttpMethod::POST, Some(request_body), None).await?;
-    let parsed_response = <AbciQueryRequest as Request>::Response::from_string(&response.body);
-    ic_cdk::api::print(format!("{:?}", parsed_response));
-
-    Ok(())
+    <AbciQueryRequest as Request>::Response::from_string(&response.body)
 }
 
-#[ic_cdk::update]
-async fn broadcast_tx_sync(tx_raw: String) -> Result<(), String> {
-    let tx = hex::decode(tx_raw).map_err(|e| e.to_string())?;
-    let request = TxSyncRequest::new(tx);
+pub async fn broadcast_tx_sync(
+    tx_raw: Vec<u8>,
+) -> Result<<TxSyncRequest as Request>::Response, String> {
+    let request = TxSyncRequest::new(tx_raw);
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
     let response = make_rpc_request(HttpMethod::POST, Some(request_body), None).await?;
-    let parsed_response = <TxSyncRequest as Request>::Response::from_string(&response.body);
-    ic_cdk::api::print(format!("{:?}", parsed_response));
-
-    Ok(())
+    <TxSyncRequest as Request>::Response::from_string(&response.body)
 }
 
-async fn make_rpc_request(
+pub async fn make_rpc_request(
     method: HttpMethod,
     request_body: Option<Vec<u8>>,
     transform: Option<TransformContext>,
@@ -102,7 +86,8 @@ async fn make_rpc_request(
         transform,
     };
 
-    match http_request(request).await {
+    // TODO: configure the amount of cycles properly
+    match http_request(request, 100_000_000).await {
         Ok((response,)) => Ok(response),
         Err((r, m)) => Err(format!(
             "The http_request resulted into error. RejectionCode: {r:?}, Error: {m}"

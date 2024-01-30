@@ -1,4 +1,3 @@
-use candid::Principal;
 use ic_cdk::{init, post_upgrade, print, update};
 
 use akash::{
@@ -22,15 +21,15 @@ mod hash;
 mod utils;
 
 #[init]
-fn init(tendermint_rpc_canister_id: Principal) {
-    let config = Config::new(tendermint_rpc_canister_id);
+fn init() {
+    let config = Config::new();
 
     set_config(config);
 }
 
 #[post_upgrade]
-fn post_upgrade(tendermint_rpc_canister_id: Principal) {
-    init(tendermint_rpc_canister_id);
+fn post_upgrade() {
+    init();
 }
 
 #[update]
@@ -48,11 +47,11 @@ async fn send(to_address: String, amount: u64) -> Result<(), String> {
     let account = get_account(&public_key).await?;
     let sequence_number = account.sequence + 1;
 
-    let tx_raw = create_send_tx(&public_key, to_address, amount, sequence_number)
-        .await
-        .unwrap();
-    print(format!("tx_raw: {}", tx_raw));
-    // broadcast tx
+    let tx_raw = create_send_tx(&public_key, to_address, amount, sequence_number).await?;
+    // print(format!("tx_raw: {}", hex_encode(&tx_raw)));
+    let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
+
+    print(format!("[send] tx_res: {:?}", tx_res));
 
     Ok(())
 }
@@ -68,7 +67,9 @@ async fn create_certificate(
     let pub_key_pem = base64_decode(&pub_key_pem_base64)?;
 
     let tx_raw = create_certificate_tx(&public_key, cert_pem, pub_key_pem).await?;
-    // broadcast tx
+    let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
+
+    print(format!("[create_certificate] tx_res: {:?}", tx_res));
 
     Ok(())
 }
@@ -80,23 +81,27 @@ async fn deploy() -> Result<(String, String), String> {
     let account = get_account(&public_key).await?;
     let mut sequence_number = account.sequence + 1;
 
-    let height = 1u64; // get it from the latest_block RPC call
+    let abci_info_res = ic_tendermint_rpc::abci_info().await?;
+    let height = abci_info_res.response.last_block_height;
 
     let sdl_raw = example_sdl();
 
-    let (sdl, tx_raw) = create_deployment_tx(&public_key, height, sequence_number, sdl_raw).await?;
-    // broadcast tx
+    let (sdl, tx_raw) =
+        create_deployment_tx(&public_key, height.value(), sequence_number, sdl_raw).await?;
+    let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
+    print(format!("[create_deployment] tx_res: {:?}", tx_res));
+
     sequence_number += 1;
 
-    let bid = fetch_bids(&public_key, height).await?[0]
+    let bid = fetch_bids(&public_key, height.value()).await?[0]
         .bid
         .clone()
         .unwrap();
     let bid_id = bid.bid_id.unwrap();
 
     let tx_raw = create_lease_tx(&public_key, sequence_number, bid_id.clone()).await?;
-    // broadcast tx
-    sequence_number += 1;
+    let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
+    print(format!("[create_lease] tx_res: {:?}", tx_res));
 
     let provider = fetch_provider(bid_id.owner).await?;
 
@@ -116,7 +121,8 @@ async fn close_deployment(dseq: u64) -> Result<(), String> {
     let sequence_number = account.sequence + 1;
 
     let tx_raw = close_deployment_tx(&public_key, dseq, sequence_number).await?;
-    // broadcast tx
+    let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
+    print(format!("[close_deployment] tx_res: {:?}", tx_res));
 
     Ok(())
 }
