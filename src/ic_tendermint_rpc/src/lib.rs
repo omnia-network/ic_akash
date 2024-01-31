@@ -1,6 +1,6 @@
 use ic_cdk::api::management_canister::http_request::{
     http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, HttpResponse,
-    TransformContext,
+        TransformArgs, TransformContext,
 };
 mod endpoints;
 mod id;
@@ -92,5 +92,38 @@ pub async fn make_rpc_request(
         Err((r, m)) => Err(format!(
             "The http_request resulted into error. RejectionCode: {r:?}, Error: {m}"
         )),
+    }
+}
+
+#[query]
+fn abci_transform(raw: TransformArgs) -> HttpResponse {
+    // the body of responses made to the abci endpoints are identical, therefore we can include the whole body in the response
+    HttpResponse {
+        status: raw.response.status.clone(),
+        body: raw.response.body.clone(),
+        ..Default::default()
+    }
+}
+
+#[query]
+fn broadcast_tx_sync_transform(raw: TransformArgs) -> HttpResponse {
+    // headers that you want to add to the response
+    let headers = vec![
+        // HttpHeader {
+        //     name: "header-key".to_string(),
+        //     value: "header-value".to_string(),
+        // }
+    ];
+
+    // the response to the first request should be accepted and return 'Ok' while the others should be 'Err' and contain "tx already exists in cache"
+    // as the transformed response is accepted if at least 2f+1 replicas are in agreement and, in the worst case, at most one honest replica (the one that sent the first request) disagrees
+    // (received 'Ok' instead of 'Err'), as long as at most f-1 replicas misreport the response they received, there will be agreement in the transformed response
+    // which is expected to be 'Err' containing "tx already exists in cache"
+    // !!! this assumes at most f-1 (instead of f) replicas are malicious, as the one replica might honestly support 'Ok' as a response if it's request was the first accepted by the Akash Network !!!
+    HttpResponse {
+        status: raw.response.status.clone(),
+        body: raw.response.body.clone(),
+        headers,
+        ..Default::default()
     }
 }
