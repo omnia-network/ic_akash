@@ -169,7 +169,7 @@ fn example_sdl<'a>() -> &'a str {
 version: "3.0"
 services:
   ic-websocket-gateway:
-    image: omniadevs/ic-websocket-gateway
+    image: omniadevs/ic-websocket-gateway:v1.3.2
     expose:
       - port: 8080
         as: 80
