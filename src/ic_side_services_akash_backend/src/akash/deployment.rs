@@ -43,11 +43,11 @@ pub async fn create_deployment_tx(
     };
 
     let amount = Coin {
-        amount: 5_000u128,
+        amount: 20_000u128,
         denom: Denom::from_str("uakt").unwrap(),
     };
 
-    let gas = 150_000u64;
+    let gas = 800_000u64;
     let fee = Fee::from_amount_and_gas(amount, gas);
 
     let tx_raw = create_tx(

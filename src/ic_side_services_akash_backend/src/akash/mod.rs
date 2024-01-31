@@ -2,6 +2,7 @@ pub mod address;
 pub mod auth;
 pub mod bank;
 pub mod bids;
+pub mod certificate;
 pub mod deployment;
 pub mod lease;
 pub mod proto;

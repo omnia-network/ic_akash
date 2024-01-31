@@ -5,11 +5,11 @@ use akash::{
     auth::get_account,
     bank::create_send_tx,
     bids::fetch_bids,
+    certificate::create_certificate_tx,
     deployment::{close_deployment_tx, create_deployment_tx},
     lease::create_lease_tx,
     provider::fetch_provider,
     sdl::SdlV3,
-    tx::create_certificate_tx,
 };
 use config::{set_config, Config};
 use ecdsa::get_public_key;
