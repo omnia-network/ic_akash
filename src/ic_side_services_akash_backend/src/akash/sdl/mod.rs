@@ -14,7 +14,7 @@ use super::proto::{
             Attribute as ProtobufAttribute, PlacementRequirements, SignedBy as ProtobufSignedBy,
         },
         cpu::CPU,
-        endpoint::Endpoint,
+        endpoint::{Endpoint, Kind},
         gpu::GPU,
         memory::Memory,
         resources::Resources,
@@ -557,7 +557,9 @@ impl SdlV3 {
                             resource: res,
                             price: pricing.amount.try_into().unwrap(),
                             count: svc_depl.count,
-                            endpoints: vec![],
+                            endpoints: service.service_resource_endpoints_v3(
+                                self.compute_endpoint_sequence_numbers(),
+                            ),
                         });
 
                         group
@@ -829,7 +831,11 @@ pub struct DeploymentGroupResourceEndpointV3 {
 impl Into<Endpoint> for DeploymentGroupResourceEndpointV3 {
     fn into(self) -> Endpoint {
         Endpoint {
-            kind: self.kind.unwrap_or(EndpointKind::SharedHttp) as i32, // TODO: is this the right default value?
+            kind: self
+                .kind
+                .map(|k| k.into())
+                .unwrap_or(Kind::SHARED_HTTP)
+                .into(), // TODO: is this the right default value?
             SequenceNumber: self.sequence_number,
         }
     }
@@ -841,6 +847,16 @@ pub enum EndpointKind {
     SharedHttp = 0,
     RandomPort = 1,
     LeasedIp = 2,
+}
+
+impl Into<Kind> for EndpointKind {
+    fn into(self) -> Kind {
+        match self {
+            EndpointKind::SharedHttp => Kind::SHARED_HTTP,
+            EndpointKind::RandomPort => Kind::RANDOM_PORT,
+            EndpointKind::LeasedIp => Kind::LEASED_IP,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]

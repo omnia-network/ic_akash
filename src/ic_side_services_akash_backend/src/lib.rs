@@ -8,6 +8,7 @@ use akash::{
     deployment::{close_deployment_tx, create_deployment_tx},
     lease::create_lease_tx,
     provider::fetch_provider,
+    sdl::SdlV3,
     tx::create_certificate_tx,
 };
 use config::{set_config, Config};
@@ -101,12 +102,13 @@ async fn create_deployment() -> Result<(u64, String), String> {
     let dseq = abci_info_res.response.last_block_height.value();
 
     let sdl_raw = example_sdl();
+    let sdl = SdlV3::try_from_str(sdl_raw).unwrap();
 
-    let (sdl, tx_raw) = create_deployment_tx(
+    let tx_raw = create_deployment_tx(
         &public_key,
         dseq,
         account.sequence,
-        sdl_raw,
+        &sdl,
         account.account_number,
     )
     .await?;
@@ -135,6 +137,8 @@ async fn create_lease(dseq: u64) -> Result<String, String> {
     .await?;
     let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
     print(format!("[create_lease] tx_res: {:?}", tx_res));
+
+    // TODO: query lease to see if everything is ok
 
     let provider = fetch_provider(bid_id.provider).await?;
 

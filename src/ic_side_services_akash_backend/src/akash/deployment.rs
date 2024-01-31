@@ -1,8 +1,6 @@
 use std::str::FromStr;
 
-use base64::{engine::general_purpose::STANDARD, Engine as _};
 use cosmrs::{crypto::PublicKey, tx::Fee, Any, Coin, Denom};
-use ic_cdk::print;
 
 use super::{
     address::get_account_id_from_public_key,
@@ -18,21 +16,9 @@ pub async fn create_deployment_tx(
     sender_public_key: &PublicKey,
     height: u64,
     sequence_number: u64,
-    sdl: &str,
+    sdl: &SdlV3,
     account_number: u64,
-) -> Result<(SdlV3, Vec<u8>), String> {
-    let sdl = SdlV3::try_from_str(sdl).unwrap();
-    print(format!("sdl: {:?}", sdl));
-    print(format!("sdl groups: {:?}", sdl.groups()));
-    print(format!(
-        "sdl manifest sorted: {}",
-        sdl.manifest_sorted_json()
-    ));
-    print(format!(
-        "sdl version (base64): {}",
-        STANDARD.encode(sdl.manifest_version())
-    ));
-
+) -> Result<Vec<u8>, String> {
     // see https://github.com/akash-network/cloudmos/blob/8a8098b7e371e801dad3aad81ef92b8dfe387e4c/deploy-web/src/utils/deploymentData/v1beta3.ts#L230
     let msg = MsgCreateDeployment {
         id: Some(DeploymentID {
@@ -73,7 +59,7 @@ pub async fn create_deployment_tx(
     )
     .await?;
 
-    Ok((sdl, tx_raw))
+    Ok(tx_raw)
 }
 
 pub async fn close_deployment_tx(
