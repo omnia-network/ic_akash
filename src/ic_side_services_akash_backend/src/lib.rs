@@ -57,9 +57,7 @@ async fn send(to_address: String, amount: u64) -> Result<(), String> {
     )
     .await?;
     // print(format!("tx_raw: {}", hex_encode(&tx_raw)));
-    let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
-
-    print(format!("[send] tx_res: {:?}", tx_res));
+    ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
 
     Ok(())
 }
@@ -85,9 +83,7 @@ async fn create_certificate(
         account.account_number,
     )
     .await?;
-    let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
-
-    print(format!("[create_certificate] tx_res: {:?}", tx_res));
+    ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
 
     Ok(())
 }
@@ -112,10 +108,16 @@ async fn create_deployment() -> Result<(u64, String), String> {
         account.account_number,
     )
     .await?;
-    let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
-    print(format!("[create_deployment] tx_res: {:?}", tx_res));
+
+    // ignore err during local testing
+    let _res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await;
 
     Ok((dseq, sdl.manifest_sorted_json()))
+}
+
+#[update]
+async fn check_tx(tx_hex: String) -> Result<(), String> {
+    ic_tendermint_rpc::check_tx(tx_hex).await
 }
 
 #[update]
@@ -124,8 +126,10 @@ async fn create_lease(dseq: u64) -> Result<String, String> {
 
     let account = get_account(&public_key).await?;
 
-    let bid = fetch_bids(&public_key, dseq).await?[0].bid.clone().unwrap();
-    print(format!("[create_lease] bid: {:?}", bid));
+    let bids = fetch_bids(&public_key, dseq).await?;
+    print(format!("[create_lease] bids: {:?}", bids));
+    // TODO: take the "best" bid
+    let bid = bids[1].bid.clone().unwrap();
     let bid_id = bid.bid_id.unwrap();
 
     let tx_raw = create_lease_tx(
@@ -135,8 +139,8 @@ async fn create_lease(dseq: u64) -> Result<String, String> {
         account.account_number,
     )
     .await?;
-    let tx_res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
-    print(format!("[create_lease] tx_res: {:?}", tx_res));
+    // ignore err during local testing
+    let _res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await;
 
     // TODO: query lease to see if everything is ok
 

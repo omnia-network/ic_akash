@@ -1,6 +1,9 @@
-use ic_cdk::api::management_canister::http_request::{
-    http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, HttpResponse,
+use ic_cdk::{
+    api::management_canister::http_request::{
+        http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, HttpResponse,
         TransformArgs, TransformContext,
+    },
+    print, query,
 };
 mod endpoints;
 mod id;
@@ -15,11 +18,11 @@ mod version;
 
 use endpoints::{
     abci_info::Request as AbciInfoRequest, abci_query::Request as AbciQueryRequest,
-    block::Request as BlockRequest, tx_sync::Request as TxSyncRequest,
+    block::Request as BlockRequest, tx::Request as TxRequest, tx_sync::Request as TxSyncRequest,
 };
 use request::{Request, Wrapper};
 use response::Response;
-use tendermint::block::Height;
+use tendermint::{block::Height, hash::Algorithm, Hash};
 
 // TODO: fix deserialization
 // pub async fn latest_block() -> Result<<BlockRequest as Request>::Response, String> {
@@ -55,17 +58,54 @@ pub async fn abci_query(
     <AbciQueryRequest as Request>::Response::from_string(&response.body)
 }
 
-pub async fn broadcast_tx_sync(
-    tx_raw: Vec<u8>,
-) -> Result<<TxSyncRequest as Request>::Response, String> {
+pub async fn check_tx(tx_hash: String) -> Result<(), String> {
+    // tx_hash is the hash returned in the 'Ok' response of 'broadcast_tx_sync'
+    let request = TxRequest::new(
+        Hash::from_hex_upper(Algorithm::Sha256, &tx_hash).unwrap(),
+        true,
+    );
+    let request_body = Wrapper::new(request).await.into_json().into_bytes();
+
+    let response = make_rpc_request(HttpMethod::GET, Some(request_body), None).await?;
+    let response_body = <TxRequest as Request>::Response::from_string(&response.body);
+    print(format!("[check_tx] response: {:?}", response_body));
+
+    Ok(())
+}
+
+pub async fn broadcast_tx_sync(tx_raw: Vec<u8>) -> Result<(), String> {
     let request = TxSyncRequest::new(tx_raw);
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
-    let response = make_rpc_request(HttpMethod::POST, Some(request_body), None).await?;
-    <TxSyncRequest as Request>::Response::from_string(&response.body)
+    let response = make_rpc_request(
+        HttpMethod::POST,
+        Some(request_body),
+        Some(TransformContext::from_name(
+            "broadcast_tx_sync_transform".to_string(),
+            vec![],
+        )),
+    )
+    .await?;
+
+    if response.status != 200 {
+        return Err(format!(
+            "incorrect status. Expected 200, received: {:?}",
+            response.status
+        ));
+    }
+    if let Err(e) = <TxSyncRequest as Request>::Response::from_string(&response.body) {
+        if e.contains("tx already exists in cache") {
+            // the transaction has been processed
+            Ok(())
+        } else {
+            Err(e)
+        }
+    } else {
+        Err("response should contain 'tx already exists in cache'".to_string())
+    }
 }
 
-pub async fn make_rpc_request(
+async fn make_rpc_request(
     method: HttpMethod,
     request_body: Option<Vec<u8>>,
     transform: Option<TransformContext>,
