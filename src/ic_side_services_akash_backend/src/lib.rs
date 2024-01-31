@@ -11,7 +11,7 @@ use akash::{
     provider::fetch_provider,
     sdl::SdlV3,
 };
-use config::{set_config, Config};
+use config::{get_config, set_config, Config};
 use ecdsa::{get_public_key, EcdsaKeyIds};
 use utils::base64_decode;
 
@@ -23,10 +23,10 @@ mod utils;
 
 #[init]
 fn init(is_mainnet: bool) {
-    let config = Config::new(match is_mainnet {
-        true => EcdsaKeyIds::TestKey1,
-        false => EcdsaKeyIds::TestKeyLocalDevelopment,
-    });
+    let config = match is_mainnet {
+        true => Config::new(EcdsaKeyIds::TestKey1, "rpc.akashnet.net"),
+        false => Config::default(),
+    };
 
     set_config(config);
 }
@@ -46,6 +46,7 @@ async fn address() -> Result<String, String> {
 
 #[update]
 async fn send(to_address: String, amount: u64) -> Result<(), String> {
+    let config = get_config();
     let public_key = get_public_key().await?;
 
     let account = get_account(&public_key).await?;
@@ -60,7 +61,7 @@ async fn send(to_address: String, amount: u64) -> Result<(), String> {
     )
     .await?;
     // print(format!("tx_raw: {}", hex_encode(&tx_raw)));
-    ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await?;
+    ic_tendermint_rpc::broadcast_tx_sync(config.tendermint_rpc_url(), tx_raw).await?;
 
     Ok(())
 }
@@ -70,6 +71,7 @@ async fn create_certificate(
     cert_pem_base64: String,
     pub_key_pem_base64: String,
 ) -> Result<(), String> {
+    let config = get_config();
     let public_key = get_public_key().await?;
 
     let cert_pem = base64_decode(&cert_pem_base64)?;
@@ -88,18 +90,19 @@ async fn create_certificate(
     .await?;
 
     // ignore err during local testing
-    let _ = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await;
+    let _ = ic_tendermint_rpc::broadcast_tx_sync(config.tendermint_rpc_url(), tx_raw).await;
 
     Ok(())
 }
 
 #[update]
 async fn create_deployment() -> Result<(u64, String), String> {
+    let config = get_config();
     let public_key = get_public_key().await?;
 
     let account = get_account(&public_key).await?;
 
-    let abci_info_res = ic_tendermint_rpc::abci_info().await?;
+    let abci_info_res = ic_tendermint_rpc::abci_info(config.tendermint_rpc_url()).await?;
     let dseq = abci_info_res.response.last_block_height.value();
 
     let sdl_raw = example_sdl();
@@ -115,18 +118,21 @@ async fn create_deployment() -> Result<(u64, String), String> {
     .await?;
 
     // ignore err during local testing
-    let _res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await;
+    let _res = ic_tendermint_rpc::broadcast_tx_sync(config.tendermint_rpc_url(), tx_raw).await;
 
     Ok((dseq, sdl.manifest_sorted_json()))
 }
 
 #[update]
 async fn check_tx(tx_hex: String) -> Result<(), String> {
-    ic_tendermint_rpc::check_tx(tx_hex).await
+    let config = get_config();
+
+    ic_tendermint_rpc::check_tx(config.tendermint_rpc_url(), tx_hex).await
 }
 
 #[update]
 async fn create_lease(dseq: u64) -> Result<String, String> {
+    let config = get_config();
     let public_key = get_public_key().await?;
 
     let account = get_account(&public_key).await?;
@@ -145,7 +151,7 @@ async fn create_lease(dseq: u64) -> Result<String, String> {
     )
     .await?;
     // ignore err during local testing
-    let _res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await;
+    let _res = ic_tendermint_rpc::broadcast_tx_sync(config.tendermint_rpc_url(), tx_raw).await;
 
     // TODO: query lease to see if everything is ok
 
@@ -158,6 +164,7 @@ async fn create_lease(dseq: u64) -> Result<String, String> {
 
 #[update]
 async fn close_deployment(dseq: u64) -> Result<(), String> {
+    let config = get_config();
     let public_key = get_public_key().await.unwrap();
 
     let account = get_account(&public_key).await?;
@@ -167,7 +174,7 @@ async fn close_deployment(dseq: u64) -> Result<(), String> {
         close_deployment_tx(&public_key, dseq, sequence_number, account.account_number).await?;
 
     // ignore err during local testing
-    let _res = ic_tendermint_rpc::broadcast_tx_sync(tx_raw).await;
+    let _res = ic_tendermint_rpc::broadcast_tx_sync(config.tendermint_rpc_url(), tx_raw).await;
 
     Ok(())
 }

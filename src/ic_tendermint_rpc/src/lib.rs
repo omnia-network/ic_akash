@@ -25,22 +25,23 @@ use response::Response;
 use tendermint::{block::Height, hash::Algorithm, Hash};
 
 // TODO: fix deserialization
-// pub async fn latest_block() -> Result<<BlockRequest as Request>::Response, String> {
+// pub async fn latest_block(url: String) -> Result<<BlockRequest as Request>::Response, String> {
 //     let request = BlockRequest::default();
 //     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
-//     let response = make_rpc_request(HttpMethod::GET, Some(request_body), None).await?;
+//     let response = make_rpc_request(url, HttpMethod::GET, Some(request_body), None).await?;
 //     <BlockRequest as Request>::Response::from_string(&response.body)
 // }
 
-pub async fn abci_info() -> Result<<AbciInfoRequest as Request>::Response, String> {
+pub async fn abci_info(url: String) -> Result<<AbciInfoRequest as Request>::Response, String> {
     let request_body = Wrapper::new(AbciInfoRequest).await.into_json().into_bytes();
 
-    let response = make_rpc_request(HttpMethod::GET, Some(request_body), None).await?;
+    let response = make_rpc_request(url, HttpMethod::GET, Some(request_body), None).await?;
     <AbciInfoRequest as Request>::Response::from_string(&response.body)
 }
 
 pub async fn abci_query(
+    url: String,
     path: Option<String>,
     data: Vec<u8>,
     height: Option<u64>,
@@ -54,11 +55,11 @@ pub async fn abci_query(
     };
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
-    let response = make_rpc_request(HttpMethod::POST, Some(request_body), None).await?;
+    let response = make_rpc_request(url, HttpMethod::POST, Some(request_body), None).await?;
     <AbciQueryRequest as Request>::Response::from_string(&response.body)
 }
 
-pub async fn check_tx(tx_hash: String) -> Result<(), String> {
+pub async fn check_tx(url: String, tx_hash: String) -> Result<(), String> {
     // tx_hash is the hash returned in the 'Ok' response of 'broadcast_tx_sync'
     let request = TxRequest::new(
         Hash::from_hex_upper(Algorithm::Sha256, &tx_hash).unwrap(),
@@ -66,18 +67,19 @@ pub async fn check_tx(tx_hash: String) -> Result<(), String> {
     );
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
-    let response = make_rpc_request(HttpMethod::GET, Some(request_body), None).await?;
+    let response = make_rpc_request(url, HttpMethod::GET, Some(request_body), None).await?;
     let response_body = <TxRequest as Request>::Response::from_string(&response.body);
     print(format!("[check_tx] response: {:?}", response_body));
 
     Ok(())
 }
 
-pub async fn broadcast_tx_sync(tx_raw: Vec<u8>) -> Result<(), String> {
+pub async fn broadcast_tx_sync(url: String, tx_raw: Vec<u8>) -> Result<(), String> {
     let request = TxSyncRequest::new(tx_raw);
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
     let response = make_rpc_request(
+        url,
         HttpMethod::POST,
         Some(request_body),
         Some(TransformContext::from_name(
@@ -106,19 +108,18 @@ pub async fn broadcast_tx_sync(tx_raw: Vec<u8>) -> Result<(), String> {
 }
 
 async fn make_rpc_request(
+    url: String,
     method: HttpMethod,
     request_body: Option<Vec<u8>>,
     transform: Option<TransformContext>,
 ) -> Result<HttpResponse, String> {
-    let url = "https://rpc.sandbox-01.aksh.pw";
-
     let request_headers = vec![HttpHeader {
         name: "Content-Type".to_string(),
         value: "application/json".to_string(),
     }];
 
     let request = CanisterHttpRequestArgument {
-        url: url.to_string(),
+        url,
         max_response_bytes: None, //optional for request
         method,
         headers: request_headers,
@@ -127,7 +128,7 @@ async fn make_rpc_request(
     };
 
     // TODO: configure the amount of cycles properly
-    match http_request(request, 5_000_000_000).await {
+    match http_request(request, 21_000_000_000).await {
         Ok((response,)) => Ok(response),
         Err((r, m)) => Err(format!(
             "The http_request resulted into error. RejectionCode: {r:?}, Error: {m}"

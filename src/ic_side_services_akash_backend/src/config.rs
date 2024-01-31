@@ -9,15 +9,23 @@ thread_local! {
 #[derive(Clone)]
 pub struct Config {
     ecdsa_key: EcdsaKeyIds,
+    tendermint_rpc_url: String,
 }
 
 impl Config {
-    pub fn new(ecdsa_key: EcdsaKeyIds) -> Self {
-        Self { ecdsa_key }
+    pub fn new(ecdsa_key: EcdsaKeyIds, tendermint_rpc_url: &str) -> Self {
+        Self {
+            ecdsa_key,
+            tendermint_rpc_url: tendermint_rpc_url.to_string(),
+        }
     }
 
     pub fn ecdsa_key(&self) -> EcdsaKeyIds {
         self.ecdsa_key.clone()
+    }
+
+    pub fn tendermint_rpc_url(&self) -> String {
+        self.tendermint_rpc_url.clone()
     }
 }
 
@@ -25,6 +33,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             ecdsa_key: EcdsaKeyIds::TestKeyLocalDevelopment,
+            tendermint_rpc_url: "https://rpc.sandbox-01.aksh.pw".to_string(),
         }
     }
 }
