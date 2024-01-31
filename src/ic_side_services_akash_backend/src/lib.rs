@@ -12,7 +12,7 @@ use akash::{
     sdl::SdlV3,
 };
 use config::{set_config, Config};
-use ecdsa::get_public_key;
+use ecdsa::{get_public_key, EcdsaKeyIds};
 use utils::base64_decode;
 
 mod akash;
@@ -22,15 +22,18 @@ mod hash;
 mod utils;
 
 #[init]
-fn init() {
-    let config = Config::new();
+fn init(is_mainnet: bool) {
+    let config = Config::new(match is_mainnet {
+        true => EcdsaKeyIds::TestKey1,
+        false => EcdsaKeyIds::TestKeyLocalDevelopment,
+    });
 
     set_config(config);
 }
 
 #[post_upgrade]
-fn post_upgrade() {
-    init();
+fn post_upgrade(is_mainnet: bool) {
+    init(is_mainnet);
 }
 
 #[update]

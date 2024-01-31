@@ -18,7 +18,7 @@ type DeploymentResult = variant {
     Err : text;
 };
 
-service : {
+service : (bool) -> {
     "address" : () -> (AddressResult);
     "send" : (text, nat64) -> (GenericResult);
     "create_certificate" : (text, text) -> (GenericResult);
