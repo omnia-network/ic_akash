@@ -102,7 +102,7 @@ async fn create_deployment() -> Result<(u64, String), String> {
     let dseq = abci_info_res.response.last_block_height.value();
 
     let sdl_raw = example_sdl();
-    let sdl = SdlV3::try_from_str(sdl_raw).unwrap();
+    let sdl = SdlV3::try_from_str(sdl_raw)?;
 
     let tx_raw = create_deployment_tx(
         &public_key,
