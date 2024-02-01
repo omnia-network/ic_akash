@@ -600,7 +600,6 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "serde_yaml",
- "sha2 0.10.8",
 ]
 
 [[package]]

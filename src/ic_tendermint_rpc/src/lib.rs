@@ -5,8 +5,8 @@ use ic_cdk::{
     },
     print, query,
 };
-use sha2::Digest;
 mod endpoints;
+pub mod hash;
 mod id;
 mod method;
 mod rand;
@@ -61,11 +61,14 @@ pub async fn abci_query(
 }
 
 pub async fn check_tx(url: String, tx_raw_hex: String) -> Result<(), String> {
-    let mut hasher = sha2::Sha256::new();
-    hasher.update(&hex::decode(tx_raw_hex).unwrap());
-    let hash: [u8; 32] = hasher.finalize().into();
-
-    let request = TxRequest::new(Hash::from_bytes(Algorithm::Sha256, &hash).unwrap(), true);
+    let request = TxRequest::new(
+        Hash::from_bytes(
+            Algorithm::Sha256,
+            &hash::sha256(&hex::decode(tx_raw_hex).unwrap()),
+        )
+        .unwrap(),
+        true,
+    );
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
     let response = make_rpc_request(url, HttpMethod::GET, Some(request_body), None).await?;
