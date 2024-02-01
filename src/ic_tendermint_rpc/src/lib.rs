@@ -62,19 +62,28 @@ pub async fn abci_query(
 
 pub async fn check_tx(url: String, hash_hex: String) -> Result<(), String> {
     let request = TxRequest::new(
-        Hash::from_hex_upper(Algorithm::Sha256, &hash_hex).unwrap(),
+        Hash::from_hex_upper(Algorithm::Sha256, &hash_hex.to_uppercase()).unwrap(),
         true,
     );
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
     let response = make_rpc_request(url, HttpMethod::GET, Some(request_body), None).await?;
     let response_body = <TxRequest as Request>::Response::from_string(&response.body);
-    print(format!("[check_tx] response: {:?}", response_body));
+    if let Ok(response_body) = response_body {
+        print(format!(
+            "[check_tx] response: {:?}",
+            response_body.tx_result
+        ));
+    }
 
     Ok(())
 }
 
-pub async fn broadcast_tx_sync(url: String, tx_raw: Vec<u8>) -> Result<String, String> {
+pub async fn broadcast_tx_sync(
+    is_mainnet: bool,
+    url: String,
+    tx_raw: Vec<u8>,
+) -> Result<String, String> {
     let request = TxSyncRequest::new(tx_raw.clone());
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
@@ -95,15 +104,25 @@ pub async fn broadcast_tx_sync(url: String, tx_raw: Vec<u8>) -> Result<String, S
             response.status
         ));
     }
-    if let Err(e) = <TxSyncRequest as Request>::Response::from_string(&response.body) {
-        if e.contains("tx already exists in cache") {
-            // the transaction has been processed
-            Ok(hex::encode(&hash::sha256(&tx_raw)))
-        } else {
-            Err(e)
+    match is_mainnet {
+        true => {
+            // when dpeloyed on mainnet the response should eb 'Err' and contain 'tx already exists in cache' even if the transaction is accepted by the Akash Network
+            // this is due to the majority of replicas sending a duplicate request to the Network and thus receiving the error as a response
+            if let Err(e) = <TxSyncRequest as Request>::Response::from_string(&response.body) {
+                if e.contains("tx already exists in cache") {
+                    // the transaction has been processed
+                    Ok(hex::encode(&hash::sha256(&tx_raw)))
+                } else {
+                    Err(e)
+                }
+            } else {
+                Err("response should contain 'tx already exists in cache'".to_string())
+            }
         }
-    } else {
-        Err("response should contain 'tx already exists in cache'".to_string())
+        false => {
+            // when testing locally only one request is made and therefore the response is 'Ok' if the transaction is accepted by the Akash Network
+            Ok(hex::encode(&hash::sha256(&tx_raw)))
+        }
     }
 }
 

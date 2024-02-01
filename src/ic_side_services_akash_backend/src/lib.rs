@@ -24,7 +24,7 @@ mod utils;
 #[init]
 fn init(is_mainnet: bool) {
     let config = match is_mainnet {
-        true => Config::new(EcdsaKeyIds::TestKey1, "rpc.akashnet.net"),
+        true => Config::new(true, EcdsaKeyIds::TestKey1, "rpc.akashnet.net"),
         false => Config::default(),
     };
 
@@ -60,8 +60,14 @@ async fn send(to_address: String, amount: u64) -> Result<(), String> {
         account.account_number,
     )
     .await?;
-    // print(format!("tx_raw: {}", hex_encode(&tx_raw)));
-    ic_tendermint_rpc::broadcast_tx_sync(config.tendermint_rpc_url(), tx_raw).await?;
+
+    let tx_hash = ic_tendermint_rpc::broadcast_tx_sync(
+        config.is_mainnet(),
+        config.tendermint_rpc_url(),
+        tx_raw,
+    )
+    .await?;
+    print(format!("tx_hash: {}", tx_hash));
 
     Ok(())
 }
@@ -89,8 +95,13 @@ async fn create_certificate(
     )
     .await?;
 
-    // ignore err during local testing
-    let _ = ic_tendermint_rpc::broadcast_tx_sync(config.tendermint_rpc_url(), tx_raw).await;
+    let tx_hash = ic_tendermint_rpc::broadcast_tx_sync(
+        config.is_mainnet(),
+        config.tendermint_rpc_url(),
+        tx_raw,
+    )
+    .await?;
+    print(format!("tx_hash: {}", tx_hash));
 
     Ok(())
 }
@@ -117,8 +128,13 @@ async fn create_deployment() -> Result<(u64, String), String> {
     )
     .await?;
 
-    // ignore err during local testing
-    let _res = ic_tendermint_rpc::broadcast_tx_sync(config.tendermint_rpc_url(), tx_raw).await;
+    let tx_hash = ic_tendermint_rpc::broadcast_tx_sync(
+        config.is_mainnet(),
+        config.tendermint_rpc_url(),
+        tx_raw,
+    )
+    .await?;
+    print(format!("tx_hash: {}", tx_hash));
 
     Ok((dseq, sdl.manifest_sorted_json()))
 }
@@ -150,8 +166,14 @@ async fn create_lease(dseq: u64) -> Result<String, String> {
         account.account_number,
     )
     .await?;
-    // ignore err during local testing
-    let _res = ic_tendermint_rpc::broadcast_tx_sync(config.tendermint_rpc_url(), tx_raw).await;
+
+    let tx_hash = ic_tendermint_rpc::broadcast_tx_sync(
+        config.is_mainnet(),
+        config.tendermint_rpc_url(),
+        tx_raw,
+    )
+    .await?;
+    print(format!("tx_hash: {}", tx_hash));
 
     // TODO: query lease to see if everything is ok
 
@@ -173,8 +195,13 @@ async fn close_deployment(dseq: u64) -> Result<(), String> {
     let tx_raw =
         close_deployment_tx(&public_key, dseq, sequence_number, account.account_number).await?;
 
-    // ignore err during local testing
-    let _res = ic_tendermint_rpc::broadcast_tx_sync(config.tendermint_rpc_url(), tx_raw).await;
+    let tx_hash = ic_tendermint_rpc::broadcast_tx_sync(
+        config.is_mainnet(),
+        config.tendermint_rpc_url(),
+        tx_raw,
+    )
+    .await?;
+    print(format!("tx_hash: {}", tx_hash));
 
     Ok(())
 }

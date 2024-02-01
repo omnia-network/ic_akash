@@ -8,16 +8,22 @@ thread_local! {
 
 #[derive(Clone)]
 pub struct Config {
+    is_mainnet: bool,
     ecdsa_key: EcdsaKeyIds,
     tendermint_rpc_url: String,
 }
 
 impl Config {
-    pub fn new(ecdsa_key: EcdsaKeyIds, tendermint_rpc_url: &str) -> Self {
+    pub fn new(is_mainnet: bool, ecdsa_key: EcdsaKeyIds, tendermint_rpc_url: &str) -> Self {
         Self {
+            is_mainnet,
             ecdsa_key,
             tendermint_rpc_url: tendermint_rpc_url.to_string(),
         }
+    }
+
+    pub fn is_mainnet(&self) -> bool {
+        self.is_mainnet
     }
 
     pub fn ecdsa_key(&self) -> EcdsaKeyIds {
@@ -32,6 +38,7 @@ impl Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            is_mainnet: false,
             ecdsa_key: EcdsaKeyIds::TestKeyLocalDevelopment,
             tendermint_rpc_url: "https://rpc.sandbox-01.aksh.pw".to_string(),
         }
