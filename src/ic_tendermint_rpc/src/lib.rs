@@ -60,13 +60,9 @@ pub async fn abci_query(
     <AbciQueryRequest as Request>::Response::from_string(&response.body)
 }
 
-pub async fn check_tx(url: String, tx_raw_hex: String) -> Result<(), String> {
+pub async fn check_tx(url: String, hash_hex: String) -> Result<(), String> {
     let request = TxRequest::new(
-        Hash::from_bytes(
-            Algorithm::Sha256,
-            &hash::sha256(&hex::decode(tx_raw_hex).unwrap()),
-        )
-        .unwrap(),
+        Hash::from_hex_upper(Algorithm::Sha256, &hash_hex).unwrap(),
         true,
     );
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
@@ -79,10 +75,7 @@ pub async fn check_tx(url: String, tx_raw_hex: String) -> Result<(), String> {
 }
 
 pub async fn broadcast_tx_sync(url: String, tx_raw: Vec<u8>) -> Result<String, String> {
-    let tx_raw_hex = hex::encode(&tx_raw);
-    print(format!("[broadcast_tx_sync] tx_raw_hex: {}", tx_raw_hex));
-
-    let request = TxSyncRequest::new(tx_raw);
+    let request = TxSyncRequest::new(tx_raw.clone());
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
     let response = make_rpc_request(
@@ -105,7 +98,7 @@ pub async fn broadcast_tx_sync(url: String, tx_raw: Vec<u8>) -> Result<String, S
     if let Err(e) = <TxSyncRequest as Request>::Response::from_string(&response.body) {
         if e.contains("tx already exists in cache") {
             // the transaction has been processed
-            Ok(tx_raw_hex)
+            Ok(hex::encode(&hash::sha256(&tx_raw)))
         } else {
             Err(e)
         }
