@@ -60,12 +60,12 @@ pub async fn abci_query(
     <AbciQueryRequest as Request>::Response::from_string(&response.body)
 }
 
-pub async fn check_tx(url: String, tx_hash: String) -> Result<(), String> {
-    // tx_hash is the hash returned in the 'Ok' response of 'broadcast_tx_sync'
-    let request = TxRequest::new(
-        Hash::from_hex_upper(Algorithm::Sha256, &tx_hash).unwrap(),
-        true,
-    );
+pub async fn check_tx(url: String, tx_raw_hex: String) -> Result<(), String> {
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(&hex::decode(tx_raw_hex).unwrap());
+    let hash: [u8; 32] = hasher.finalize().into();
+
+    let request = TxRequest::new(Hash::from_bytes(Algorithm::Sha256, &hash).unwrap(), true);
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
     let response = make_rpc_request(url, HttpMethod::GET, Some(request_body), None).await?;
@@ -75,8 +75,11 @@ pub async fn check_tx(url: String, tx_hash: String) -> Result<(), String> {
     Ok(())
 }
 
-pub async fn broadcast_tx_sync(url: String, tx_raw: Vec<u8>) -> Result<(), String> {
-    let request = TxSyncRequest::new(tx_raw.clone());
+pub async fn broadcast_tx_sync(url: String, tx_raw: Vec<u8>) -> Result<String, String> {
+    let tx_raw_hex = hex::encode(&tx_raw);
+    print(format!("[broadcast_tx_sync] tx_raw_hex: {}", tx_raw_hex));
+
+    let request = TxSyncRequest::new(tx_raw);
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
     let response = make_rpc_request(
@@ -96,22 +99,10 @@ pub async fn broadcast_tx_sync(url: String, tx_raw: Vec<u8>) -> Result<(), Strin
             response.status
         ));
     }
-
-    let mut hasher = sha2::Sha256::new();
-    hasher.update(&tx_raw);
-    let hash: [u8; 32] = hasher.finalize().into();
-
-    let request = TxRequest::new(Hash::from_bytes(Algorithm::Sha256, &hash).unwrap(), true);
-    let request_body = Wrapper::new(request).await.into_json().into_bytes();
-
-    let response = make_rpc_request(url, HttpMethod::GET, Some(request_body), None).await?;
-    let response_body = <TxRequest as Request>::Response::from_string(&response.body);
-    print(format!("[check_tx] response: {:?}", response_body));
-
     if let Err(e) = <TxSyncRequest as Request>::Response::from_string(&response.body) {
         if e.contains("tx already exists in cache") {
             // the transaction has been processed
-            Ok(())
+            Ok(tx_raw_hex)
         } else {
             Err(e)
         }
