@@ -5,6 +5,7 @@ use ic_cdk::{
     },
     print, query,
 };
+use sha2::Digest;
 mod endpoints;
 mod id;
 mod method;
@@ -75,11 +76,11 @@ pub async fn check_tx(url: String, tx_hash: String) -> Result<(), String> {
 }
 
 pub async fn broadcast_tx_sync(url: String, tx_raw: Vec<u8>) -> Result<(), String> {
-    let request = TxSyncRequest::new(tx_raw);
+    let request = TxSyncRequest::new(tx_raw.clone());
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
     let response = make_rpc_request(
-        url,
+        url.clone(),
         HttpMethod::POST,
         Some(request_body),
         Some(TransformContext::from_name(
@@ -95,6 +96,18 @@ pub async fn broadcast_tx_sync(url: String, tx_raw: Vec<u8>) -> Result<(), Strin
             response.status
         ));
     }
+
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(&tx_raw);
+    let hash: [u8; 32] = hasher.finalize().into();
+
+    let request = TxRequest::new(Hash::from_bytes(Algorithm::Sha256, &hash).unwrap(), true);
+    let request_body = Wrapper::new(request).await.into_json().into_bytes();
+
+    let response = make_rpc_request(url, HttpMethod::GET, Some(request_body), None).await?;
+    let response_body = <TxRequest as Request>::Response::from_string(&response.body);
+    print(format!("[check_tx] response: {:?}", response_body));
+
     if let Err(e) = <TxSyncRequest as Request>::Response::from_string(&response.body) {
         if e.contains("tx already exists in cache") {
             // the transaction has been processed
