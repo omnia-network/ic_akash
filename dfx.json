@@ -1,8 +1,8 @@
 {
   "canisters": {
-    "ic_side_services_akash_backend": {
-      "candid": "src/ic_side_services_akash_backend/ic_side_services_akash_backend.did",
-      "package": "ic_side_services_akash_backend",
+    "backend": {
+      "candid": "src/backend/backend.did",
+      "package": "backend",
       "type": "rust",
       "gzip": true
     }

@@ -1,5 +1,5 @@
 [workspace]
-members = ["src/ic_side_services_akash_backend", "src/ic_tendermint_rpc"]
+members = ["src/backend", "src/ic_tendermint_rpc"]
 resolver = "2"
 
 [workspace.dependencies]

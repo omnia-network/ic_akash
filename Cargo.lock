@@ -30,6 +30,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
+name = "backend"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "bech32",
+ "candid",
+ "cosmrs",
+ "getrandom",
+ "hex",
+ "ic-cdk",
+ "ic_tendermint_rpc",
+ "prost",
+ "prost-types",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "serde_yaml",
+]
+
+[[package]]
 name = "base16ct"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -579,27 +600,6 @@ name = "ic0"
 version = "0.18.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "576c539151d4769fb4d1a0c25c4108dd18facd04c5695b02cf2d226ab4e43aa5"
-
-[[package]]
-name = "ic_side_services_akash_backend"
-version = "0.1.0"
-dependencies = [
- "base64",
- "bech32",
- "candid",
- "cosmrs",
- "getrandom",
- "hex",
- "ic-cdk",
- "ic_tendermint_rpc",
- "prost",
- "prost-types",
- "regex",
- "serde",
- "serde_json",
- "serde_repr",
- "serde_yaml",
-]
 
 [[package]]
 name = "ic_tendermint_rpc"
