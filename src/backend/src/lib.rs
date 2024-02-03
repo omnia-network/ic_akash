@@ -16,6 +16,7 @@ use ecdsa::{get_public_key, EcdsaKeyIds};
 use utils::base64_decode;
 
 mod akash;
+mod api;
 mod config;
 mod ecdsa;
 

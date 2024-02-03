@@ -18,6 +18,35 @@ type DeploymentResult = variant {
     Err : text;
 };
 
+// ----
+type ApiError = record {
+    code : nat16;
+    message : text;
+};
+
+type UserId = record { principal };
+
+type User = variant {
+    Admin;
+    Deployer;
+};
+
+type GetUserResult = variant {
+    Ok : User;
+    Err : ApiError;
+};
+
+type CreateUserResult = variant {
+    Ok : UserId;
+    Err : ApiError;
+};
+
+type EmptyResult = variant {
+    Ok;
+    Err : ApiError;
+};
+// ----
+
 service : (bool) -> {
     "address" : () -> (AddressResult);
     "send" : (text, nat64) -> (GenericResult);
@@ -26,4 +55,10 @@ service : (bool) -> {
     "check_tx" : (text) -> (GenericResult);
     "create_lease" : (nat64) -> (StringResult);
     "close_deployment" : (nat64) -> (GenericResult);
+
+    // ----
+    "get_user" : () -> (GetUserResult) query;
+    "create_user" : () -> (CreateUserResult);
+    "promote_user_to_admin" : (principal) -> (EmptyResult);
+    // ----
 };
