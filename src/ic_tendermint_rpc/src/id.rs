@@ -3,8 +3,7 @@
 use core::fmt;
 
 use serde::{Deserialize, Serialize};
-
-use crate::uuid::Uuid;
+use utils::Uuid;
 
 /// JSON-RPC ID: request-specific identifier
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Ord, PartialOrd)]

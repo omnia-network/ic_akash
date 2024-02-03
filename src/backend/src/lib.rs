@@ -18,7 +18,6 @@ use utils::base64_decode;
 mod akash;
 mod config;
 mod ecdsa;
-mod utils;
 
 #[init]
 fn init(is_mainnet: bool) {

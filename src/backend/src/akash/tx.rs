@@ -7,7 +7,7 @@ use cosmrs::{
     tx::{self, Fee, SignDoc, SignerInfo},
     Any, Tx,
 };
-use ic_tendermint_rpc::hash::sha256;
+use utils::sha256;
 
 use crate::ecdsa::{self};
 

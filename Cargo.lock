@@ -33,13 +33,13 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 name = "backend"
 version = "0.1.0"
 dependencies = [
- "base64",
  "bech32",
  "candid",
  "cosmrs",
  "getrandom",
  "hex",
  "ic-cdk",
+ "ic-stable-structures",
  "ic_tendermint_rpc",
  "prost",
  "prost-types",
@@ -48,6 +48,7 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "serde_yaml",
+ "utils",
 ]
 
 [[package]]
@@ -596,10 +597,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-stable-structures"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "774d7d26420c095f2b5f0f71f7b2ff4a5b58b87e0959dccc78b3d513a7db5112"
+dependencies = [
+ "ic_principal",
+]
+
+[[package]]
 name = "ic0"
 version = "0.18.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "576c539151d4769fb4d1a0c25c4108dd18facd04c5695b02cf2d226ab4e43aa5"
+
+[[package]]
+name = "ic_principal"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1762deb6f7c8d8c2bdee4b6c5a47b60195b74e9b5280faa5ba29692f8e17429c"
 
 [[package]]
 name = "ic_tendermint_rpc"
@@ -609,16 +625,13 @@ dependencies = [
  "candid",
  "hex",
  "ic-cdk",
- "rand",
- "rand_chacha",
  "serde",
  "serde_json",
- "sha2 0.10.8",
  "subtle-encoding",
  "tendermint 0.34.0",
  "tendermint-proto 0.34.0",
  "thiserror",
- "uuid",
+ "utils",
 ]
 
 [[package]]
@@ -1358,6 +1371,22 @@ name = "unsafe-libyaml"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab4c90930b95a82d00dc9e9ac071b4991924390d46cbd0dfe566148667605e4b"
+
+[[package]]
+name = "utils"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "candid",
+ "hex",
+ "ic-cdk",
+ "ic-stable-structures",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "sha2 0.10.8",
+ "uuid",
+]
 
 [[package]]
 name = "uuid"

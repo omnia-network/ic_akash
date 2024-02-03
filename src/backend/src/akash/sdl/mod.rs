@@ -3,9 +3,9 @@ mod sizes;
 use std::{cmp::Ordering, collections::HashMap};
 
 use cosmrs::proto::cosmos::base::v1beta1::DecCoin;
-use ic_tendermint_rpc::hash::sha256;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use utils::sha256;
 
 use super::proto::{
     base::{

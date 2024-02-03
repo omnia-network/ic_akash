@@ -6,15 +6,12 @@ use ic_cdk::{
     print, query,
 };
 mod endpoints;
-pub mod hash;
 mod id;
 mod method;
-mod rand;
 mod request;
 mod response;
 mod response_error;
 mod serializers;
-mod uuid;
 mod version;
 
 use endpoints::{
@@ -24,6 +21,7 @@ use endpoints::{
 use request::{Request, Wrapper};
 use response::Response;
 use tendermint::{block::Height, hash::Algorithm, Hash};
+use utils::sha256;
 
 // TODO: fix deserialization
 // pub async fn latest_block(url: String) -> Result<<BlockRequest as Request>::Response, String> {
@@ -111,7 +109,7 @@ pub async fn broadcast_tx_sync(
             if let Err(e) = <TxSyncRequest as Request>::Response::from_string(&response.body) {
                 if e.contains("tx already exists in cache") {
                     // the transaction has been processed
-                    Ok(hex::encode(&hash::sha256(&tx_raw)))
+                    Ok(hex::encode(&sha256(&tx_raw)))
                 } else {
                     Err(e)
                 }
@@ -121,7 +119,7 @@ pub async fn broadcast_tx_sync(
         }
         false => {
             // when testing locally only one request is made and therefore the response is 'Ok' if the transaction is accepted by the Akash Network
-            Ok(hex::encode(&hash::sha256(&tx_raw)))
+            Ok(hex::encode(&sha256(&tx_raw)))
         }
     }
 }

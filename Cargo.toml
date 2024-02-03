@@ -1,10 +1,14 @@
 [workspace]
-members = ["src/backend", "src/ic_tendermint_rpc"]
+members = ["src/backend", "src/ic_tendermint_rpc", "src/utils"]
 resolver = "2"
 
 [workspace.dependencies]
 candid = "0.9.3"
 ic-cdk = "0.10.0"
+ic-stable-structures = "0.6"
+
 serde = "1.0.195"
 serde_json = { version = "1.0.111", features = ["preserve_order"] }
 hex = "0.4.3"
+
+utils = { path = "src/utils" }

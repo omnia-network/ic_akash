@@ -1,8 +1,10 @@
 use candid::Deserialize;
+use ic_stable_structures::{storable::Bound, Storable};
 use serde::Serialize;
+use std::borrow::Cow;
 use uuid::{Builder, Uuid as UuidImpl};
 
-use crate::rand::with_random_bytes;
+use crate::with_random_bytes;
 
 const UUID_SIZE: usize = 16;
 
@@ -24,7 +26,7 @@ impl TryFrom<&str> for Uuid {
 
     fn try_from(uuid: &str) -> Result<Uuid, Self::Error> {
         let uuid = UuidImpl::parse_str(uuid)
-            .map_err(|_| format!("Failed to parse UUID from string: {}", uuid).to_string())?;
+            .map_err(|_| format!("Failed to parse UUID from string: {}", uuid))?;
 
         Ok(Self(uuid))
     }
@@ -34,4 +36,19 @@ impl ToString for Uuid {
     fn to_string(&self) -> String {
         self.0.to_string()
     }
+}
+
+impl Storable for Uuid {
+    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+        Cow::Borrowed(self.0.as_bytes())
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        Self(UuidImpl::from_bytes(bytes.into_owned().try_into().unwrap()))
+    }
+
+    const BOUND: Bound = Bound::Bounded {
+        max_size: UUID_SIZE as u32,
+        is_fixed_size: true,
+    };
 }
