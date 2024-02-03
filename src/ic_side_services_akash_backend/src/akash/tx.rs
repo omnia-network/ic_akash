@@ -7,11 +7,9 @@ use cosmrs::{
     tx::{self, Fee, SignDoc, SignerInfo},
     Any, Tx,
 };
+use ic_tendermint_rpc::hash::sha256;
 
-use crate::{
-    ecdsa::{self},
-    hash::sha256,
-};
+use crate::ecdsa::{self};
 
 /// from https://docs.rs/cosmrs/latest/cosmrs/tx/index.html#usage
 ///

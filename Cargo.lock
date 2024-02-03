@@ -595,7 +595,6 @@ dependencies = [
  "prost",
  "prost-types",
  "regex",
- "ripemd",
  "serde",
  "serde_json",
  "serde_repr",

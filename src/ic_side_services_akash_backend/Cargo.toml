@@ -9,19 +9,20 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-bech32 = "0.9.1"
 candid.workspace = true
-cosmrs = "0.15.0"
-hex.workspace = true
 ic-cdk.workspace = true
-ripemd = "0.1.3"
+
 serde.workspace = true
+serde_json.workspace = true
+hex.workspace = true
+
+bech32 = "0.9.1"
+cosmrs = "0.15.0"
 getrandom = { version = "0.2", features = ["custom"] }
 prost = "0.12.3"
 prost-types = "0.12.3"
 base64 = "0.21.7"
 serde_yaml = "0.9.30"
-serde_json.workspace = true
 regex = "1.10.3"
 serde_repr = "0.1.18"
 
