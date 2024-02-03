@@ -29,8 +29,7 @@ const createCertificate = async (address: string): Promise<Pems> => {
   const notAfter = new Date(notBefore.getTime() + CERTIFICATE_DURATION_DAYS * 24 * 60 * 60 * 1000);
 
   const cert = await x509.X509CertificateGenerator.create({
-    serialNumber: (BigInt(Date.now()) * 1000n).toString(16),
-    // serialNumber: Buffer.from(Date.now().toString(), "utf-8").toString("hex"),
+    serialNumber: (BigInt(Date.now()) * BigInt(1000)).toString(16),
     issuer: commonName,
     subject: commonName,
     notBefore,
