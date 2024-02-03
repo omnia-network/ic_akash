@@ -4,6 +4,9 @@ use ic_cdk::api::management_canister::ecdsa::{
     SignWithEcdsaArgument,
 };
 
+use crate::config::get_config;
+
+#[derive(Clone)]
 pub enum EcdsaKeyIds {
     #[allow(unused)]
     TestKeyLocalDevelopment,
@@ -28,10 +31,12 @@ impl EcdsaKeyIds {
 }
 
 pub async fn get_public_key() -> Result<PublicKey, String> {
+    let config = get_config();
+
     let request = EcdsaPublicKeyArgument {
         canister_id: None,
         derivation_path: vec![],
-        key_id: EcdsaKeyIds::TestKeyLocalDevelopment.to_key_id(),
+        key_id: config.ecdsa_key().to_key_id(),
     };
 
     let (res,) = ecdsa_public_key(request)
@@ -45,10 +50,12 @@ pub async fn get_public_key() -> Result<PublicKey, String> {
 }
 
 pub async fn sign(message_hash: Vec<u8>) -> Result<Vec<u8>, String> {
+    let config = get_config();
+
     let request = SignWithEcdsaArgument {
         message_hash,
         derivation_path: vec![],
-        key_id: EcdsaKeyIds::TestKeyLocalDevelopment.to_key_id(),
+        key_id: config.ecdsa_key().to_key_id(),
     };
 
     sign_with_ecdsa(request)

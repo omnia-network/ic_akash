@@ -1,6 +1,8 @@
 use cosmrs::crypto::PublicKey;
 use prost::Message;
 
+use crate::config::get_config;
+
 use super::{
     address::get_account_id_from_public_key,
     proto::market::{
@@ -13,6 +15,8 @@ pub async fn fetch_bids(
     sender_public_key: &PublicKey,
     dseq: u64,
 ) -> Result<Vec<QueryBidResponse>, String> {
+    let config = get_config();
+
     let query = QueryBidsRequest {
         filters: Some(BidFilters {
             owner: get_account_id_from_public_key(sender_public_key)
@@ -28,6 +32,7 @@ pub async fn fetch_bids(
     };
 
     let abci_res = ic_tendermint_rpc::abci_query(
+        config.tendermint_rpc_url(),
         Some(String::from("/akash.market.v1beta4.Query/Bids")),
         query.encode_to_vec(),
         None,

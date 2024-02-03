@@ -18,11 +18,12 @@ type DeploymentResult = variant {
     Err : text;
 };
 
-service : {
+service : (bool) -> {
     "address" : () -> (AddressResult);
     "send" : (text, nat64) -> (GenericResult);
     "create_certificate" : (text, text) -> (GenericResult);
     "create_deployment" : () -> (DeploymentResult);
+    "check_tx" : (text) -> (GenericResult);
     "create_lease" : (nat64) -> (StringResult);
     "close_deployment" : (nat64) -> (GenericResult);
 };

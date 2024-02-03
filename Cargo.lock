@@ -600,7 +600,6 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "serde_yaml",
- "sha2 0.10.8",
 ]
 
 [[package]]
@@ -615,6 +614,7 @@ dependencies = [
  "rand_chacha",
  "serde",
  "serde_json",
+ "sha2 0.10.8",
  "subtle-encoding",
  "tendermint 0.34.0",
  "tendermint-proto 0.34.0",
