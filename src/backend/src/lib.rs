@@ -1,9 +1,7 @@
-use ic_cdk::{init, post_upgrade, print, update};
-
 use akash::{
     address::get_account_id_from_public_key,
     auth::get_account,
-    bank::create_send_tx,
+    bank::{create_send_tx, get_balance},
     bids::fetch_bids,
     certificate::create_certificate_tx,
     deployment::{close_deployment_tx, create_deployment_tx},
@@ -13,6 +11,7 @@ use akash::{
 };
 use config::{get_config, set_config, Config};
 use ecdsa::{get_public_key, EcdsaKeyIds};
+use ic_cdk::{init, post_upgrade, print, update};
 use utils::base64_decode;
 
 mod akash;
@@ -22,7 +21,7 @@ mod ecdsa;
 #[init]
 fn init(is_mainnet: bool) {
     let config = match is_mainnet {
-        true => Config::new(true, EcdsaKeyIds::TestKey1, "rpc.akashnet.net"),
+        true => Config::new(true, EcdsaKeyIds::TestKey1, "https://rpc.akashnet.net"),
         false => Config::default(),
     };
 
@@ -40,6 +39,14 @@ async fn address() -> Result<String, String> {
 
     let sender_account_id = get_account_id_from_public_key(&public_key)?;
     Ok(sender_account_id.to_string())
+}
+
+#[update]
+async fn balance() -> Result<String, String> {
+    let public_key = get_public_key().await?;
+    get_balance(&public_key)
+        .await
+        .and_then(|coin| Ok(coin.amount))
 }
 
 #[update]

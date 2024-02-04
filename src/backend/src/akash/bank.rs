@@ -1,11 +1,16 @@
-use std::str::FromStr;
-
+use crate::config::get_config;
 use cosmrs::{
     bank::MsgSend,
     crypto::PublicKey,
+    proto::cosmos::{
+        bank::v1beta1::{QueryBalanceRequest, QueryBalanceResponse},
+        base::v1beta1::Coin as CoinProto,
+    },
     tx::{Fee, Msg},
     AccountId, Coin, Denom,
 };
+use prost::Message;
+use std::str::FromStr;
 
 use super::{address::get_account_id_from_public_key, tx::create_tx};
 
@@ -46,4 +51,31 @@ pub async fn create_send_tx(
         account_number,
     )
     .await
+}
+
+pub async fn get_balance(public_key: &PublicKey) -> Result<CoinProto, String> {
+    let config = get_config();
+
+    let query = QueryBalanceRequest {
+        address: get_account_id_from_public_key(public_key)
+            .unwrap()
+            .to_string(),
+
+        denom: String::from("uakt"),
+    };
+
+    let abci_res = ic_tendermint_rpc::abci_query(
+        config.tendermint_rpc_url(),
+        Some(String::from("/cosmos.bank.v1beta1.Query/Balance")),
+        query.encode_to_vec(),
+        None,
+        false,
+    )
+    .await?;
+
+    let res = QueryBalanceResponse::decode(abci_res.response.value.as_slice())
+        .map_err(|e| e.to_string())?;
+
+    let balance = res.balance.ok_or(String::from("Address not found"))?;
+    Ok(balance)
 }

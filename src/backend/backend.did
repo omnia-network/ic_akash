@@ -1,8 +1,3 @@
-type AddressResult = variant {
-    Ok : text;
-    Err : text;
-};
-
 type GenericResult = variant {
     Ok;
     Err : text;
@@ -19,7 +14,8 @@ type DeploymentResult = variant {
 };
 
 service : (bool) -> {
-    "address" : () -> (AddressResult);
+    "address" : () -> (StringResult);
+    "balance" : () -> (StringResult);
     "send" : (text, nat64) -> (GenericResult);
     "create_certificate" : (text, text) -> (GenericResult);
     "create_deployment" : () -> (DeploymentResult);
