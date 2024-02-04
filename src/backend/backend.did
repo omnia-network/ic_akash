@@ -52,13 +52,40 @@ type EmptyResult = variant {
     Ok;
     Err : ApiError;
 };
+
+type DeploymentId = text;
+
+type DeploymentState = variant {
+    Initialized;
+    DeploymentCreated;
+    LeaseCreated;
+    Active;
+    Closed;
+};
+
+type Deployment = record {
+    sdl : text;
+    user_id : UserId;
+    created_at : TimestampNs;
+    state : DeploymentState;
+};
+
+type GetDeploymentResult = variant {
+    Ok : Deployment;
+    Err : ApiError;
+};
+
+type CreateDeploymentResult = variant {
+    Ok : DeploymentId;
+    Err : ApiError;
+};
 // ----
 
 service : (bool) -> {
     "address" : () -> (AddressResult);
     "send" : (text, nat64) -> (GenericResult);
     "create_certificate" : (text, text) -> (GenericResult);
-    "create_deployment" : () -> (DeploymentResult);
+    // "create_deployment" : () -> (DeploymentResult);
     "check_tx" : (text) -> (GenericResult);
     "create_lease" : (nat64) -> (StringResult);
     "close_deployment" : (nat64) -> (GenericResult);
@@ -67,5 +94,7 @@ service : (bool) -> {
     "get_user" : () -> (GetUserResult) query;
     "create_user" : () -> (CreateUserResult);
     "promote_user_to_admin" : (UserId) -> (EmptyResult);
+    "get_deployment" : (text) -> (GetDeploymentResult) query;
+    "create_deployment" : (text) -> (CreateDeploymentResult);
     // ----
 };

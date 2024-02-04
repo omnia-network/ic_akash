@@ -105,7 +105,7 @@ async fn create_certificate(
     Ok(())
 }
 
-#[update]
+// #[update]
 async fn create_deployment() -> Result<(u64, String), String> {
     let config = get_config();
     let public_key = get_public_key().await?;
