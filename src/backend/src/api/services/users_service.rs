@@ -1,6 +1,6 @@
 use candid::Principal;
 
-use crate::api::{init_users, ApiError, User, UserId, UsersMemory};
+use crate::api::{init_users, ApiError, User, UserId, UserRole, UsersMemory};
 
 pub struct UsersService {
     users_memory: UsersMemory,
@@ -29,12 +29,19 @@ impl UsersService {
         Ok(user_id)
     }
 
-    pub fn make_user_admin(&mut self, user_id: &UserId) -> Result<(), ApiError> {
-        self.users_memory
+    pub fn change_user_role(
+        &mut self,
+        user_id: &UserId,
+        new_role: UserRole,
+    ) -> Result<(), ApiError> {
+        let mut user = self
+            .users_memory
             .get(user_id)
             .ok_or_else(|| ApiError::not_found("User not found"))?;
 
-        self.users_memory.insert(user_id.clone(), User::Admin);
+        user.set_role(new_role);
+
+        self.users_memory.insert(user_id.clone(), user);
 
         Ok(())
     }

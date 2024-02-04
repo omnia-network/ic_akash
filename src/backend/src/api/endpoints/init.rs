@@ -1,7 +1,7 @@
 use candid::Principal;
 use ic_cdk::*;
 
-use crate::api::{ApiError, User, UserId, UsersService};
+use crate::api::{ApiError, User, UserId, UserRole, UsersService};
 
 // TODO: enable this init and remove the root one
 // #[init]
@@ -31,6 +31,8 @@ impl Init {
 
 impl Init {
     pub fn init_admin(&mut self, principal: Principal) -> Result<UserId, ApiError> {
-        self.users_service.create_user(principal, User::Admin)
+        let user = User::new(UserRole::Admin);
+
+        self.users_service.create_user(principal, user)
     }
 }

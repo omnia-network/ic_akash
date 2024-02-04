@@ -1,7 +1,7 @@
 use candid::Principal;
 use ic_cdk::*;
 
-use crate::api::{AccessControlService, ApiError, ApiResult, User, UserId, UsersService};
+use crate::api::{AccessControlService, ApiError, ApiResult, User, UserId, UserRole, UsersService};
 
 #[query]
 fn get_user() -> ApiResult<User> {
@@ -56,8 +56,9 @@ impl UsersEndpoints {
         self.access_control_service
             .assert_principal_not_anonymous(&calling_principal)?;
 
-        self.users_service
-            .create_user(calling_principal, User::Deployer)
+        let user = User::new(UserRole::Deployer);
+
+        self.users_service.create_user(calling_principal, user)
     }
 
     pub fn make_user_admin(
@@ -70,6 +71,7 @@ impl UsersEndpoints {
 
         let admin_id = UserId::new(admin_principal);
 
-        self.users_service.make_user_admin(&admin_id)
+        self.users_service
+            .change_user_role(&admin_id, UserRole::Admin)
     }
 }

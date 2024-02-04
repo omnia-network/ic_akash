@@ -1,6 +1,6 @@
 use candid::Principal;
 
-use crate::api::{init_users, ApiError, User, UserId, UsersMemory};
+use crate::api::{init_users, ApiError, UserId, UsersMemory};
 
 pub struct AccessControlService {
     users_memory: UsersMemory,
@@ -31,7 +31,7 @@ impl AccessControlService {
             .get(&user_id)
             .ok_or_else(|| ApiError::not_found(format!("User {} not found", user_id).as_str()))?;
 
-        if !matches!(user, User::Admin) {
+        if !user.is_admin() {
             return Err(ApiError::permission_denied(&format!(
                 "Principal {} is not an admin",
                 principal
