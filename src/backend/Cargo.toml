@@ -25,7 +25,8 @@ prost-types = "0.12.3"
 serde_yaml = "0.9.30"
 regex = "1.10.3"
 serde_repr = "0.1.18"
+ic-websocket-cdk = "0.3.3"
+ic-cdk-timers = "0.4.0"
 
 ic_tendermint_rpc = { path = "../ic_tendermint_rpc" }
 utils.workspace = true
-ic-websocket-cdk = "0.3.3"

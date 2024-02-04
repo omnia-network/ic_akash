@@ -27,7 +27,7 @@ impl DeploymentsService {
             .collect()
     }
 
-    pub async fn create_deployment(
+    pub async fn insert_deployment(
         &mut self,
         deployment: Deployment,
     ) -> Result<DeploymentId, ApiError> {

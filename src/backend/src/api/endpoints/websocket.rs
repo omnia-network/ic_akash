@@ -7,7 +7,7 @@ use ic_websocket_cdk::{
     WsHandlers, WsInitParams,
 };
 
-use crate::{api::AppMessage, helpers::send_app_message};
+use crate::{api::DeploymentUpdate, helpers::send_canister_update};
 
 pub fn init_ic_websocket() {
     let handlers = WsHandlers {
@@ -36,7 +36,7 @@ fn ws_close(args: CanisterWsCloseArguments) -> CanisterWsCloseResult {
 #[update]
 fn ws_message(
     args: CanisterWsMessageArguments,
-    msg_type: Option<AppMessage>,
+    msg_type: Option<DeploymentUpdate>,
 ) -> CanisterWsMessageResult {
     ic_websocket_cdk::ws_message(args, msg_type)
 }
@@ -50,10 +50,7 @@ fn ws_get_messages(args: CanisterWsGetMessagesArguments) -> CanisterWsGetMessage
 fn on_open(args: OnOpenCallbackArgs) {
     print(format!("Client {} connected", args.client_principal));
 
-    let msg = AppMessage {
-        text: String::from("ping"),
-    };
-    send_app_message(args.client_principal, msg);
+    send_canister_update(args.client_principal, DeploymentUpdate::Initialized);
 }
 
 fn on_close(args: OnCloseCallbackArgs) {

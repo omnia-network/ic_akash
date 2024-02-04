@@ -1,10 +1,16 @@
+use std::time::Duration;
+
 use candid::Principal;
 use ic_cdk::*;
-use ic_websocket_cdk::ClientPrincipal;
 
-use crate::api::{
-    map_deployment, AccessControlService, ApiError, ApiResult, AppMessage, Deployment,
-    DeploymentId, DeploymentsService, GetDeploymentResponse, UserId,
+use crate::{
+    akash::sdl::SdlV3,
+    api::{
+        map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult,
+        Deployment, DeploymentId, DeploymentUpdate, DeploymentsService, GetDeploymentResponse,
+        UserId,
+    },
+    helpers::send_canister_update,
 };
 
 #[query]
@@ -39,7 +45,7 @@ async fn create_deployment(sdl: String) -> ApiResult<String> {
     let calling_principal = caller();
 
     DeploymentsEndpoints::default()
-        .create_deployment(&calling_principal, sdl)
+        .create_deployment(calling_principal, sdl)
         .await
         .map(|id| id.to_string())
         .into()
@@ -48,6 +54,7 @@ async fn create_deployment(sdl: String) -> ApiResult<String> {
 struct DeploymentsEndpoints {
     deployments_service: DeploymentsService,
     access_control_service: AccessControlService,
+    akash_service: AkashService,
 }
 
 impl Default for DeploymentsEndpoints {
@@ -55,6 +62,7 @@ impl Default for DeploymentsEndpoints {
         Self {
             deployments_service: DeploymentsService::default(),
             access_control_service: AccessControlService::default(),
+            akash_service: AkashService::default(),
         }
     }
 }
@@ -90,16 +98,46 @@ impl DeploymentsEndpoints {
 
     pub async fn create_deployment(
         &mut self,
-        calling_principal: &Principal,
+        calling_principal: Principal,
         sdl: String,
     ) -> Result<DeploymentId, ApiError> {
         self.access_control_service
-            .assert_principal_not_anonymous(calling_principal)?;
+            .assert_principal_not_anonymous(&calling_principal)?;
 
-        let user_id = UserId::new(*calling_principal);
+        let parsed_sdl = SdlV3::try_from_str(&sdl)
+            .map_err(|e| ApiError::invalid_argument(&format!("Invalid SDL {}", e)))?;
+
+        let user_id = UserId::new(calling_principal);
 
         let deployment = Deployment::new(sdl, user_id);
 
-        self.deployments_service.create_deployment(deployment).await
+        let deployment_id = self
+            .deployments_service
+            .insert_deployment(deployment)
+            .await?;
+
+        let config = self.akash_service.get_config();
+        ic_cdk_timers::set_timer(Duration::from_secs(0), move || {
+            ic_cdk::spawn(async move {
+                match AkashService::create_deployment(config, parsed_sdl).await {
+                    Ok((tx_hash, dseq, manifest)) => {
+                        print(&format!(
+                            "[create_deployment] tx_hash: {}, dseq: {}, manifest: {}",
+                            tx_hash, dseq, manifest
+                        ));
+
+                        send_canister_update(
+                            calling_principal,
+                            DeploymentUpdate::Created(tx_hash, dseq),
+                        );
+                    }
+                    Err(err) => {
+                        print(&format!("Error creating deployment: {}", err));
+                    }
+                }
+            });
+        });
+
+        Ok(deployment_id)
     }
 }
