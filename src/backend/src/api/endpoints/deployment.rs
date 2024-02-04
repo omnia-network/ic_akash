@@ -1,9 +1,10 @@
 use candid::Principal;
 use ic_cdk::*;
+use ic_websocket_cdk::ClientPrincipal;
 
 use crate::api::{
-    map_deployment, AccessControlService, ApiError, ApiResult, Deployment, DeploymentId,
-    DeploymentsService, GetDeploymentResponse, UserId,
+    map_deployment, AccessControlService, ApiError, ApiResult, AppMessage, Deployment,
+    DeploymentId, DeploymentsService, GetDeploymentResponse, UserId,
 };
 
 #[query]

@@ -28,3 +28,4 @@ serde_repr = "0.1.18"
 
 ic_tendermint_rpc = { path = "../ic_tendermint_rpc" }
 utils.workspace = true
+ic-websocket-cdk = "0.3.3"
