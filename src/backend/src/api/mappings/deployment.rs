@@ -20,3 +20,16 @@ impl From<Deployment> for MappedDeployment {
         }
     }
 }
+
+#[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
+pub struct GetDeploymentResponse {
+    id: String,
+    deployment: MappedDeployment,
+}
+
+pub fn map_deployment(deployment_id: String, deployment: Deployment) -> GetDeploymentResponse {
+    GetDeploymentResponse {
+        id: deployment_id.to_string(),
+        deployment: deployment.into(),
+    }
+}

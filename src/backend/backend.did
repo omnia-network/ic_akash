@@ -71,7 +71,18 @@ type Deployment = record {
 };
 
 type GetDeploymentResult = variant {
-    Ok : Deployment;
+    Ok : record {
+        id : DeploymentId;
+        deployment : Deployment;
+    };
+    Err : ApiError;
+};
+
+type GetDeploymentsResult = variant {
+    Ok : vec record {
+        id : DeploymentId;
+        deployment : Deployment;
+    };
     Err : ApiError;
 };
 
@@ -95,6 +106,7 @@ service : (bool) -> {
     "create_user" : () -> (CreateUserResult);
     "promote_user_to_admin" : (UserId) -> (EmptyResult);
     "get_deployment" : (text) -> (GetDeploymentResult) query;
+    "get_deployments" : () -> (GetDeploymentsResult) query;
     "create_deployment" : (text) -> (CreateDeploymentResult);
     // ----
 };

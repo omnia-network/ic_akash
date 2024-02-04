@@ -1,4 +1,4 @@
-use crate::api::{init_deployments, ApiError, Deployment, DeploymentId, DeploymentsMemory};
+use crate::api::{init_deployments, ApiError, Deployment, DeploymentId, DeploymentsMemory, UserId};
 
 pub struct DeploymentsService {
     deployments_memory: DeploymentsMemory,
@@ -17,6 +17,14 @@ impl DeploymentsService {
         self.deployments_memory
             .get(deployment_id)
             .ok_or_else(|| ApiError::not_found(&format!("Deployment {} not found", deployment_id)))
+    }
+
+    pub fn get_deployments_for_user(&self, user_id: &UserId) -> Vec<(DeploymentId, Deployment)> {
+        self.deployments_memory
+            .iter()
+            .filter(|(_, deployment)| deployment.user_owns_deployment(user_id))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
     }
 
     pub async fn create_deployment(
