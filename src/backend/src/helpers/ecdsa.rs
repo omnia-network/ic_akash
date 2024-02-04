@@ -1,12 +1,12 @@
+use candid::CandidType;
 use cosmrs::{crypto::PublicKey, proto::cosmos::crypto::secp256k1::PubKey};
 use ic_cdk::api::management_canister::ecdsa::{
     ecdsa_public_key, sign_with_ecdsa, EcdsaCurve, EcdsaKeyId, EcdsaPublicKeyArgument,
     SignWithEcdsaArgument,
 };
+use serde::Deserialize;
 
-use crate::config::get_config;
-
-#[derive(Clone)]
+#[derive(CandidType, Clone, Deserialize)]
 pub enum EcdsaKeyIds {
     #[allow(unused)]
     TestKeyLocalDevelopment,
@@ -30,13 +30,11 @@ impl EcdsaKeyIds {
     }
 }
 
-pub async fn get_public_key() -> Result<PublicKey, String> {
-    let config = get_config();
-
+pub async fn get_public_key(key: EcdsaKeyIds) -> Result<PublicKey, String> {
     let request = EcdsaPublicKeyArgument {
         canister_id: None,
         derivation_path: vec![],
-        key_id: config.ecdsa_key().to_key_id(),
+        key_id: key.to_key_id(),
     };
 
     let (res,) = ecdsa_public_key(request)
@@ -49,13 +47,11 @@ pub async fn get_public_key() -> Result<PublicKey, String> {
     .map_err(|e| e.to_string())
 }
 
-pub async fn sign(message_hash: Vec<u8>) -> Result<Vec<u8>, String> {
-    let config = get_config();
-
+pub async fn sign(message_hash: Vec<u8>, key: &EcdsaKeyIds) -> Result<Vec<u8>, String> {
     let request = SignWithEcdsaArgument {
         message_hash,
         derivation_path: vec![],
-        key_id: config.ecdsa_key().to_key_id(),
+        key_id: key.to_key_id(),
     };
 
     sign_with_ecdsa(request)

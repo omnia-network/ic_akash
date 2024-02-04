@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
-use cosmrs::{crypto::PublicKey, tx::Fee, Any, Coin, Denom};
+use cosmrs::{auth::BaseAccount, crypto::PublicKey, tx::Fee, Any, Coin, Denom};
+
+use crate::helpers::EcdsaKeyIds;
 
 use super::{
     address::get_account_id_from_public_key,
@@ -14,19 +16,18 @@ use super::{
 
 pub async fn create_deployment_tx(
     sender_public_key: &PublicKey,
-    height: u64,
-    sequence_number: u64,
     sdl: &SdlV3,
-    account_number: u64,
+    dseq: u64,
+    account: &BaseAccount,
+    ecdsa_key: &EcdsaKeyIds,
 ) -> Result<Vec<u8>, String> {
+    let account_id = get_account_id_from_public_key(sender_public_key)?.to_string();
     // see https://github.com/akash-network/cloudmos/blob/8a8098b7e371e801dad3aad81ef92b8dfe387e4c/deploy-web/src/utils/deploymentData/v1beta3.ts#L230
     let msg = MsgCreateDeployment {
         id: Some(DeploymentID {
-            owner: get_account_id_from_public_key(sender_public_key)
-                .unwrap()
-                .to_string(),
+            owner: account_id.clone(),
             // see https://github.com/akash-network/cloudmos/blob/8a8098b7e371e801dad3aad81ef92b8dfe387e4c/deploy-web/src/utils/deploymentData/v1beta3.ts#L248C27-L248C27
-            dseq: height, // obtained from /blocks/latest RPC call
+            dseq, // obtained from /blocks/latest RPC call
         }),
         groups: sdl.groups(),
         version: sdl.manifest_version(),
@@ -37,9 +38,7 @@ pub async fn create_deployment_tx(
             }
             .into(),
         ),
-        depositor: get_account_id_from_public_key(sender_public_key)
-            .unwrap()
-            .to_string(),
+        depositor: account_id,
     };
 
     let amount = Coin {
@@ -54,8 +53,9 @@ pub async fn create_deployment_tx(
         &sender_public_key,
         Any::from_msg(&msg).unwrap(),
         fee,
-        sequence_number,
-        account_number,
+        account.sequence,
+        account.account_number,
+        ecdsa_key,
     )
     .await?;
 
@@ -65,14 +65,12 @@ pub async fn create_deployment_tx(
 pub async fn close_deployment_tx(
     sender_public_key: &PublicKey,
     dseq: u64,
-    sequence_number: u64,
-    account_number: u64,
+    account: &BaseAccount,
+    ecdsa_key: &EcdsaKeyIds,
 ) -> Result<Vec<u8>, String> {
     let msg = MsgCloseDeployment {
         ID: Some(DeploymentID {
-            owner: get_account_id_from_public_key(sender_public_key)
-                .unwrap()
-                .to_string(),
+            owner: get_account_id_from_public_key(sender_public_key)?.to_string(),
             dseq,
         }),
     };
@@ -89,8 +87,9 @@ pub async fn close_deployment_tx(
         &sender_public_key,
         Any::from_msg(&msg).unwrap(),
         fee,
-        sequence_number,
-        account_number,
+        account.sequence,
+        account.account_number,
+        ecdsa_key,
     )
     .await
 }

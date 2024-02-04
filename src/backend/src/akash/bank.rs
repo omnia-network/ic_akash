@@ -1,5 +1,5 @@
-use crate::config::get_config;
 use cosmrs::{
+    auth::BaseAccount,
     bank::MsgSend,
     crypto::PublicKey,
     proto::cosmos::{
@@ -12,24 +12,24 @@ use cosmrs::{
 use prost::Message;
 use std::str::FromStr;
 
+use crate::helpers::EcdsaKeyIds;
+
 use super::{address::get_account_id_from_public_key, tx::create_tx};
 
 pub async fn create_send_tx(
     sender_public_key: &PublicKey,
-    to_address: String,
+    recipient_account_id: AccountId,
     amount: u64,
-    sequence_number: u64,
-    account_number: u64,
+    account: &BaseAccount,
+    ecdsa_key: &EcdsaKeyIds,
 ) -> Result<Vec<u8>, String> {
-    let recipient_account_id = AccountId::from_str(to_address.as_str()).unwrap();
-
     let amount = Coin {
         amount: amount.into(),
         denom: Denom::from_str("uakt").unwrap(),
     };
 
     let msg_send = MsgSend {
-        from_address: get_account_id_from_public_key(&sender_public_key).unwrap(),
+        from_address: get_account_id_from_public_key(&sender_public_key)?,
         to_address: recipient_account_id,
         amount: vec![amount.clone()],
     };
@@ -47,25 +47,22 @@ pub async fn create_send_tx(
         &sender_public_key,
         msg_send.to_any().unwrap(),
         fee,
-        sequence_number,
-        account_number,
+        account.sequence,
+        account.account_number,
+        ecdsa_key,
     )
     .await
 }
 
-pub async fn get_balance(public_key: &PublicKey) -> Result<CoinProto, String> {
-    let config = get_config();
-
+pub async fn get_balance(rpc_url: String, public_key: &PublicKey) -> Result<CoinProto, String> {
     let query = QueryBalanceRequest {
-        address: get_account_id_from_public_key(public_key)
-            .unwrap()
-            .to_string(),
+        address: get_account_id_from_public_key(public_key)?.to_string(),
 
         denom: String::from("uakt"),
     };
 
     let abci_res = ic_tendermint_rpc::abci_query(
-        config.tendermint_rpc_url(),
+        rpc_url,
         Some(String::from("/cosmos.bank.v1beta1.Query/Balance")),
         query.encode_to_vec(),
         None,

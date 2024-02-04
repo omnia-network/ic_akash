@@ -9,7 +9,7 @@ use cosmrs::{
 };
 use utils::sha256;
 
-use crate::ecdsa::{self};
+use crate::helpers::{sign, EcdsaKeyIds};
 
 /// from https://docs.rs/cosmrs/latest/cosmrs/tx/index.html#usage
 ///
@@ -75,6 +75,7 @@ pub async fn create_tx(
     fee: Fee,
     sequence_number: u64,
     account_number: u64,
+    ecdsa_key: &EcdsaKeyIds,
 ) -> Result<Vec<u8>, String> {
     // Transaction metadata: chain, account, sequence, gas, fee, timeout, and memo.
     // from:
@@ -108,7 +109,7 @@ pub async fn create_tx(
         SignDoc::new(&tx_body, &auth_info, &chain_id, account_number).map_err(|e| e.to_string())?;
 
     // Sign the "sign doc" with the sender's private key, producing a signed raw transaction.
-    let tx_signed = sign_tx(sign_doc).await?;
+    let tx_signed = sign_tx(sign_doc, ecdsa_key).await?;
 
     // Serialize the raw transaction as bytes (i.e. `Vec<u8>`).
     let tx_bytes = tx_signed.to_bytes().map_err(|e| e.to_string())?;
@@ -128,11 +129,11 @@ pub async fn create_tx(
 }
 
 /// adapted form https://docs.rs/cosmrs/latest/cosmrs/tx/struct.SignDoc.html#method.sign
-async fn sign_tx(sign_doc: SignDoc) -> Result<tx::Raw, String> {
+async fn sign_tx(sign_doc: SignDoc, ecdsa_key: &EcdsaKeyIds) -> Result<tx::Raw, String> {
     let sign_doc_bytes = sign_doc.clone().into_bytes().map_err(|e| e.to_string())?;
     let hash = sha256(&sign_doc_bytes);
 
-    let signature = ecdsa::sign(hash.to_vec()).await.unwrap();
+    let signature = sign(hash.to_vec(), ecdsa_key).await.unwrap();
 
     Ok(TxRaw {
         body_bytes: sign_doc.body_bytes,

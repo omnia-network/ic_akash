@@ -1,10 +1,13 @@
 use std::str::FromStr;
 
 use cosmrs::{
+    auth::BaseAccount,
     crypto::PublicKey,
     tx::{Fee, Msg},
     AccountId, Coin, Denom, ErrorReport,
 };
+
+use crate::helpers::EcdsaKeyIds;
 
 use super::{
     address::get_account_id_from_public_key,
@@ -68,11 +71,11 @@ pub async fn create_certificate_tx(
     sender_public_key: &PublicKey,
     cert_pem: Vec<u8>,
     pub_key_pem: Vec<u8>,
-    sequence_number: u64,
-    account_number: u64,
+    account: &BaseAccount,
+    ecdsa_key: &EcdsaKeyIds,
 ) -> Result<Vec<u8>, String> {
     let msg = MsgCreateCertificate {
-        owner: get_account_id_from_public_key(sender_public_key).unwrap(),
+        owner: get_account_id_from_public_key(sender_public_key)?,
         cert: cert_pem,
         pubkey: pub_key_pem,
     };
@@ -89,8 +92,9 @@ pub async fn create_certificate_tx(
         &sender_public_key,
         msg.to_any().unwrap(),
         fee,
-        sequence_number,
-        account_number,
+        account.sequence,
+        account.account_number,
+        ecdsa_key,
     )
     .await
 }

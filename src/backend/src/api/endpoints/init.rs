@@ -1,35 +1,48 @@
 use candid::Principal;
 use ic_cdk::*;
 
-use crate::api::{ApiError, User, UserId, UserRole, UsersService};
+use crate::{
+    api::{ApiError, Config, ConfigService, User, UserId, UserRole, UsersService},
+    helpers::EcdsaKeyIds,
+};
 
-// TODO: enable this init and remove the root one
-// #[init]
-// fn init() {
-//     let calling_principal = caller();
+#[init]
+fn init(is_mainnet: bool) {
+    let calling_principal = caller();
+    let mut init = Init::default();
 
-//     if let Err(err) = Init::default().init_admin(calling_principal) {
-//         trap(&format!("Error initializing admin: {:?}", err));
-//     }
-// }
+    if let Err(err) = init.init_admin(calling_principal) {
+        trap(&format!("Error initializing admin: {:?}", err));
+    }
+
+    let config = if is_mainnet {
+        Config::new_mainnet(EcdsaKeyIds::TestKey1, "https://rpc.akashnet.net")
+    } else {
+        Config::default()
+    };
+
+    init.init_config(config);
+}
 
 struct Init {
     users_service: UsersService,
+    config_service: ConfigService,
 }
 
 impl Default for Init {
     fn default() -> Self {
-        Self::new(UsersService::default())
+        Self {
+            users_service: UsersService::default(),
+            config_service: ConfigService::default(),
+        }
     }
 }
 
 impl Init {
-    pub fn new(users_service: UsersService) -> Self {
-        Self { users_service }
+    pub fn init_config(&mut self, config: Config) {
+        self.config_service.set_config(config);
     }
-}
 
-impl Init {
     pub fn init_admin(&mut self, principal: Principal) -> Result<UserId, ApiError> {
         let user = User::new(UserRole::Admin);
 

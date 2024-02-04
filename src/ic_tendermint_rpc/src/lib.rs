@@ -131,25 +131,23 @@ pub async fn broadcast_tx_sync(
             response.status
         ));
     }
-    match is_mainnet {
-        true => {
-            // when dpeloyed on mainnet the response should eb 'Err' and contain 'tx already exists in cache' even if the transaction is accepted by the Akash Network
-            // this is due to the majority of replicas sending a duplicate request to the Network and thus receiving the error as a response
-            if let Err(e) = <TxSyncRequest as Request>::Response::from_string(&response.body) {
-                if e.contains("tx already exists in cache") {
-                    // the transaction has been processed
-                    Ok(hex::encode(&sha256(&tx_raw)))
-                } else {
-                    Err(e)
-                }
+
+    if is_mainnet {
+        // when dpeloyed on mainnet the response should eb 'Err' and contain 'tx already exists in cache' even if the transaction is accepted by the Akash Network
+        // this is due to the majority of replicas sending a duplicate request to the Network and thus receiving the error as a response
+        if let Err(e) = <TxSyncRequest as Request>::Response::from_string(&response.body) {
+            if e.contains("tx already exists in cache") {
+                // the transaction has been processed
+                Ok(hex::encode(&sha256(&tx_raw)))
             } else {
-                Err("response should contain 'tx already exists in cache'".to_string())
+                Err(e)
             }
+        } else {
+            Err("response should contain 'tx already exists in cache'".to_string())
         }
-        false => {
-            // when testing locally only one request is made and therefore the response is 'Ok' if the transaction is accepted by the Akash Network
-            Ok(hex::encode(&sha256(&tx_raw)))
-        }
+    } else {
+        // when testing locally only one request is made and therefore the response is 'Ok' if the transaction is accepted by the Akash Network
+        Ok(hex::encode(&sha256(&tx_raw)))
     }
 }
 

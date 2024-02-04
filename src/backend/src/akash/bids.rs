@@ -1,27 +1,19 @@
-use cosmrs::crypto::PublicKey;
+use cosmrs::AccountId;
 use prost::Message;
 
-use crate::config::get_config;
-
-use super::{
-    address::get_account_id_from_public_key,
-    proto::market::{
-        bid::BidFilters,
-        query::{QueryBidResponse, QueryBidsRequest, QueryBidsResponse},
-    },
+use super::proto::market::{
+    bid::BidFilters,
+    query::{QueryBidResponse, QueryBidsRequest, QueryBidsResponse},
 };
 
 pub async fn fetch_bids(
-    sender_public_key: &PublicKey,
+    rpc_url: String,
+    account_id: &AccountId,
     dseq: u64,
 ) -> Result<Vec<QueryBidResponse>, String> {
-    let config = get_config();
-
     let query = QueryBidsRequest {
         filters: Some(BidFilters {
-            owner: get_account_id_from_public_key(sender_public_key)
-                .unwrap()
-                .to_string(),
+            owner: account_id.to_string(),
             DSeq: dseq, // same as in the CreateDeployment transaction
             GSeq: 0,
             OSeq: 0,
@@ -32,7 +24,7 @@ pub async fn fetch_bids(
     };
 
     let abci_res = ic_tendermint_rpc::abci_query(
-        config.tendermint_rpc_url(),
+        rpc_url,
         Some(String::from("/akash.market.v1beta4.Query/Bids")),
         query.encode_to_vec(),
         None,
