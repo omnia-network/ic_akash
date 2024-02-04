@@ -24,11 +24,18 @@ type ApiError = record {
     message : text;
 };
 
-type UserId = record { principal };
+type TimestampNs = nat64;
 
-type User = variant {
+type UserId = principal;
+
+type UserRole = variant {
     Admin;
     Deployer;
+};
+
+type User = record {
+    role : UserRole;
+    created_at : TimestampNs;
 };
 
 type GetUserResult = variant {
@@ -59,6 +66,6 @@ service : (bool) -> {
     // ----
     "get_user" : () -> (GetUserResult) query;
     "create_user" : () -> (CreateUserResult);
-    "promote_user_to_admin" : (principal) -> (EmptyResult);
+    "promote_user_to_admin" : (UserId) -> (EmptyResult);
     // ----
 };

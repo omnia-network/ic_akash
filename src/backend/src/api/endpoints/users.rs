@@ -13,11 +13,12 @@ fn get_user() -> ApiResult<User> {
 }
 
 #[update]
-fn create_user() -> ApiResult<UserId> {
+fn create_user() -> ApiResult<Principal> {
     let calling_principal = caller();
 
     UsersEndpoints::default()
         .create_user(calling_principal)
+        .map(|user_id| user_id.principal())
         .into()
 }
 
