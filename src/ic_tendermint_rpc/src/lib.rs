@@ -23,6 +23,26 @@ use response::Response;
 use tendermint::{block::Height, hash::Algorithm, Hash};
 use utils::sha256;
 
+/// assume requests are at most 1kb
+const REQUEST_SIZE: u128 = 1_000;
+/// refuse responses that return more than 10kb
+const MAX_RESPONSE_SIZE: u64 = 10_000;
+/// assume deployment on an application subnet
+const SUBNET_SIZE: u128 = 13;
+/// cycles cost for each HTTP outcall
+const PER_CALL_COST: u128 = (3_000_000 + 60_000 * SUBNET_SIZE) * SUBNET_SIZE;
+/// cycles cost for each byte in the request
+const PER_REQUEST_BYTES_COST: u128 = 400 * SUBNET_SIZE;
+/// cycles cost for each byte in the response
+const PER_RESPONSE_BYTES_COST: u128 = 800 * SUBNET_SIZE;
+// previous calculations according to: https://internetcomputer.org/docs/current/developer-docs/gas-cost#special-features
+
+/// price calculated according to: https://internetcomputer.org/docs/current/developer-docs/integrations/https-outcalls/https-outcalls-how-it-works#pricing
+const MAX_CYCLES_PER_OUTCALL: u128 = (PER_CALL_COST
+    + PER_REQUEST_BYTES_COST * REQUEST_SIZE
+    + PER_RESPONSE_BYTES_COST * MAX_RESPONSE_SIZE as u128)
+    * (SUBNET_SIZE / 13);
+
 // TODO: fix deserialization
 // pub async fn latest_block(url: String) -> Result<<BlockRequest as Request>::Response, String> {
 //     let request = BlockRequest::default();
@@ -54,7 +74,16 @@ pub async fn abci_query(
     };
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
-    let response = make_rpc_request(url, HttpMethod::POST, Some(request_body), None).await?;
+    let response = make_rpc_request(
+        url,
+        HttpMethod::POST,
+        Some(request_body),
+        Some(TransformContext::from_name(
+            "abci_transform".to_string(),
+            vec![],
+        )),
+    )
+    .await?;
     <AbciQueryRequest as Request>::Response::from_string(&response.body)
 }
 
@@ -137,15 +166,14 @@ async fn make_rpc_request(
 
     let request = CanisterHttpRequestArgument {
         url,
-        max_response_bytes: None, //optional for request
+        max_response_bytes: Some(MAX_RESPONSE_SIZE),
         method,
         headers: request_headers,
         body: request_body,
         transform,
     };
 
-    // TODO: configure the amount of cycles properly
-    match http_request(request, 21_000_000_000).await {
+    match http_request(request, MAX_CYCLES_PER_OUTCALL).await {
         Ok((response,)) => Ok(response),
         Err((r, m)) => Err(format!(
             "The http_request resulted into error. RejectionCode: {r:?}, Error: {m}"

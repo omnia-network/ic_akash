@@ -21,7 +21,7 @@ mod ecdsa;
 #[init]
 fn init(is_mainnet: bool) {
     let config = match is_mainnet {
-        true => Config::new(true, EcdsaKeyIds::TestKey1, "rpc.akashnet.net"),
+        true => Config::new(true, EcdsaKeyIds::TestKey1, "https://rpc.akashnet.net"),
         false => Config::default(),
     };
 
