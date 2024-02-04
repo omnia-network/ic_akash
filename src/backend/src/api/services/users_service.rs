@@ -8,13 +8,9 @@ pub struct UsersService {
 
 impl Default for UsersService {
     fn default() -> Self {
-        Self::new(init_users())
-    }
-}
-
-impl UsersService {
-    fn new(users_memory: UsersMemory) -> Self {
-        Self { users_memory }
+        Self {
+            users_memory: init_users(),
+        }
     }
 }
 

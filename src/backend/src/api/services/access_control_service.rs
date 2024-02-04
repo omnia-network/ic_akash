@@ -8,13 +8,9 @@ pub struct AccessControlService {
 
 impl Default for AccessControlService {
     fn default() -> Self {
-        Self::new(init_users())
-    }
-}
-
-impl AccessControlService {
-    pub fn new(users_memory: UsersMemory) -> Self {
-        Self { users_memory }
+        Self {
+            users_memory: init_users(),
+        }
     }
 }
 

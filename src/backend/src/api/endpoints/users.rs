@@ -37,15 +37,9 @@ struct UsersEndpoints {
 
 impl Default for UsersEndpoints {
     fn default() -> Self {
-        Self::new(UsersService::default(), AccessControlService::default())
-    }
-}
-
-impl UsersEndpoints {
-    pub fn new(users_service: UsersService, access_control_service: AccessControlService) -> Self {
         Self {
-            users_service,
-            access_control_service,
+            users_service: UsersService::default(),
+            access_control_service: AccessControlService::default(),
         }
     }
 }
