@@ -13,13 +13,96 @@ type DeploymentResult = variant {
     Err : text;
 };
 
+// ----
+type ApiError = record {
+    code : nat16;
+    message : text;
+};
+
+type TimestampNs = nat64;
+
+type UserId = principal;
+
+type UserRole = variant {
+    Admin;
+    Deployer;
+};
+
+type User = record {
+    role : UserRole;
+    created_at : TimestampNs;
+};
+
+type GetUserResult = variant {
+    Ok : User;
+    Err : ApiError;
+};
+
+type CreateUserResult = variant {
+    Ok : UserId;
+    Err : ApiError;
+};
+
+type EmptyResult = variant {
+    Ok;
+    Err : ApiError;
+};
+
+type DeploymentId = text;
+
+type DeploymentState = variant {
+    Initialized;
+    DeploymentCreated;
+    LeaseCreated;
+    Active;
+    Closed;
+};
+
+type Deployment = record {
+    sdl : text;
+    user_id : UserId;
+    created_at : TimestampNs;
+    state : DeploymentState;
+};
+
+type GetDeploymentResult = variant {
+    Ok : record {
+        id : DeploymentId;
+        deployment : Deployment;
+    };
+    Err : ApiError;
+};
+
+type GetDeploymentsResult = variant {
+    Ok : vec record {
+        id : DeploymentId;
+        deployment : Deployment;
+    };
+    Err : ApiError;
+};
+
+type CreateDeploymentResult = variant {
+    Ok : DeploymentId;
+    Err : ApiError;
+};
+// ----
+
 service : (bool) -> {
     "address" : () -> (StringResult);
     "balance" : () -> (StringResult);
     "send" : (text, nat64) -> (GenericResult);
     "create_certificate" : (text, text) -> (GenericResult);
-    "create_deployment" : () -> (DeploymentResult);
+    // "create_deployment" : () -> (DeploymentResult);
     "check_tx" : (text) -> (GenericResult);
     "create_lease" : (nat64) -> (StringResult);
     "close_deployment" : (nat64) -> (GenericResult);
+
+    // ----
+    "get_user" : () -> (GetUserResult) query;
+    "create_user" : () -> (CreateUserResult);
+    "promote_user_to_admin" : (UserId) -> (EmptyResult);
+    "get_deployment" : (text) -> (GetDeploymentResult) query;
+    "get_deployments" : () -> (GetDeploymentsResult) query;
+    "create_deployment" : (text) -> (CreateDeploymentResult);
+    // ----
 };
