@@ -70,6 +70,7 @@ impl DeploymentsService {
         }
 
         deployment.update_state(deployment_update);
+        self.deployments_memory.insert(deployment_id, deployment);
 
         Ok(())
     }

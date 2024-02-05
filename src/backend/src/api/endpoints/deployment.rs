@@ -2,8 +2,8 @@ use crate::{
     akash::{address::get_account_id_from_public_key, bids::fetch_bids, sdl::SdlV3},
     api::{
         map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult,
-        Deployment, DeploymentId, DeploymentUpdate, DeploymentsService, GetDeploymentResponse,
-        UserId,
+        Deployment, DeploymentId, DeploymentUpdate, DeploymentUpdateWsMessage, DeploymentsService,
+        GetDeploymentResponse, UserId,
     },
     fixtures::example_sdl,
     helpers::send_canister_update,
@@ -171,7 +171,8 @@ async fn handle_create_deployment(
         .update_deployment(deployment_id, deployment_update.clone())
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
 
-    send_canister_update(calling_principal, deployment_update);
+    let ws_message = DeploymentUpdateWsMessage::new(deployment_id.to_string(), deployment_update);
+    send_canister_update(calling_principal, ws_message);
 
     Ok(dseq)
 }
@@ -245,7 +246,8 @@ async fn handle_create_lease(
         .update_deployment(deployment_id, deployment_update.clone())
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
 
-    send_canister_update(calling_principal, deployment_update);
+    let ws_message = DeploymentUpdateWsMessage::new(deployment_id.to_string(), deployment_update);
+    send_canister_update(calling_principal, ws_message);
 
     Ok((tx_hash, deployment_url))
 }

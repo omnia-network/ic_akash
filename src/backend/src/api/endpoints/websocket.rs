@@ -7,7 +7,7 @@ use ic_websocket_cdk::{
     WsHandlers, WsInitParams,
 };
 
-use crate::{api::DeploymentUpdate, helpers::send_canister_update};
+use crate::api::DeploymentUpdate;
 
 pub fn init_ic_websocket() {
     let handlers = WsHandlers {
@@ -49,8 +49,6 @@ fn ws_get_messages(args: CanisterWsGetMessagesArguments) -> CanisterWsGetMessage
 
 fn on_open(args: OnOpenCallbackArgs) {
     print(format!("Client {} connected", args.client_principal));
-
-    send_canister_update(args.client_principal, DeploymentUpdate::Initialized);
 }
 
 fn on_close(args: OnCloseCallbackArgs) {

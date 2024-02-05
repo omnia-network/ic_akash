@@ -1,4 +1,4 @@
-pub mod endpoints;
+mod endpoints;
 mod mappings;
 mod memories;
 mod services;
