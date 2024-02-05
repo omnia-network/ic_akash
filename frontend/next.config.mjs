@@ -22,7 +22,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  staticPageGenerationTimeout: 10000
+  staticPageGenerationTimeout: 10000,
 };
 
 export default nextConfig;

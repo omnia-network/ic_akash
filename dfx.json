@@ -4,7 +4,10 @@
       "candid": "src/backend/backend.did",
       "package": "backend",
       "type": "rust",
-      "gzip": true
+      "gzip": true,
+      "declarations": {
+        "output": "frontend/declarations/"
+      }
     },
     "frontend": {
       "dependencies": [

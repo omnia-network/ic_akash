@@ -9,6 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@dfinity/agent": "0.20",
+    "@dfinity/auth-client": "0.20",
+    "@dfinity/candid": "0.20",
+    "@dfinity/principal": "0.20",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "lucide-react": "^0.321.0",
