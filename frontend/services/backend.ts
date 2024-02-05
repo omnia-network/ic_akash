@@ -1,12 +1,13 @@
-import { Actor, HttpAgent } from "@dfinity/agent";
+import { Actor, HttpAgent, Identity } from "@dfinity/agent";
 // @ts-ignore
 import { type _SERVICE, idlFactory } from "@/declarations/backend.did.js";
 
 const canisterId = process.env.CANISTER_ID_BACKEND!;
 
-const createActor = () => {
+export const createBackendActor = (identity: Identity) => {
   const agent = new HttpAgent({
     host: process.env.NEXT_PUBLIC_IC_HOST,
+    identity,
   });
 
   if (process.env.DFX_NETWORK !== "ic") {
@@ -23,6 +24,3 @@ const createActor = () => {
     canisterId,
   });
 }
-
-
-export const backend = createActor();
