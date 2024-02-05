@@ -1,7 +1,7 @@
 "use client";
 
 import { ThemeProvider } from "@/components/theme-provider";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { IcProvider } from "@/contexts/IcContext";
 
 export function Providers({ children }: Readonly<{
   children: React.ReactNode;
@@ -13,7 +13,7 @@ export function Providers({ children }: Readonly<{
       enableSystem={false}
       disableTransitionOnChange
     >
-      <AuthProvider>{children}</AuthProvider>
+      <IcProvider>{children}</IcProvider>
     </ThemeProvider>
   );
 }
