@@ -1,7 +1,5 @@
-use std::time::Duration;
-
 use crate::{
-    akash::sdl::SdlV3,
+    akash::{address::get_account_id_from_public_key, bids::fetch_bids, sdl::SdlV3},
     api::{
         map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult,
         Deployment, DeploymentId, DeploymentState, DeploymentUpdate, DeploymentsService,
@@ -12,6 +10,7 @@ use crate::{
 };
 use candid::Principal;
 use ic_cdk::*;
+use std::time::Duration;
 
 #[query]
 fn get_deployment(deployment_id: String) -> ApiResult<GetDeploymentResponse> {
@@ -122,14 +121,9 @@ impl DeploymentsEndpoints {
         ic_cdk_timers::set_timer(Duration::from_secs(0), move || {
             ic_cdk::spawn(async move {
                 if let Err(e) =
-                    handle_create_deployment(calling_principal, parsed_sdl, deployment_id).await
+                    handle_deployment(calling_principal, parsed_sdl, deployment_id).await
                 {
-                    let mut deployment_service = DeploymentsService::default();
-                    deployment_service
-                        .set_failed_deployment(deployment_id)
-                        .expect("Failed to set deployment to failed");
-
-                    print(&format!("Error creating deployment: {:?}", e));
+                    print(&format!("Error handling deployment: {:?}", e));
                 }
             });
         });
@@ -138,11 +132,31 @@ impl DeploymentsEndpoints {
     }
 }
 
-async fn handle_create_deployment(
+async fn handle_deployment(
     calling_principal: Principal,
     parsed_sdl: SdlV3,
     deployment_id: DeploymentId,
 ) -> Result<(), ApiError> {
+    let mut deployment_service = DeploymentsService::default();
+    let dseq = handle_create_deployment(calling_principal, parsed_sdl, deployment_id)
+        .await
+        .map_err(|e| {
+            deployment_service
+                .set_failed_deployment(deployment_id)
+                .expect("Failed to set deployment to failed");
+            e
+        })?;
+
+    fetch_bids_and_create_lease(calling_principal, dseq, deployment_id);
+
+    Ok(())
+}
+
+async fn handle_create_deployment(
+    calling_principal: Principal,
+    parsed_sdl: SdlV3,
+    deployment_id: DeploymentId,
+) -> Result<u64, ApiError> {
     let akash_service = AkashService::default();
     let mut deployment_service = DeploymentsService::default();
 
@@ -157,7 +171,78 @@ async fn handle_create_deployment(
 
     assert_eq!(new_state, DeploymentState::DeploymentCreated);
 
-    send_canister_update(calling_principal, DeploymentUpdate::Created(tx_hash, dseq));
+    send_canister_update(
+        calling_principal,
+        DeploymentUpdate::DeploymentCreated(tx_hash, dseq),
+    );
 
-    Ok(())
+    Ok(dseq)
+}
+
+fn fetch_bids_and_create_lease(
+    calling_principal: Principal,
+    dseq: u64,
+    deployment_id: DeploymentId,
+) {
+    ic_cdk_timers::set_timer(Duration::from_secs(1), move || {
+        ic_cdk::spawn(async move {
+            let mut deployment_service = DeploymentsService::default();
+
+            let akash_service = AkashService::default();
+            let config = akash_service.get_config();
+            let public_key = config.public_key().await.expect("failed to get public key");
+            let account_id =
+                get_account_id_from_public_key(&public_key).expect("failed to get account id");
+            let rpc_url = config.tendermint_rpc_url();
+
+            print(&format!("Fetching bids for dseq: {}", dseq));
+
+            let bids = fetch_bids(rpc_url.clone(), &account_id, dseq)
+                .await
+                .expect("failed to fetch bids");
+
+            if bids.len() > 0 {
+                let (_tx_hash, deployment_url) =
+                    handle_create_lease(calling_principal, dseq, deployment_id)
+                        .await
+                        .map_err(|e| {
+                            deployment_service
+                                .set_failed_deployment(deployment_id)
+                                .expect("Failed to set deployment to failed");
+                            e
+                        })
+                        .expect("failed to handle create lease");
+
+                print(&format!("Deployment URL: {}", deployment_url));
+            } else {
+                fetch_bids_and_create_lease(calling_principal, dseq, deployment_id);
+            }
+        })
+    });
+}
+async fn handle_create_lease(
+    calling_principal: Principal,
+    dseq: u64,
+    deployment_id: DeploymentId,
+) -> Result<(String, String), ApiError> {
+    let akash_service = AkashService::default();
+    let mut deployment_service = DeploymentsService::default();
+
+    let (tx_hash, deployment_url) = akash_service
+        .create_lease(dseq)
+        .await
+        .map_err(|e| ApiError::internal(&format!("Error creating lease: {}", e)))?;
+
+    let new_state = deployment_service
+        .update_deployment(deployment_id)
+        .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
+
+    assert_eq!(new_state, DeploymentState::LeaseCreated);
+
+    send_canister_update(
+        calling_principal,
+        DeploymentUpdate::LeaseCreated(deployment_url.clone()),
+    );
+
+    Ok((tx_hash, deployment_url))
 }

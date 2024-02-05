@@ -1,9 +1,3 @@
-use std::str::FromStr;
-
-use cosmrs::AccountId;
-use ic_cdk::print;
-use utils::base64_decode;
-
 use crate::{
     akash::{
         address::get_account_id_from_public_key,
@@ -18,6 +12,10 @@ use crate::{
     },
     api::{init_config, Config, ConfigMemory},
 };
+use cosmrs::AccountId;
+use ic_cdk::print;
+use std::str::FromStr;
+use utils::base64_decode;
 
 pub struct AkashService {
     config_memory: ConfigMemory,
@@ -152,8 +150,12 @@ impl AkashService {
 
         let bids = fetch_bids(rpc_url.clone(), &account_id, dseq).await?;
         print(format!("[create_lease] bids: {:?}", bids));
+
         // TODO: take the "best" bid
-        let bid = bids[1].bid.clone().unwrap();
+        // SAFETY:
+        // 'create_lease' is called by the 'handle_create_lease' function which is itself called by the 'fetch_bids' function
+        // the latter makes sure that there is at least one bid before calling 'create_lease' so accessing the first bid is safe
+        let bid = bids[0].bid.clone().unwrap();
         let bid_id = bid.bid_id.unwrap();
 
         let tx_raw =

@@ -1,11 +1,12 @@
 use candid::{encode_one, CandidType};
 use serde::{Deserialize, Serialize};
 
-// this is the application message, you can change it as you wish
+/// Deployment update sent to the client via IC WebSocket
 #[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum DeploymentUpdate {
     Initialized,
-    Created(String, u64),
+    DeploymentCreated(String, u64),
+    LeaseCreated(String),
 }
 
 impl DeploymentUpdate {
