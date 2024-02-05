@@ -36,7 +36,9 @@ export const IcProvider: React.FC<IcProviderProps> = ({ children }) => {
 
     setIsLoading(true);
 
-    const authClient = await AuthClient.create();
+    const authClient = await AuthClient.create({
+      keyType: "ECDSA",
+    });
 
     return new Promise<void>((resolve, reject) => {
       authClient.login({
