@@ -1,14 +1,14 @@
-use crate::api::AkashService;
+use crate::api::{AkashService, ApiError, ApiResult};
 use ic_cdk::update;
 
 #[update]
-async fn address() -> Result<String, String> {
-    AkashEndpoints::default().address().await
+async fn address() -> ApiResult<String> {
+    AkashEndpoints::default().address().await.into()
 }
 
 #[update]
-async fn balance() -> Result<String, String> {
-    AkashEndpoints::default().balance().await
+async fn balance() -> ApiResult<String> {
+    AkashEndpoints::default().balance().await.into()
 }
 
 struct AkashEndpoints {
@@ -22,11 +22,17 @@ impl AkashEndpoints {
         }
     }
 
-    pub async fn address(&self) -> Result<String, String> {
-        self.akash_service.address().await
+    pub async fn address(&self) -> Result<String, ApiError> {
+        self.akash_service
+            .address()
+            .await
+            .map_err(|e| ApiError::internal(&format!("failed to get address: {}", e)))
     }
 
-    pub async fn balance(&self) -> Result<String, String> {
-        self.akash_service.balance().await
+    pub async fn balance(&self) -> Result<String, ApiError> {
+        self.akash_service
+            .balance()
+            .await
+            .map_err(|e| ApiError::internal(&format!("failed to get balance: {}", e)))
     }
 }
