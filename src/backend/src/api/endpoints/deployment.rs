@@ -2,8 +2,8 @@ use crate::{
     akash::{address::get_account_id_from_public_key, bids::fetch_bids, sdl::SdlV3},
     api::{
         map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult,
-        Deployment, DeploymentId, DeploymentState, DeploymentUpdate, DeploymentsService,
-        GetDeploymentResponse, UserId,
+        Deployment, DeploymentId, DeploymentUpdate, DeploymentsService, GetDeploymentResponse,
+        UserId,
     },
     fixtures::example_sdl,
     helpers::send_canister_update,
@@ -165,22 +165,19 @@ async fn handle_create_deployment(
         .await
         .map_err(|e| ApiError::internal(&format!("Error creating deployment: {}", e)))?;
 
-    let new_state = deployment_service
-        .update_deployment(deployment_id)
+    let deployment_update = DeploymentUpdate::DeploymentCreated(tx_hash, dseq);
+
+    deployment_service
+        .update_deployment(deployment_id, deployment_update.clone())
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
 
-    assert_eq!(new_state, DeploymentState::DeploymentCreated);
-
-    send_canister_update(
-        calling_principal,
-        DeploymentUpdate::DeploymentCreated(tx_hash, dseq),
-    );
+    send_canister_update(calling_principal, deployment_update);
 
     Ok(dseq)
 }
 
 fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: DeploymentId) {
-    ic_cdk_timers::set_timer(Duration::from_secs(1), move || {
+    ic_cdk_timers::set_timer(Duration::from_secs(3), move || {
         ic_cdk::spawn(async move {
             match try_fetch_bids_and_create_lease(calling_principal, dseq, deployment_id).await {
                 Ok(Some((_tx_hash, deployment_url))) => {
@@ -243,16 +240,12 @@ async fn handle_create_lease(
         .await
         .map_err(|e| ApiError::internal(&format!("Error creating lease: {}", e)))?;
 
-    let new_state = deployment_service
-        .update_deployment(deployment_id)
+    let deployment_update = DeploymentUpdate::LeaseCreated(deployment_url.clone());
+    deployment_service
+        .update_deployment(deployment_id, deployment_update.clone())
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
 
-    assert_eq!(new_state, DeploymentState::LeaseCreated);
-
-    send_canister_update(
-        calling_principal,
-        DeploymentUpdate::LeaseCreated(deployment_url.clone()),
-    );
+    send_canister_update(calling_principal, deployment_update);
 
     Ok((tx_hash, deployment_url))
 }

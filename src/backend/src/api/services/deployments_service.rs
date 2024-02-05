@@ -1,5 +1,5 @@
 use crate::api::{
-    init_deployments, ApiError, Deployment, DeploymentId, DeploymentState, DeploymentsMemory,
+    init_deployments, ApiError, Deployment, DeploymentId, DeploymentUpdate, DeploymentsMemory,
     UserId,
 };
 
@@ -49,47 +49,36 @@ impl DeploymentsService {
     pub fn update_deployment(
         &mut self,
         deployment_id: DeploymentId,
-    ) -> Result<DeploymentState, ApiError> {
+        deployment_update: DeploymentUpdate,
+    ) -> Result<(), ApiError> {
         let mut deployment = self.deployments_memory.get(&deployment_id).ok_or_else(|| {
             ApiError::internal(&format!("Deployment {} not found", deployment_id))
         })?;
-        match deployment.state() {
-            DeploymentState::Initialized => {
-                let new_deployment_state = DeploymentState::DeploymentCreated;
-                deployment.update_state(new_deployment_state.clone());
-                self.deployments_memory.insert(deployment_id, deployment);
-                Ok(new_deployment_state)
-            }
-            DeploymentState::DeploymentCreated => {
-                let new_deployment_state = DeploymentState::LeaseCreated;
-                deployment.update_state(new_deployment_state.clone());
-                self.deployments_memory.insert(deployment_id, deployment);
-                Ok(new_deployment_state)
-            }
-            DeploymentState::LeaseCreated => {
-                let new_deployment_state = DeploymentState::Active;
-                deployment.update_state(new_deployment_state.clone());
-                self.deployments_memory.insert(deployment_id, deployment);
-                Ok(new_deployment_state)
-            }
-            DeploymentState::Active => {
-                let new_deployment_state = DeploymentState::Closed;
-                deployment.update_state(new_deployment_state.clone());
-                self.deployments_memory.insert(deployment_id, deployment);
-                Ok(new_deployment_state)
-            }
-            DeploymentState::Closed | DeploymentState::Failed => Err(ApiError::internal(&format!(
+
+        if let DeploymentUpdate::Failed = deployment.state() {
+            return Err(ApiError::internal(&format!(
+                "Deployment {} already failed",
+                deployment_id
+            )));
+        }
+
+        if let DeploymentUpdate::Closed = deployment_update {
+            return Err(ApiError::internal(&format!(
                 "Deployment {} already closed",
                 deployment_id
-            ))),
+            )));
         }
+
+        deployment.update_state(deployment_update);
+
+        Ok(())
     }
 
     pub fn set_failed_deployment(&mut self, deployment_id: DeploymentId) -> Result<(), ApiError> {
         let mut deployment = self.deployments_memory.get(&deployment_id).ok_or_else(|| {
             ApiError::internal(&format!("Deployment {} not found", deployment_id))
         })?;
-        deployment.update_state(DeploymentState::Failed);
+        deployment.update_state(DeploymentUpdate::Failed);
         self.deployments_memory.insert(deployment_id, deployment);
         Ok(())
     }
