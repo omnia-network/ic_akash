@@ -16,6 +16,7 @@ pub enum DeploymentState {
     LeaseCreated,
     Active,
     Closed,
+    Failed,
 }
 
 impl Storable for DeploymentState {
@@ -66,6 +67,10 @@ impl Deployment {
 
     pub fn user_owns_deployment(&self, user_id: &UserId) -> bool {
         self.user_id == *user_id
+    }
+
+    pub fn update_state(&mut self, state: DeploymentState) {
+        self.state = state;
     }
 }
 

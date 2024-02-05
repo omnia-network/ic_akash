@@ -1,4 +1,5 @@
+mod akash;
 mod deployment;
 mod init;
 mod users;
-pub mod websocket;
+mod websocket;

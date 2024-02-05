@@ -4,8 +4,8 @@ use crate::{
     akash::sdl::SdlV3,
     api::{
         map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult,
-        Deployment, DeploymentId, DeploymentUpdate, DeploymentsService, GetDeploymentResponse,
-        UserId,
+        Deployment, DeploymentId, DeploymentState, DeploymentUpdate, DeploymentsService,
+        GetDeploymentResponse, UserId,
     },
     fixtures::example_sdl,
     helpers::send_canister_update,
@@ -61,7 +61,6 @@ async fn create_test_deployment() -> ApiResult<String> {
 struct DeploymentsEndpoints {
     deployments_service: DeploymentsService,
     access_control_service: AccessControlService,
-    akash_service: AkashService,
 }
 
 impl Default for DeploymentsEndpoints {
@@ -69,7 +68,6 @@ impl Default for DeploymentsEndpoints {
         Self {
             deployments_service: DeploymentsService::default(),
             access_control_service: AccessControlService::default(),
-            akash_service: AkashService::default(),
         }
     }
 }
@@ -116,36 +114,50 @@ impl DeploymentsEndpoints {
 
         let user_id = UserId::new(calling_principal);
 
-        let deployment = Deployment::new(sdl, user_id);
-
         let deployment_id = self
             .deployments_service
-            .insert_deployment(deployment)
+            .init_deployment(user_id, sdl)
             .await?;
 
         ic_cdk_timers::set_timer(Duration::from_secs(0), move || {
             ic_cdk::spawn(async move {
-                let akash_service = AkashService::default();
-                let deployment_service = DeploymentsService::default();
-                match akash_service.create_deployment(parsed_sdl).await {
-                    Ok((tx_hash, dseq, manifest)) => {
-                        print(&format!(
-                            "[create_deployment] tx_hash: {}, dseq: {}, manifest: {}",
-                            tx_hash, dseq, manifest
-                        ));
+                if let Err(e) =
+                    handle_create_deployment(calling_principal, parsed_sdl, deployment_id).await
+                {
+                    let mut deployment_service = DeploymentsService::default();
+                    deployment_service
+                        .set_failed_deployment(deployment_id)
+                        .expect("Failed to set deployment to failed");
 
-                        send_canister_update(
-                            calling_principal,
-                            DeploymentUpdate::Created(tx_hash, dseq),
-                        );
-                    }
-                    Err(err) => {
-                        print(&format!("Error creating deployment: {}", err));
-                    }
+                    print(&format!("Error creating deployment: {:?}", e));
                 }
             });
         });
 
         Ok(deployment_id)
     }
+}
+
+async fn handle_create_deployment(
+    calling_principal: Principal,
+    parsed_sdl: SdlV3,
+    deployment_id: DeploymentId,
+) -> Result<(), ApiError> {
+    let akash_service = AkashService::default();
+    let mut deployment_service = DeploymentsService::default();
+
+    let (tx_hash, dseq, _manifest) = akash_service
+        .create_deployment(parsed_sdl)
+        .await
+        .map_err(|e| ApiError::internal(&format!("Error creating deployment: {}", e)))?;
+
+    let new_state = deployment_service
+        .update_deployment(deployment_id)
+        .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
+
+    assert_eq!(new_state, DeploymentState::DeploymentCreated);
+
+    send_canister_update(calling_principal, DeploymentUpdate::Created(tx_hash, dseq));
+
+    Ok(())
 }
