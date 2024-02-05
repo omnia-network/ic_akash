@@ -1,8 +1,5 @@
 use std::time::Duration;
 
-use candid::Principal;
-use ic_cdk::*;
-
 use crate::{
     akash::sdl::SdlV3,
     api::{
@@ -10,8 +7,11 @@ use crate::{
         Deployment, DeploymentId, DeploymentUpdate, DeploymentsService, GetDeploymentResponse,
         UserId,
     },
+    fixtures::example_sdl,
     helpers::send_canister_update,
 };
+use candid::Principal;
+use ic_cdk::*;
 
 #[query]
 fn get_deployment(deployment_id: String) -> ApiResult<GetDeploymentResponse> {
@@ -49,6 +49,13 @@ async fn create_deployment(sdl: String) -> ApiResult<String> {
         .await
         .map(|id| id.to_string())
         .into()
+}
+
+#[update]
+async fn create_test_deployment() -> ApiResult<String> {
+    let sdl = example_sdl().to_string();
+
+    create_deployment(sdl).await
 }
 
 struct DeploymentsEndpoints {
@@ -105,7 +112,7 @@ impl DeploymentsEndpoints {
             .assert_principal_not_anonymous(&calling_principal)?;
 
         let parsed_sdl = SdlV3::try_from_str(&sdl)
-            .map_err(|e| ApiError::invalid_argument(&format!("Invalid SDL {}", e)))?;
+            .map_err(|e| ApiError::invalid_argument(&format!("Invalid SDL: {}", e)))?;
 
         let user_id = UserId::new(calling_principal);
 
@@ -116,10 +123,11 @@ impl DeploymentsEndpoints {
             .insert_deployment(deployment)
             .await?;
 
-        let config = self.akash_service.get_config();
         ic_cdk_timers::set_timer(Duration::from_secs(0), move || {
             ic_cdk::spawn(async move {
-                match AkashService::create_deployment(config, parsed_sdl).await {
+                let akash_service = AkashService::default();
+                let deployment_service = DeploymentsService::default();
+                match akash_service.create_deployment(parsed_sdl).await {
                     Ok((tx_hash, dseq, manifest)) => {
                         print(&format!(
                             "[create_deployment] tx_hash: {}, dseq: {}, manifest: {}",

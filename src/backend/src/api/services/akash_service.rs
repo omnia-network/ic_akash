@@ -36,13 +36,17 @@ impl AkashService {
         self.config_memory.get().clone()
     }
 
-    pub async fn address(config: Config) -> Result<String, String> {
+    pub async fn address(&self) -> Result<String, String> {
+        let config = self.get_config();
+
         let public_key = config.public_key().await?;
 
         Ok(get_account_id_from_public_key(&public_key)?.to_string())
     }
 
-    pub async fn balance(config: Config) -> Result<String, String> {
+    pub async fn balance(&self) -> Result<String, String> {
+        let config = self.get_config();
+
         let public_key = config.public_key().await?;
 
         get_balance(config.tendermint_rpc_url(), &public_key)
@@ -50,7 +54,9 @@ impl AkashService {
             .and_then(|coin| Ok(coin.amount))
     }
 
-    pub async fn send(config: Config, to_address: String, amount: u64) -> Result<String, String> {
+    pub async fn send(&self, to_address: String, amount: u64) -> Result<String, String> {
+        let config = self.get_config();
+
         let public_key = config.public_key().await?;
         let rpc_url = config.tendermint_rpc_url();
 
@@ -75,10 +81,12 @@ impl AkashService {
     }
 
     pub async fn create_certificate(
-        config: Config,
+        &self,
         cert_pem_base64: String,
         pub_key_pem_base64: String,
     ) -> Result<String, String> {
+        let config = self.get_config();
+
         let public_key = config.public_key().await?;
         let rpc_url = config.tendermint_rpc_url();
 
@@ -102,10 +110,9 @@ impl AkashService {
         Ok(tx_hash)
     }
 
-    pub async fn create_deployment(
-        config: Config,
-        sdl: SdlV3,
-    ) -> Result<(String, u64, String), String> {
+    pub async fn create_deployment(&self, sdl: SdlV3) -> Result<(String, u64, String), String> {
+        let config = self.get_config();
+
         let public_key = config.public_key().await?;
         let rpc_url = config.tendermint_rpc_url();
 
@@ -123,11 +130,15 @@ impl AkashService {
         Ok((tx_hash, dseq, sdl.manifest_sorted_json()))
     }
 
-    pub async fn check_tx(config: Config, tx_hash_hex: String) -> Result<(), String> {
+    pub async fn check_tx(&self, tx_hash_hex: String) -> Result<(), String> {
+        let config = self.get_config();
+
         ic_tendermint_rpc::check_tx(config.tendermint_rpc_url(), tx_hash_hex).await
     }
 
-    pub async fn create_lease(config: Config, dseq: u64) -> Result<(String, String), String> {
+    pub async fn create_lease(&self, dseq: u64) -> Result<(String, String), String> {
+        let config = self.get_config();
+
         let public_key = config.public_key().await?;
         let account_id = get_account_id_from_public_key(&public_key)?;
         let rpc_url = config.tendermint_rpc_url();
@@ -155,7 +166,9 @@ impl AkashService {
         Ok((tx_hash, deployment_url))
     }
 
-    pub async fn close_deployment(config: Config, dseq: u64) -> Result<String, String> {
+    pub async fn close_deployment(&self, dseq: u64) -> Result<String, String> {
+        let config = self.get_config();
+
         let public_key = config.public_key().await?;
         let rpc_url = config.tendermint_rpc_url();
 

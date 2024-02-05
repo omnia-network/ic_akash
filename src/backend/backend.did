@@ -104,5 +104,6 @@ service : (bool) -> {
     "get_deployment" : (text) -> (GetDeploymentResult) query;
     "get_deployments" : () -> (GetDeploymentsResult) query;
     "create_deployment" : (text) -> (CreateDeploymentResult);
+    "create_test_deployment" : () -> (CreateDeploymentResult);
     // ----
 };
