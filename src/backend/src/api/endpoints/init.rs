@@ -12,17 +12,19 @@ fn init(is_mainnet: bool) {
     let calling_principal = caller();
     let mut init = Init::default();
 
-    if let Err(err) = init.init_admin(calling_principal) {
-        trap(&format!("Error initializing admin: {:?}", err));
-    }
-
     let config = if is_mainnet {
         Config::new_mainnet(EcdsaKeyIds::TestKey1, "https://rpc.akashnet.net")
     } else {
         Config::default()
     };
 
-    init.init_config(config);
+    if let Err(err) = init.init_config(config) {
+        trap(&format!("Error initializing config: {:?}", err));
+    }
+
+    if let Err(err) = init.init_admin(calling_principal) {
+        trap(&format!("Error initializing admin: {:?}", err));
+    }
 
     init_ic_websocket();
 }
@@ -47,8 +49,8 @@ impl Default for Init {
 }
 
 impl Init {
-    pub fn init_config(&mut self, config: Config) {
-        self.config_service.set_config(config);
+    pub fn init_config(&mut self, config: Config) -> Result<(), ApiError> {
+        self.config_service.set_config(config)
     }
 
     pub fn init_admin(&mut self, principal: Principal) -> Result<UserId, ApiError> {
