@@ -1,19 +1,16 @@
-use ic_cdk::{print, query, update};
-
+use crate::api::DeploymentUpdateWsMessage;
+use ic_cdk::{query, update};
 use ic_websocket_cdk::{
     CanisterWsCloseArguments, CanisterWsCloseResult, CanisterWsGetMessagesArguments,
     CanisterWsGetMessagesResult, CanisterWsMessageArguments, CanisterWsMessageResult,
-    CanisterWsOpenArguments, CanisterWsOpenResult, OnCloseCallbackArgs, OnOpenCallbackArgs,
-    WsHandlers, WsInitParams,
+    CanisterWsOpenArguments, CanisterWsOpenResult, WsHandlers, WsInitParams,
 };
-
-use crate::api::DeploymentUpdate;
 
 pub fn init_ic_websocket() {
     let handlers = WsHandlers {
-        on_open: Some(on_open),
+        on_open: None,
         on_message: None,
-        on_close: Some(on_close),
+        on_close: None,
     };
 
     let params = WsInitParams::new(handlers);
@@ -36,7 +33,7 @@ fn ws_close(args: CanisterWsCloseArguments) -> CanisterWsCloseResult {
 #[update]
 fn ws_message(
     args: CanisterWsMessageArguments,
-    msg_type: Option<DeploymentUpdate>,
+    msg_type: Option<DeploymentUpdateWsMessage>,
 ) -> CanisterWsMessageResult {
     ic_websocket_cdk::ws_message(args, msg_type)
 }
@@ -45,12 +42,4 @@ fn ws_message(
 #[query]
 fn ws_get_messages(args: CanisterWsGetMessagesArguments) -> CanisterWsGetMessagesResult {
     ic_websocket_cdk::ws_get_messages(args)
-}
-
-fn on_open(args: OnOpenCallbackArgs) {
-    print(format!("Client {} connected", args.client_principal));
-}
-
-fn on_close(args: OnCloseCallbackArgs) {
-    print(format!("Client {} disconnected", args.client_principal));
 }

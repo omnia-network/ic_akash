@@ -7,7 +7,7 @@ pub struct MappedDeployment {
     sdl: String,
     user_id: Principal,
     created_at: TimestampNs,
-    state: DeploymentUpdate,
+    state_history: Vec<(TimestampNs, DeploymentUpdate)>,
 }
 
 impl From<Deployment> for MappedDeployment {
@@ -16,7 +16,7 @@ impl From<Deployment> for MappedDeployment {
             sdl: deployment.sdl(),
             user_id: deployment.user_id().principal(),
             created_at: deployment.created_at(),
-            state: deployment.state(),
+            state_history: deployment.get_history(),
         }
     }
 }

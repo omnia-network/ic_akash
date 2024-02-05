@@ -124,6 +124,9 @@ impl DeploymentsEndpoints {
                     handle_deployment(calling_principal, parsed_sdl, deployment_id).await
                 {
                     print(&format!("Error handling deployment: {:?}", e));
+                    DeploymentsService::default()
+                        .set_failed_deployment(deployment_id)
+                        .expect("Failed to set deployment to failed");
                 }
             });
         });
@@ -137,15 +140,7 @@ async fn handle_deployment(
     parsed_sdl: SdlV3,
     deployment_id: DeploymentId,
 ) -> Result<(), ApiError> {
-    let mut deployment_service = DeploymentsService::default();
-    let dseq = handle_create_deployment(calling_principal, parsed_sdl, deployment_id)
-        .await
-        .map_err(|e| {
-            deployment_service
-                .set_failed_deployment(deployment_id)
-                .expect("Failed to set deployment to failed");
-            e
-        })?;
+    let dseq = handle_create_deployment(calling_principal, parsed_sdl, deployment_id).await?;
 
     handle_lease(calling_principal, dseq, deployment_id);
 
@@ -189,8 +184,7 @@ fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: Deployme
                 }
                 Err(e) => {
                     print(&format!("Error fetching bids and creating lease: {:?}", e));
-                    let mut deployment_service = DeploymentsService::default();
-                    deployment_service
+                    DeploymentsService::default()
                         .set_failed_deployment(deployment_id)
                         .expect("Failed to set deployment to failed");
                 }

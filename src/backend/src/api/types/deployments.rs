@@ -1,4 +1,4 @@
-use super::UserId;
+use super::{TimestampNs, UserId};
 use candid::{CandidType, Decode, Encode};
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ pub type DeploymentId = Uuid;
 pub struct Deployment {
     sdl: String,
     user_id: UserId,
-    state_history: Vec<(u64, DeploymentUpdate)>,
+    state_history: Vec<(TimestampNs, DeploymentUpdate)>,
 }
 
 impl Deployment {
@@ -49,6 +49,10 @@ impl Deployment {
 
     pub fn update_state(&mut self, update: DeploymentUpdate) {
         self.state_history.push((get_time_nanos(), update));
+    }
+
+    pub fn get_history(&self) -> Vec<(u64, DeploymentUpdate)> {
+        self.state_history.clone()
     }
 }
 
