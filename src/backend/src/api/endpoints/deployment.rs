@@ -147,7 +147,7 @@ async fn handle_deployment(
             e
         })?;
 
-    fetch_bids_and_create_lease(calling_principal, dseq, deployment_id);
+    handle_lease(calling_principal, dseq, deployment_id);
 
     Ok(())
 }
@@ -179,47 +179,57 @@ async fn handle_create_deployment(
     Ok(dseq)
 }
 
-fn fetch_bids_and_create_lease(
-    calling_principal: Principal,
-    dseq: u64,
-    deployment_id: DeploymentId,
-) {
+fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: DeploymentId) {
     ic_cdk_timers::set_timer(Duration::from_secs(1), move || {
         ic_cdk::spawn(async move {
-            let mut deployment_service = DeploymentsService::default();
-
-            let akash_service = AkashService::default();
-            let config = akash_service.get_config();
-            let public_key = config.public_key().await.expect("failed to get public key");
-            let account_id =
-                get_account_id_from_public_key(&public_key).expect("failed to get account id");
-            let rpc_url = config.tendermint_rpc_url();
-
-            print(&format!("Fetching bids for dseq: {}", dseq));
-
-            let bids = fetch_bids(rpc_url.clone(), &account_id, dseq)
-                .await
-                .expect("failed to fetch bids");
-
-            if bids.len() > 0 {
-                let (_tx_hash, deployment_url) =
-                    handle_create_lease(calling_principal, dseq, deployment_id)
-                        .await
-                        .map_err(|e| {
-                            deployment_service
-                                .set_failed_deployment(deployment_id)
-                                .expect("Failed to set deployment to failed");
-                            e
-                        })
-                        .expect("failed to handle create lease");
-
-                print(&format!("Deployment URL: {}", deployment_url));
-            } else {
-                fetch_bids_and_create_lease(calling_principal, dseq, deployment_id);
+            match try_fetch_bids_and_create_lease(calling_principal, dseq, deployment_id).await {
+                Ok(Some((_tx_hash, deployment_url))) => {
+                    print(&format!("Deployment URL: {}", deployment_url));
+                }
+                Ok(None) => {
+                    handle_lease(calling_principal, dseq, deployment_id);
+                }
+                Err(e) => {
+                    print(&format!("Error fetching bids and creating lease: {:?}", e));
+                    let mut deployment_service = DeploymentsService::default();
+                    deployment_service
+                        .set_failed_deployment(deployment_id)
+                        .expect("Failed to set deployment to failed");
+                }
             }
         })
     });
 }
+
+async fn try_fetch_bids_and_create_lease(
+    calling_principal: Principal,
+    dseq: u64,
+    deployment_id: DeploymentId,
+) -> Result<Option<(String, String)>, ApiError> {
+    let akash_service = AkashService::default();
+    let config = akash_service.get_config();
+    let public_key = config
+        .public_key()
+        .await
+        .map_err(|e| ApiError::internal(&format!("failed to get public key: {}", e)))?;
+    let account_id = get_account_id_from_public_key(&public_key)
+        .map_err(|e| ApiError::internal(&format!("failed to get account id: {}", e)))?;
+    let rpc_url = config.tendermint_rpc_url();
+
+    print(&format!("Fetching bids for dseq: {}", dseq));
+
+    let bids = fetch_bids(rpc_url.clone(), &account_id, dseq)
+        .await
+        .expect("failed to fetch bids");
+
+    if bids.len() > 0 {
+        let (tx_hash, deployment_url) =
+            handle_create_lease(calling_principal, dseq, deployment_id).await?;
+        return Ok(Some((tx_hash, deployment_url)));
+    }
+    Ok(None)
+}
+
 async fn handle_create_lease(
     calling_principal: Principal,
     dseq: u64,
