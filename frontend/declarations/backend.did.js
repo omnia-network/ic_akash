@@ -14,6 +14,7 @@ export const idlFactory = ({ IDL }) => {
     'Initialized' : IDL.Null,
     'Failed' : IDL.Record({ 'reason' : IDL.Text }),
     'DeploymentCreated' : IDL.Record({
+      'manifest_sorted_json' : IDL.Text,
       'dseq' : IDL.Nat64,
       'tx_hash' : IDL.Text,
     }),

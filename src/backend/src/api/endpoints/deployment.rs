@@ -240,8 +240,7 @@ async fn handle_deployment(
     parsed_sdl: SdlV3,
     deployment_id: DeploymentId,
 ) -> Result<(), ApiError> {
-    let (_tx_hash, dseq) =
-        handle_create_deployment(calling_principal, parsed_sdl, deployment_id).await?;
+    let dseq = handle_create_deployment(calling_principal, parsed_sdl, deployment_id).await?;
 
     handle_lease(calling_principal, dseq, deployment_id, 0);
 
@@ -252,11 +251,11 @@ async fn handle_create_deployment(
     calling_principal: Principal,
     parsed_sdl: SdlV3,
     deployment_id: DeploymentId,
-) -> Result<(String, u64), ApiError> {
+) -> Result<u64, ApiError> {
     let akash_service = AkashService::default();
     let mut deployment_service = DeploymentsService::default();
 
-    let (tx_hash, dseq, _manifest) = akash_service
+    let (tx_hash, dseq, manifest) = akash_service
         .create_deployment(parsed_sdl)
         .await
         .map_err(|e| ApiError::internal(&format!("Error creating deployment: {}", e)))?;
@@ -264,6 +263,7 @@ async fn handle_create_deployment(
     let deployment_update = DeploymentUpdate::DeploymentCreated {
         tx_hash: tx_hash.clone(),
         dseq,
+        manifest_sorted_json: manifest,
     };
 
     deployment_service
@@ -275,7 +275,7 @@ async fn handle_create_deployment(
         DeploymentUpdateWsMessage::new(deployment_id.to_string(), deployment_update),
     );
 
-    Ok((tx_hash, dseq))
+    Ok(dseq)
 }
 
 fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: DeploymentId, retry: u64) {

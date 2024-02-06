@@ -52,7 +52,13 @@ export interface Deployment {
 export type DeploymentId = string;
 export type DeploymentUpdate = { 'Initialized' : null } |
   { 'Failed' : { 'reason' : string } } |
-  { 'DeploymentCreated' : { 'dseq' : bigint, 'tx_hash' : string } } |
+  {
+    'DeploymentCreated' : {
+      'manifest_sorted_json' : string,
+      'dseq' : bigint,
+      'tx_hash' : string,
+    }
+  } |
   { 'Closed' : null } |
   { 'Active' : null } |
   { 'LeaseCreated' : { 'provider_url' : string, 'tx_hash' : string } };
