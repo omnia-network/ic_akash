@@ -1,20 +1,27 @@
 "use client";
 
-import { _SERVICE } from "@/declarations/backend.did";
-import { createBackendActor } from "@/services/backend";
-import { ActorSubclass, Identity } from "@dfinity/agent";
+import { type DeploymentUpdateWsMessage, type _SERVICE } from "@/declarations/backend.did";
+import { type BackendActor, canisterId, createBackendActor, icHost, icWsGatewayUrl } from "@/services/backend";
+import { SignIdentity } from "@dfinity/agent";
 import { AuthClient } from "@dfinity/auth-client";
+import { DelegationIdentity } from "@dfinity/identity";
+import IcWebSocket, { createWsConfig } from "ic-websocket-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-type BackendActor = ActorSubclass<_SERVICE>;
+type WebSocketActor = IcWebSocket<_SERVICE, DeploymentUpdateWsMessage>;
+export type OnWsOpenCallback = NonNullable<WebSocketActor["onopen"]>;
+export type OnWsMessageCallback = NonNullable<WebSocketActor["onmessage"]>;
 
 type IcContextType = {
-  identity: Identity | null;
+  identity: DelegationIdentity | null;
   isLoggedIn: boolean;
   isLoading: boolean;
-  login: () => Promise<void>;
+  login: () => Promise<[DelegationIdentity, BackendActor]>;
   logout: () => Promise<void>;
   backendActor: BackendActor | null;
+  wsActor: WebSocketActor | null;
+  openWs: (onOpenCallback: OnWsOpenCallback, onMessageCallback: OnWsMessageCallback) => void;
+  closeWs: () => void;
 };
 
 const IcContext = createContext<IcContextType | null>(null);
@@ -24,8 +31,9 @@ type IcProviderProps = {
 };
 
 export const IcProvider: React.FC<IcProviderProps> = ({ children }) => {
-  const [identity, setIdentity] = useState<Identity | null>(null);
+  const [identity, setIdentity] = useState<DelegationIdentity | null>(null);
   const [backendActor, setBackendActor] = useState<BackendActor | null>(null);
+  const [wsActor, setWsActor] = useState<WebSocketActor | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const isLoggedIn = useMemo(() => identity !== null && !identity.getPrincipal().isAnonymous(), [identity]);
 
@@ -40,20 +48,20 @@ export const IcProvider: React.FC<IcProviderProps> = ({ children }) => {
       keyType: "ECDSA",
     });
 
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<[DelegationIdentity, BackendActor]>((resolve, reject) => {
       authClient.login({
         identityProvider: process.env.DFX_NETWORK === "ic"
           ? "https://identity.ic0.app"
           : `http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/`,
         maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1000 * 1000 * 1000), // 7 days in nanoseconds
         onSuccess: () => {
-          const identity = authClient.getIdentity();
+          const identity = authClient.getIdentity() as DelegationIdentity;
           setIdentity(identity);
           const backendActor = createBackendActor(identity);
           setBackendActor(backendActor);
 
           setIsLoading(false);
-          resolve();
+          resolve([identity, backendActor]);
         },
         onError: (err) => {
           console.error(err);
@@ -82,7 +90,7 @@ export const IcProvider: React.FC<IcProviderProps> = ({ children }) => {
       setIsLoading(true);
 
       const authClient = await AuthClient.create();
-      const identity = authClient.getIdentity();
+      const identity = authClient.getIdentity() as DelegationIdentity;
       setIdentity(identity);
       const backendActor = createBackendActor(identity);
       setBackendActor(backendActor);
@@ -93,6 +101,39 @@ export const IcProvider: React.FC<IcProviderProps> = ({ children }) => {
     getIdentity();
   }, []);
 
+  const openWs = useCallback((onOpenCallback: OnWsOpenCallback, onMessageCallback: OnWsMessageCallback) => {
+    if (!isLoggedIn) {
+      throw new Error("Not logged in");
+    }
+
+    const wsConfig = createWsConfig({
+      canisterId,
+      networkUrl: icHost,
+      canisterActor: backendActor!,
+      identity: identity as SignIdentity,
+    });
+
+    const ws = new IcWebSocket(icWsGatewayUrl, undefined, wsConfig);
+    ws.onopen = onOpenCallback;
+    ws.onmessage = onMessageCallback;
+    ws.onclose = () => {
+      console.log("ws close");
+      setWsActor(null);
+    };
+    ws.onerror = (err) => {
+      console.error("ws error", err);
+    };
+
+    setWsActor(ws);
+  }, [isLoggedIn, backendActor, identity]);
+
+  const closeWs = useCallback(() => {
+    if (wsActor) {
+      wsActor.close();
+      setWsActor(null);
+    }
+  }, [wsActor]);
+
   return (
     <IcContext.Provider value={{
       identity,
@@ -100,7 +141,10 @@ export const IcProvider: React.FC<IcProviderProps> = ({ children }) => {
       isLoading,
       login,
       logout,
-      backendActor
+      backendActor,
+      wsActor,
+      openWs,
+      closeWs,
     }}>
       {children}
     </IcContext.Provider>

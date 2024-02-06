@@ -87,6 +87,7 @@ export interface _SERVICE {
   'address' : ActorMethod<[], ApiStringResult>,
   'balance' : ActorMethod<[], ApiStringResult>,
   'close_deployment' : ActorMethod<[string], ApiEmptyResult>,
+  'create_certificate' : ActorMethod<[string, string], ApiStringResult>,
   'create_deployment' : ActorMethod<[string], CreateDeploymentResult>,
   'create_test_deployment' : ActorMethod<[], CreateDeploymentResult>,
   'create_user' : ActorMethod<[], CreateUserResult>,
@@ -94,6 +95,7 @@ export interface _SERVICE {
   'get_deployments' : ActorMethod<[], GetDeploymentsResult>,
   'get_user' : ActorMethod<[], GetUserResult>,
   'promote_user_to_admin' : ActorMethod<[UserId], ApiEmptyResult>,
+  'update_deployment' : ActorMethod<[string, DeploymentUpdate], ApiEmptyResult>,
   'ws_close' : ActorMethod<[CanisterWsCloseArguments], CanisterWsCloseResult>,
   'ws_get_messages' : ActorMethod<
     [CanisterWsGetMessagesArguments],

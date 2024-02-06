@@ -5,6 +5,17 @@ import * as asn1X509 from "@peculiar/asn1-x509";
 import { BufferSourceConverter, Convert } from "pvtsutils";
 import { container } from "tsyringe";
 
+export type X509CertificateData = {
+  /**
+   * Base64 encoded certificate
+   */
+  cert: string;
+  /**
+   * Base64 encoded public key
+   */
+  pubKey: string;
+};
+
 const SIGNING_ALGORITHM = {
   name: "ECDSA",
   hash: "SHA-256",
@@ -14,8 +25,10 @@ const SIGNING_ALGORITHM = {
 
 const CERTIFICATE_DURATION_DAYS = 365;
 
+const CERTIFICATE_STORAGE_KEY = "x509-certificate";
+
 // from https://github.com/PeculiarVentures/x509/blob/master/src/x509_cert_generator.ts
-export const createX509 = async (identity: DelegationIdentity, canisterAkashAddress: String) => {
+export const createX509 = async (identity: DelegationIdentity, canisterAkashAddress: String): Promise<X509CertificateData> => {
   const serialNumber = BufferSourceConverter.toUint8Array(Convert.FromHex((BigInt(new Date().getTime()) * BigInt(1000)).toString(16)));
   const commonName = `/CN=${canisterAkashAddress}`;
   const subject = new x509.Name(commonName);
@@ -74,6 +87,26 @@ export const createX509 = async (identity: DelegationIdentity, canisterAkashAddr
   // TODO: verify that the certificate signature is valid
   // even after signing in again with the Internet Identity
 
-  console.log("cert", cert.toString("pem"));
-  console.log("publicKey", cert.publicKey.toString("pem").replaceAll("PUBLIC KEY", "EC PUBLIC KEY"));
+  const encoder = new TextEncoder();
+
+  const certData: X509CertificateData = {
+    cert: Convert.ToBase64(encoder.encode(cert.toString("pem"))),
+    pubKey: Convert.ToBase64(encoder.encode(cert.publicKey.toString("pem").replaceAll("PUBLIC KEY", "EC PUBLIC KEY"))),
+  };
+
+  return certData;
 };
+
+export const loadCertificate = (): X509CertificateData | null => {
+  const cert = localStorage.getItem(CERTIFICATE_STORAGE_KEY);
+
+  if (!cert) {
+    return null;
+  }
+
+  return JSON.parse(cert);
+};
+
+export const saveCertificate = (cert: X509CertificateData) => {
+  localStorage.setItem(CERTIFICATE_STORAGE_KEY, JSON.stringify(cert));
+}
