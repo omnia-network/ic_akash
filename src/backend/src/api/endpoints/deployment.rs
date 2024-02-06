@@ -12,6 +12,9 @@ use candid::Principal;
 use ic_cdk::*;
 use std::time::Duration;
 
+const POLLING_BIDS_INTERVAL: u64 = 3;
+const MAX_FETCH_BIDS_RETRIES: u64 = 5;
+
 #[query]
 fn get_deployment(deployment_id: String) -> ApiResult<GetDeploymentResponse> {
     let calling_principal = caller();
@@ -40,6 +43,19 @@ fn get_deployments() -> ApiResult<Vec<GetDeploymentResponse>> {
 }
 
 #[update]
+async fn create_certificate(
+    cert_pem_base64: String,
+    pub_key_pem_base64: String,
+) -> ApiResult<String> {
+    let calling_principal = caller();
+
+    DeploymentsEndpoints::default()
+        .create_certificate(calling_principal, cert_pem_base64, pub_key_pem_base64)
+        .await
+        .into()
+}
+
+#[update]
 async fn create_deployment(sdl: String) -> ApiResult<String> {
     let calling_principal = caller();
 
@@ -47,6 +63,15 @@ async fn create_deployment(sdl: String) -> ApiResult<String> {
         .create_deployment(calling_principal, sdl)
         .await
         .map(|id| id.to_string())
+        .into()
+}
+
+#[update]
+fn update_deployment(deployment_id: String, update: DeploymentUpdate) -> ApiResult<()> {
+    let calling_principal = caller();
+
+    DeploymentsEndpoints::default()
+        .update_deployment(calling_principal, deployment_id, update)
         .into()
 }
 
@@ -91,7 +116,7 @@ impl DeploymentsEndpoints {
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
 
         self.access_control_service
-            .assert_user_owns_deployment(calling_principal, &deployment_id)?;
+            .assert_principal_owns_deployment(calling_principal, &deployment_id)?;
 
         self.deployments_service.get_deployment(&deployment_id)
     }
@@ -100,8 +125,9 @@ impl DeploymentsEndpoints {
         &self,
         calling_principal: &Principal,
     ) -> Result<Vec<(DeploymentId, Deployment)>, ApiError> {
+        // no need to check if the user owns the deployments as the 'get_deployments_for_user' function returns only the deployments the user owns
         self.access_control_service
-            .assert_principal_not_anonymous(calling_principal)?;
+            .assert_principal_is_user(calling_principal)?;
 
         let user_id = UserId::new(*calling_principal);
 
@@ -110,13 +136,28 @@ impl DeploymentsEndpoints {
         Ok(deployments)
     }
 
+    pub async fn create_certificate(
+        &self,
+        calling_principal: Principal,
+        cert_pem_base64: String,
+        pub_key_pem_base64: String,
+    ) -> Result<String, ApiError> {
+        self.access_control_service
+            .assert_principal_is_user(&calling_principal)?;
+
+        AkashService::default()
+            .create_certificate(cert_pem_base64, pub_key_pem_base64)
+            .await
+            .map_err(|e| ApiError::internal(&format!("Error creating certificate: {}", e)))
+    }
+
     pub async fn create_deployment(
         &mut self,
         calling_principal: Principal,
         sdl: String,
     ) -> Result<DeploymentId, ApiError> {
         self.access_control_service
-            .assert_principal_not_anonymous(&calling_principal)?;
+            .assert_principal_is_user(&calling_principal)?;
 
         let parsed_sdl = SdlV3::try_from_str(&sdl)
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid SDL: {}", e)))?;
@@ -145,6 +186,30 @@ impl DeploymentsEndpoints {
         Ok(deployment_id)
     }
 
+    pub fn update_deployment(
+        &mut self,
+        calling_principal: Principal,
+        deployment_id: String,
+        update: DeploymentUpdate,
+    ) -> Result<(), ApiError> {
+        let deployment_id = DeploymentId::try_from(&deployment_id[..])
+            .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
+
+        self.access_control_service
+            .assert_principal_owns_deployment(&calling_principal, &deployment_id)?;
+
+        match update {
+            DeploymentUpdate::Active | DeploymentUpdate::Failed { .. } => self
+                .deployments_service
+                .update_deployment(deployment_id, update),
+
+            _ => Err(ApiError::invalid_argument(&format!(
+                "Invalid update for deployment: {:?}",
+                update
+            ))),
+        }
+    }
+
     pub async fn close_deployment(
         &mut self,
         calling_principal: Principal,
@@ -154,7 +219,7 @@ impl DeploymentsEndpoints {
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
 
         self.access_control_service
-            .assert_user_owns_deployment(&calling_principal, &deployment_id)?;
+            .assert_principal_owns_deployment(&calling_principal, &deployment_id)?;
 
         if let Err(e) = handle_close_deployment(deployment_id).await {
             set_failed_deployment_and_notify(
@@ -178,7 +243,7 @@ async fn handle_deployment(
     let (_tx_hash, dseq) =
         handle_create_deployment(calling_principal, parsed_sdl, deployment_id).await?;
 
-    handle_lease(calling_principal, dseq, deployment_id);
+    handle_lease(calling_principal, dseq, deployment_id, 0);
 
     Ok(())
 }
@@ -213,15 +278,23 @@ async fn handle_create_deployment(
     Ok((tx_hash, dseq))
 }
 
-fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: DeploymentId) {
-    ic_cdk_timers::set_timer(Duration::from_secs(3), move || {
+fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: DeploymentId, retry: u64) {
+    ic_cdk_timers::set_timer(Duration::from_secs(POLLING_BIDS_INTERVAL), move || {
         ic_cdk::spawn(async move {
             match try_fetch_bids_and_create_lease(calling_principal, dseq, deployment_id).await {
                 Ok(Some((_tx_hash, deployment_url))) => {
                     print(&format!("Deployment URL: {}", deployment_url));
                 }
                 Ok(None) => {
-                    handle_lease(calling_principal, dseq, deployment_id);
+                    if retry > MAX_FETCH_BIDS_RETRIES {
+                        set_failed_deployment_and_notify(
+                            deployment_id,
+                            calling_principal,
+                            String::from("No bids found"),
+                        );
+                    } else {
+                        handle_lease(calling_principal, dseq, deployment_id, retry + 1);
+                    }
                 }
                 Err(e) => {
                     set_failed_deployment_and_notify(
