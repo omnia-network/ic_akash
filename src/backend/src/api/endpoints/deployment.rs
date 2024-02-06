@@ -150,8 +150,8 @@ impl DeploymentsEndpoints {
         calling_principal: Principal,
         deployment_id: String,
     ) -> Result<(), ApiError> {
-        // self.access_control_service
-        //     .assert_principal_not_anonymous(&calling_principal)?;
+        self.access_control_service
+            .assert_principal_not_anonymous(&calling_principal)?;
 
         let deployment_id = DeploymentId::try_from(&deployment_id[..])
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
