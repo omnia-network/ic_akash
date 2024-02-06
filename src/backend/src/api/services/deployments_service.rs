@@ -76,11 +76,28 @@ impl DeploymentsService {
     }
 
     pub fn set_failed_deployment(&mut self, deployment_id: DeploymentId) -> Result<(), ApiError> {
-        let mut deployment = self.deployments_memory.get(&deployment_id).ok_or_else(|| {
-            ApiError::internal(&format!("Deployment {} not found", deployment_id))
-        })?;
+        let mut deployment =
+            self.deployments_memory
+                .get(&deployment_id)
+                .ok_or(ApiError::internal(&format!(
+                    "Deployment {} not found",
+                    deployment_id
+                )))?;
         deployment.update_state(DeploymentUpdate::Failed);
         self.deployments_memory.insert(deployment_id, deployment);
         Ok(())
+    }
+
+    pub fn get_akash_deployment_info(
+        &self,
+        deployment_id: &DeploymentId,
+    ) -> Result<Option<u64>, ApiError> {
+        self.deployments_memory
+            .get(deployment_id)
+            .map(|deployment| deployment.get_akash_info())
+            .ok_or(ApiError::internal(&format!(
+                "Deployment {} not found",
+                deployment_id
+            )))
     }
 }

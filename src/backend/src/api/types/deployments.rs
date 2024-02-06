@@ -54,6 +54,15 @@ impl Deployment {
     pub fn get_history(&self) -> Vec<(u64, DeploymentUpdate)> {
         self.state_history.clone()
     }
+
+    pub fn get_akash_info(&self) -> Option<u64> {
+        self.state_history
+            .iter()
+            .filter_map(|(_, update)| update.get_akash_info())
+            .collect::<Vec<u64>>()
+            .first()
+            .cloned()
+    }
 }
 
 impl Storable for Deployment {
@@ -77,6 +86,15 @@ pub enum DeploymentUpdate {
     Opened,
     Closed,
     Failed,
+}
+
+impl DeploymentUpdate {
+    pub fn get_akash_info(&self) -> Option<u64> {
+        match self {
+            DeploymentUpdate::DeploymentCreated(_, info) => Some(*info),
+            _ => None,
+        }
+    }
 }
 
 impl Storable for DeploymentUpdate {
