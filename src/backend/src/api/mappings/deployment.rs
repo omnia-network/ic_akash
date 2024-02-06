@@ -6,7 +6,6 @@ use crate::api::{Deployment, DeploymentUpdate, TimestampNs};
 pub struct MappedDeployment {
     sdl: String,
     user_id: Principal,
-    created_at: TimestampNs,
     state_history: Vec<(TimestampNs, DeploymentUpdate)>,
 }
 
@@ -15,7 +14,6 @@ impl From<Deployment> for MappedDeployment {
         Self {
             sdl: deployment.sdl(),
             user_id: deployment.user_id().principal(),
-            created_at: deployment.created_at(),
             state_history: deployment.get_history(),
         }
     }
@@ -29,7 +27,7 @@ pub struct GetDeploymentResponse {
 
 pub fn map_deployment(deployment_id: String, deployment: Deployment) -> GetDeploymentResponse {
     GetDeploymentResponse {
-        id: deployment_id.to_string(),
+        id: deployment_id,
         deployment: deployment.into(),
     }
 }

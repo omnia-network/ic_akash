@@ -3,6 +3,11 @@ type ApiError = record {
     message : text;
 };
 
+type ApiStringResult = variant {
+    Ok : text;
+    Err : ApiError;
+};
+
 type TimestampNs = nat64;
 
 type UserId = principal;
@@ -34,10 +39,10 @@ type EmptyResult = variant {
 
 type DeploymentId = text;
 
-type DeploymentState = variant {
+type DeploymentUpdate = variant {
     Initialized;
-    DeploymentCreated;
-    LeaseCreated;
+    DeploymentCreated : record { text; nat64 };
+    LeaseCreated : record { text };
     Active;
     Closed;
 };
@@ -45,8 +50,7 @@ type DeploymentState = variant {
 type Deployment = record {
     sdl : text;
     user_id : UserId;
-    created_at : TimestampNs;
-    state : DeploymentState;
+    state_history : vec record { TimestampNs; DeploymentUpdate };
 };
 
 type GetDeploymentResult = variant {
@@ -71,12 +75,17 @@ type CreateDeploymentResult = variant {
 };
 
 //// IC WebSocket types ////
+import "./ws_types.did";
 
-// TODO: add IC WebSocket types
-
+type DeploymentUpdateWsMessage = record {
+    id : text;
+    update : DeploymentUpdate;
+};
 //// End IC WebSocket types ////
 
 service : (bool) -> {
+    "address" : () -> (ApiStringResult);
+    "balance" : () -> (ApiStringResult);
     "get_user" : () -> (GetUserResult) query;
     "create_user" : () -> (CreateUserResult);
     "promote_user_to_admin" : (UserId) -> (EmptyResult);
@@ -86,8 +95,6 @@ service : (bool) -> {
     "create_test_deployment" : () -> (CreateDeploymentResult);
 
     //// IC WebSocket methods ////
-
-    // TODO: add IC WebSocket methods
-
+    "ws_get_messages" : (CanisterWsGetMessagesArguments) -> (CanisterWsGetMessagesResult) query;
     //// End IC WebSocket methods ////
 };

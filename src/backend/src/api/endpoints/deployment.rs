@@ -32,7 +32,7 @@ fn get_deployments() -> ApiResult<Vec<GetDeploymentResponse>> {
             deployments
                 .into_iter()
                 .map(|(deployment_id, deployment)| {
-                    map_deployment(deployment_id.to_string(), deployment.clone())
+                    map_deployment(deployment_id.to_string(), deployment)
                 })
                 .collect()
         })

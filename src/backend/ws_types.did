@@ -1,0 +1,27 @@
+type ClientPrincipal = principal;
+
+type ClientKey = record {
+    client_principal : ClientPrincipal;
+    client_nonce : nat64;
+};
+
+type CanisterOutputMessage = record {
+    client_key : ClientKey;
+    key : text;
+    content : blob;
+};
+
+type CanisterOutputCertifiedMessages = record {
+    messages : vec CanisterOutputMessage;
+    cert : blob;
+    tree : blob;
+};
+
+type CanisterWsGetMessagesArguments = record {
+    nonce : nat64;
+};
+
+type CanisterWsGetMessagesResult = variant {
+    Ok : CanisterOutputCertifiedMessages;
+    Err : text;
+};
