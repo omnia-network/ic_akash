@@ -116,7 +116,7 @@ impl DeploymentsEndpoints {
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
 
         self.access_control_service
-            .assert_user_owns_deployment(calling_principal, &deployment_id)?;
+            .assert_principal_owns_deployment(calling_principal, &deployment_id)?;
 
         self.deployments_service.get_deployment(&deployment_id)
     }
@@ -125,8 +125,9 @@ impl DeploymentsEndpoints {
         &self,
         calling_principal: &Principal,
     ) -> Result<Vec<(DeploymentId, Deployment)>, ApiError> {
+        // no need to check if the user owns the deployments as the 'get_deployments_for_user' function returns only the deployments the user owns
         self.access_control_service
-            .assert_principal_not_anonymous(calling_principal)?;
+            .assert_principal_is_user(calling_principal)?;
 
         let user_id = UserId::new(*calling_principal);
 
@@ -142,7 +143,8 @@ impl DeploymentsEndpoints {
         pub_key_pem_base64: String,
     ) -> Result<String, ApiError> {
         self.access_control_service
-            .assert_principal_not_anonymous(&calling_principal)?;
+            .assert_principal_is_user(&calling_principal)?;
+
         AkashService::default()
             .create_certificate(cert_pem_base64, pub_key_pem_base64)
             .await
@@ -155,7 +157,7 @@ impl DeploymentsEndpoints {
         sdl: String,
     ) -> Result<DeploymentId, ApiError> {
         self.access_control_service
-            .assert_principal_not_anonymous(&calling_principal)?;
+            .assert_principal_is_user(&calling_principal)?;
 
         let parsed_sdl = SdlV3::try_from_str(&sdl)
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid SDL: {}", e)))?;
@@ -190,11 +192,11 @@ impl DeploymentsEndpoints {
         deployment_id: String,
         update: DeploymentUpdate,
     ) -> Result<(), ApiError> {
-        self.access_control_service
-            .assert_principal_not_anonymous(&calling_principal)?;
-
         let deployment_id = DeploymentId::try_from(&deployment_id[..])
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
+
+        self.access_control_service
+            .assert_principal_owns_deployment(&calling_principal, &deployment_id)?;
 
         match update {
             DeploymentUpdate::Active | DeploymentUpdate::Failed { .. } => self
@@ -217,7 +219,7 @@ impl DeploymentsEndpoints {
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
 
         self.access_control_service
-            .assert_user_owns_deployment(&calling_principal, &deployment_id)?;
+            .assert_principal_owns_deployment(&calling_principal, &deployment_id)?;
 
         if let Err(e) = handle_close_deployment(deployment_id).await {
             set_failed_deployment_and_notify(
