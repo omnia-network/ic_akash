@@ -39,7 +39,7 @@ impl DeploymentsService {
             .await
             .map_err(|e| ApiError::internal(&format!("Failed to create deployment id: {}", e)))?;
 
-        let deployment = Deployment::new(sdl, user_id, deployment_id.to_string());
+        let deployment = Deployment::new(sdl, user_id);
 
         self.deployments_memory.insert(deployment_id, deployment);
 
