@@ -1,10 +1,11 @@
-use candid::Principal;
-use ic_cdk::*;
-
 use crate::{
     api::{ApiError, Config, ConfigService, User, UserId, UserRole, UsersService},
     helpers::EcdsaKeyIds,
 };
+use candid::Principal;
+use ic_cdk::*;
+
+use super::websocket::init_ic_websocket;
 
 #[init]
 fn init(is_mainnet: bool) {
@@ -24,6 +25,13 @@ fn init(is_mainnet: bool) {
     if let Err(err) = init.init_admin(calling_principal) {
         trap(&format!("Error initializing admin: {:?}", err));
     }
+
+    init_ic_websocket();
+}
+
+#[post_upgrade]
+fn post_upgrade() {
+    init_ic_websocket();
 }
 
 struct Init {

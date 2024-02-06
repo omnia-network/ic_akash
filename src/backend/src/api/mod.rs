@@ -7,4 +7,4 @@ mod types;
 use mappings::*;
 use memories::*;
 use services::*;
-use types::*;
+pub use types::*;

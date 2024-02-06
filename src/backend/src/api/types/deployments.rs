@@ -1,41 +1,17 @@
-use std::borrow::Cow;
-
+use super::{TimestampNs, UserId};
 use candid::{CandidType, Decode, Encode};
 use ic_stable_structures::{storable::Bound, Storable};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use utils::{get_time_nanos, Uuid};
 
-use super::UserId;
-
 pub type DeploymentId = Uuid;
-
-#[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
-pub enum DeploymentState {
-    Initialized,
-    DeploymentCreated,
-    LeaseCreated,
-    Active,
-    Closed,
-}
-
-impl Storable for DeploymentState {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        Cow::Owned(Encode!(self).unwrap())
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        Decode!(bytes.as_ref(), Self).unwrap()
-    }
-
-    const BOUND: Bound = Bound::Unbounded;
-}
 
 #[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
 pub struct Deployment {
     sdl: String,
     user_id: UserId,
-    created_at: u64,
-    state: DeploymentState,
+    state_history: Vec<(TimestampNs, DeploymentUpdate)>,
 }
 
 impl Deployment {
@@ -43,8 +19,7 @@ impl Deployment {
         Self {
             sdl,
             user_id,
-            created_at: get_time_nanos(),
-            state: DeploymentState::Initialized,
+            state_history: vec![(get_time_nanos(), DeploymentUpdate::Initialized)],
         }
     }
 
@@ -57,19 +32,72 @@ impl Deployment {
     }
 
     pub fn created_at(&self) -> u64 {
-        self.created_at
+        self.state_history.first().expect("must be initialized").0
     }
 
-    pub fn state(&self) -> DeploymentState {
-        self.state.clone()
+    pub fn state(&self) -> DeploymentUpdate {
+        self.state_history
+            .last()
+            .expect("must have at least one state")
+            .1
+            .clone()
     }
 
     pub fn user_owns_deployment(&self, user_id: &UserId) -> bool {
         self.user_id == *user_id
     }
+
+    pub fn update_state(&mut self, update: DeploymentUpdate) {
+        self.state_history.push((get_time_nanos(), update));
+    }
+
+    pub fn get_history(&self) -> Vec<(u64, DeploymentUpdate)> {
+        self.state_history.clone()
+    }
+
+    pub fn get_akash_info(&self) -> Option<u64> {
+        self.state_history
+            .iter()
+            .filter_map(|(_, update)| update.get_akash_info())
+            .collect::<Vec<u64>>()
+            .first()
+            .cloned()
+    }
 }
 
 impl Storable for Deployment {
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::Owned(Encode!(self).unwrap())
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        Decode!(bytes.as_ref(), Self).unwrap()
+    }
+
+    const BOUND: Bound = Bound::Unbounded;
+}
+
+/// Deployment update sent to the client via IC WebSocket
+#[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub enum DeploymentUpdate {
+    Initialized,
+    DeploymentCreated(String, u64),
+    LeaseCreated(String, String),
+    Opened,
+    Closed,
+    Failed(String),
+}
+
+impl DeploymentUpdate {
+    pub fn get_akash_info(&self) -> Option<u64> {
+        match self {
+            DeploymentUpdate::DeploymentCreated(_, info) => Some(*info),
+            _ => None,
+        }
+    }
+}
+
+impl Storable for DeploymentUpdate {
     fn to_bytes(&self) -> Cow<[u8]> {
         Cow::Owned(Encode!(self).unwrap())
     }
