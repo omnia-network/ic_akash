@@ -3,6 +3,16 @@ type ApiError = record {
     message : text;
 };
 
+type ApiStringResult = variant {
+    Ok : text;
+    Err : ApiError;
+};
+
+type ApiEmptyResult = variant {
+    Ok;
+    Err : ApiError;
+};
+
 type TimestampNs = nat64;
 
 type UserId = principal;
@@ -27,26 +37,21 @@ type CreateUserResult = variant {
     Err : ApiError;
 };
 
-type EmptyResult = variant {
-    Ok;
-    Err : ApiError;
-};
-
 type DeploymentId = text;
 
-type DeploymentState = variant {
+type DeploymentUpdate = variant {
     Initialized;
-    DeploymentCreated;
-    LeaseCreated;
+    DeploymentCreated : record { text; nat64 };
+    LeaseCreated : record { text; text };
     Active;
     Closed;
+    Failed : text;
 };
 
 type Deployment = record {
     sdl : text;
     user_id : UserId;
-    created_at : TimestampNs;
-    state : DeploymentState;
+    state_history : vec record { TimestampNs; DeploymentUpdate };
 };
 
 type GetDeploymentResult = variant {
@@ -71,22 +76,30 @@ type CreateDeploymentResult = variant {
 };
 
 //// IC WebSocket types ////
+import "./ws_types.did";
 
-// TODO: add IC WebSocket types
-
+type DeploymentUpdateWsMessage = record {
+    id : text;
+    update : DeploymentUpdate;
+};
 //// End IC WebSocket types ////
 
 service : (bool) -> {
+    "address" : () -> (ApiStringResult);
+    "balance" : () -> (ApiStringResult);
     "get_user" : () -> (GetUserResult) query;
     "create_user" : () -> (CreateUserResult);
-    "promote_user_to_admin" : (UserId) -> (EmptyResult);
+    "promote_user_to_admin" : (UserId) -> (ApiEmptyResult);
     "get_deployment" : (text) -> (GetDeploymentResult) query;
     "get_deployments" : () -> (GetDeploymentsResult) query;
     "create_deployment" : (text) -> (CreateDeploymentResult);
+    "create_test_deployment" : () -> (CreateDeploymentResult);
+    "close_deployment" : (text) -> (ApiEmptyResult);
 
     //// IC WebSocket methods ////
-
-    // TODO: add IC WebSocket methods
-
+    "ws_open" : (CanisterWsOpenArguments) -> (CanisterWsOpenResult);
+    "ws_close" : (CanisterWsCloseArguments) -> (CanisterWsCloseResult);
+    "ws_message" : (CanisterWsMessageArguments, opt DeploymentUpdateWsMessage) -> (CanisterWsMessageResult);
+    "ws_get_messages" : (CanisterWsGetMessagesArguments) -> (CanisterWsGetMessagesResult) query;
     //// End IC WebSocket methods ////
 };

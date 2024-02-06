@@ -1,9 +1,3 @@
-use std::str::FromStr;
-
-use cosmrs::AccountId;
-use ic_cdk::print;
-use utils::base64_decode;
-
 use crate::{
     akash::{
         address::get_account_id_from_public_key,
@@ -18,13 +12,17 @@ use crate::{
     },
     api::{init_config, Config, ConfigMemory},
 };
+use cosmrs::AccountId;
+use ic_cdk::print;
+use std::str::FromStr;
+use utils::base64_decode;
 
 pub struct AkashService {
     config_memory: ConfigMemory,
 }
 
 impl AkashService {
-    pub async fn new() -> Self {
+    pub fn default() -> Self {
         Self {
             config_memory: init_config(),
         }
@@ -32,12 +30,13 @@ impl AkashService {
 }
 
 impl AkashService {
-    fn get_config(&self) -> Config {
+    pub fn get_config(&self) -> Config {
         self.config_memory.get().clone()
     }
 
     pub async fn address(&self) -> Result<String, String> {
         let config = self.get_config();
+
         let public_key = config.public_key().await?;
 
         Ok(get_account_id_from_public_key(&public_key)?.to_string())
@@ -45,6 +44,7 @@ impl AkashService {
 
     pub async fn balance(&self) -> Result<String, String> {
         let config = self.get_config();
+
         let public_key = config.public_key().await?;
 
         get_balance(config.tendermint_rpc_url(), &public_key)
@@ -54,6 +54,7 @@ impl AkashService {
 
     pub async fn send(&self, to_address: String, amount: u64) -> Result<String, String> {
         let config = self.get_config();
+
         let public_key = config.public_key().await?;
         let rpc_url = config.tendermint_rpc_url();
 
@@ -83,6 +84,7 @@ impl AkashService {
         pub_key_pem_base64: String,
     ) -> Result<String, String> {
         let config = self.get_config();
+
         let public_key = config.public_key().await?;
         let rpc_url = config.tendermint_rpc_url();
 
@@ -108,6 +110,7 @@ impl AkashService {
 
     pub async fn create_deployment(&self, sdl: SdlV3) -> Result<(String, u64, String), String> {
         let config = self.get_config();
+
         let public_key = config.public_key().await?;
         let rpc_url = config.tendermint_rpc_url();
 
@@ -122,17 +125,23 @@ impl AkashService {
         let tx_hash =
             ic_tendermint_rpc::broadcast_tx_sync(config.is_mainnet(), rpc_url, tx_raw).await?;
 
+        print(&format!(
+            "[create_deployment] tx_hash: {}, dseq: {}",
+            tx_hash, dseq
+        ));
+
         Ok((tx_hash, dseq, sdl.manifest_sorted_json()))
     }
 
-    pub async fn check_tx(&self, tx_hex: String) -> Result<(), String> {
+    pub async fn check_tx(&self, tx_hash_hex: String) -> Result<(), String> {
         let config = self.get_config();
 
-        ic_tendermint_rpc::check_tx(config.tendermint_rpc_url(), tx_hex).await
+        ic_tendermint_rpc::check_tx(config.tendermint_rpc_url(), tx_hash_hex).await
     }
 
     pub async fn create_lease(&self, dseq: u64) -> Result<(String, String), String> {
         let config = self.get_config();
+
         let public_key = config.public_key().await?;
         let account_id = get_account_id_from_public_key(&public_key)?;
         let rpc_url = config.tendermint_rpc_url();
@@ -141,8 +150,12 @@ impl AkashService {
 
         let bids = fetch_bids(rpc_url.clone(), &account_id, dseq).await?;
         print(format!("[create_lease] bids: {:?}", bids));
+
         // TODO: take the "best" bid
-        let bid = bids[1].bid.clone().unwrap();
+        // SAFETY:
+        // 'create_lease' is called by the 'handle_create_lease' function which is itself called by the 'fetch_bids' function
+        // the latter makes sure that there is at least one bid before calling 'create_lease' so accessing the first bid is safe
+        let bid = bids[0].bid.clone().unwrap();
         let bid_id = bid.bid_id.unwrap();
 
         let tx_raw =
@@ -162,6 +175,7 @@ impl AkashService {
 
     pub async fn close_deployment(&self, dseq: u64) -> Result<String, String> {
         let config = self.get_config();
+
         let public_key = config.public_key().await?;
         let rpc_url = config.tendermint_rpc_url();
 

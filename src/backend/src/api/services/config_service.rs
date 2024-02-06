@@ -13,10 +13,6 @@ impl Default for ConfigService {
 }
 
 impl ConfigService {
-    pub fn get_config(&self) -> Config {
-        self.config_memory.get().clone()
-    }
-
     pub fn set_config(&mut self, config: Config) -> Result<(), ApiError> {
         self.config_memory
             .set(config)
