@@ -127,6 +127,13 @@ impl DeploymentsEndpoints {
                     DeploymentsService::default()
                         .set_failed_deployment(deployment_id)
                         .expect("Failed to set deployment to failed");
+                    send_canister_update(
+                        calling_principal,
+                        DeploymentUpdateWsMessage::new(
+                            deployment_id.to_string(),
+                            DeploymentUpdate::Failed,
+                        ),
+                    );
                 }
             });
         });
@@ -166,8 +173,10 @@ async fn handle_create_deployment(
         .update_deployment(deployment_id, deployment_update.clone())
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
 
-    let ws_message = DeploymentUpdateWsMessage::new(deployment_id.to_string(), deployment_update);
-    send_canister_update(calling_principal, ws_message);
+    send_canister_update(
+        calling_principal,
+        DeploymentUpdateWsMessage::new(deployment_id.to_string(), deployment_update),
+    );
 
     Ok(dseq)
 }
@@ -187,6 +196,13 @@ fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: Deployme
                     DeploymentsService::default()
                         .set_failed_deployment(deployment_id)
                         .expect("Failed to set deployment to failed");
+                    send_canister_update(
+                        calling_principal,
+                        DeploymentUpdateWsMessage::new(
+                            deployment_id.to_string(),
+                            DeploymentUpdate::Failed,
+                        ),
+                    );
                 }
             }
         })
@@ -240,8 +256,10 @@ async fn handle_create_lease(
         .update_deployment(deployment_id, deployment_update.clone())
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
 
-    let ws_message = DeploymentUpdateWsMessage::new(deployment_id.to_string(), deployment_update);
-    send_canister_update(calling_principal, ws_message);
+    send_canister_update(
+        calling_principal,
+        DeploymentUpdateWsMessage::new(deployment_id.to_string(), deployment_update),
+    );
 
     Ok((tx_hash, deployment_url))
 }
