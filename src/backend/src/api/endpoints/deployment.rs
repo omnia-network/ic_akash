@@ -165,7 +165,9 @@ impl DeploymentsEndpoints {
         let dseq = self
             .deployments_service
             .get_akash_deployment_info(&deployment_id)?
-            .ok_or(ApiError::not_found("Deployment has not been created"))?;
+            .ok_or(ApiError::not_found(
+                "Deployment {} is initialized but has not been created",
+            ))?;
 
         print(&format!("Closing deployment: {}", dseq));
 

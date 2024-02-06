@@ -1,8 +1,16 @@
 type ClientPrincipal = principal;
-
+type GatewayPrincipal = principal;
 type ClientKey = record {
     client_principal : ClientPrincipal;
     client_nonce : nat64;
+};
+
+type WebsocketMessage = record {
+    client_key : ClientKey;
+    sequence_num : nat64;
+    timestamp : nat64;
+    is_service_message : bool;
+    content : blob;
 };
 
 type CanisterOutputMessage = record {
@@ -15,10 +23,12 @@ type CanisterOutputCertifiedMessages = record {
     messages : vec CanisterOutputMessage;
     cert : blob;
     tree : blob;
+    is_end_of_queue : bool;
 };
 
 type CanisterWsOpenArguments = record {
     client_nonce : nat64;
+    gateway_principal : GatewayPrincipal;
 };
 
 type CanisterWsOpenResult = variant {
@@ -31,6 +41,15 @@ type CanisterWsCloseArguments = record {
 };
 
 type CanisterWsCloseResult = variant {
+    Ok : null;
+    Err : text;
+};
+
+type CanisterWsMessageArguments = record {
+    msg : WebsocketMessage;
+};
+
+type CanisterWsMessageResult = variant {
     Ok : null;
     Err : text;
 };

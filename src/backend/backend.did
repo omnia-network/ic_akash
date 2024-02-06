@@ -8,8 +8,8 @@ type ApiStringResult = variant {
     Err : ApiError;
 };
 
-type ApiNullResult = variant {
-    Ok : null;
+type ApiEmptyResult = variant {
+    Ok;
     Err : ApiError;
 };
 
@@ -37,17 +37,12 @@ type CreateUserResult = variant {
     Err : ApiError;
 };
 
-type EmptyResult = variant {
-    Ok;
-    Err : ApiError;
-};
-
 type DeploymentId = text;
 
 type DeploymentUpdate = variant {
     Initialized;
     DeploymentCreated : record { text; nat64 };
-    LeaseCreated : record { text };
+    LeaseCreated : text;
     Active;
     Closed;
 };
@@ -93,16 +88,17 @@ service : (bool) -> {
     "balance" : () -> (ApiStringResult);
     "get_user" : () -> (GetUserResult) query;
     "create_user" : () -> (CreateUserResult);
-    "promote_user_to_admin" : (UserId) -> (EmptyResult);
+    "promote_user_to_admin" : (UserId) -> (ApiEmptyResult);
     "get_deployment" : (text) -> (GetDeploymentResult) query;
     "get_deployments" : () -> (GetDeploymentsResult) query;
     "create_deployment" : (text) -> (CreateDeploymentResult);
     "create_test_deployment" : () -> (CreateDeploymentResult);
-    "close_deployment" : (text) -> (ApiNullResult);
+    "close_deployment" : (text) -> (ApiEmptyResult);
 
     //// IC WebSocket methods ////
     "ws_open" : (CanisterWsOpenArguments) -> (CanisterWsOpenResult);
     "ws_close" : (CanisterWsCloseArguments) -> (CanisterWsCloseResult);
+    "ws_message" : (CanisterWsMessageArguments, opt DeploymentUpdateWsMessage) -> (CanisterWsMessageResult);
     "ws_get_messages" : (CanisterWsGetMessagesArguments) -> (CanisterWsGetMessagesResult) query;
     //// End IC WebSocket methods ////
 };
