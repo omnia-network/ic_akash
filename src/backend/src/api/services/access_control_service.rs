@@ -27,6 +27,16 @@ impl AccessControlService {
         Ok(())
     }
 
+    pub fn assert_principal_is_user(&self, principal: &Principal) -> Result<(), ApiError> {
+        let user_id = UserId::new(*principal);
+
+        self.users_memory
+            .get(&user_id)
+            .ok_or_else(|| ApiError::not_found(format!("User {} not found", user_id).as_str()))?;
+
+        Ok(())
+    }
+
     pub fn assert_principal_is_admin(&self, principal: &Principal) -> Result<(), ApiError> {
         let user_id = UserId::new(*principal);
 
@@ -45,12 +55,12 @@ impl AccessControlService {
         Ok(())
     }
 
-    pub fn assert_user_owns_deployment(
+    pub fn assert_principal_owns_deployment(
         &self,
-        user_principal: &Principal,
+        principal: &Principal,
         deployment_id: &DeploymentId,
     ) -> Result<(), ApiError> {
-        let user_id = UserId::new(*user_principal);
+        let user_id = UserId::new(*principal);
 
         let deployment = self.deployments_memory.get(deployment_id).ok_or_else(|| {
             ApiError::not_found(&format!("Deployment {} not found", deployment_id))
