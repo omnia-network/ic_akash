@@ -150,11 +150,11 @@ impl DeploymentsEndpoints {
         calling_principal: Principal,
         deployment_id: String,
     ) -> Result<(), ApiError> {
-        self.access_control_service
-            .assert_principal_not_anonymous(&calling_principal)?;
-
         let deployment_id = DeploymentId::try_from(&deployment_id[..])
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
+
+        self.access_control_service
+            .assert_user_owns_deployment(&calling_principal, &deployment_id)?;
 
         if let Err(e) = handle_close_deployment(deployment_id).await {
             set_failed_deployment_and_notify(
