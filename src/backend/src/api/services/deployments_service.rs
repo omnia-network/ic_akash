@@ -79,7 +79,7 @@ impl DeploymentsService {
         let mut deployment =
             self.deployments_memory
                 .get(&deployment_id)
-                .ok_or(ApiError::internal(&format!(
+                .ok_or(ApiError::not_found(&format!(
                     "Deployment {} not found",
                     deployment_id
                 )))?;
@@ -95,7 +95,7 @@ impl DeploymentsService {
         self.deployments_memory
             .get(deployment_id)
             .map(|deployment| deployment.get_akash_info())
-            .ok_or(ApiError::internal(&format!(
+            .ok_or(ApiError::not_found(&format!(
                 "Deployment {} not found",
                 deployment_id
             )))

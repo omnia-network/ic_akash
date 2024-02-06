@@ -8,6 +8,11 @@ type ApiStringResult = variant {
     Err : ApiError;
 };
 
+type ApiNullResult = variant {
+    Ok : null;
+    Err : ApiError;
+};
+
 type TimestampNs = nat64;
 
 type UserId = principal;
@@ -93,6 +98,7 @@ service : (bool) -> {
     "get_deployments" : () -> (GetDeploymentsResult) query;
     "create_deployment" : (text) -> (CreateDeploymentResult);
     "create_test_deployment" : () -> (CreateDeploymentResult);
+    "close_deployment" : (text) -> (ApiNullResult);
 
     //// IC WebSocket methods ////
     "ws_open" : (CanisterWsOpenArguments) -> (CanisterWsOpenResult);

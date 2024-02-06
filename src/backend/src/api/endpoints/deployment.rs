@@ -57,6 +57,16 @@ async fn create_test_deployment() -> ApiResult<String> {
     create_deployment(sdl).await
 }
 
+#[update]
+async fn close_deployment(deployment_id: String) -> ApiResult {
+    let calling_principal = caller();
+
+    DeploymentsEndpoints::default()
+        .close_deployment(calling_principal, deployment_id)
+        .await
+        .into()
+}
+
 struct DeploymentsEndpoints {
     deployments_service: DeploymentsService,
     access_control_service: AccessControlService,
@@ -139,6 +149,29 @@ impl DeploymentsEndpoints {
         });
 
         Ok(deployment_id)
+    }
+
+    pub async fn close_deployment(
+        &mut self,
+        calling_principal: Principal,
+        deployment_id: String,
+    ) -> Result<(), ApiError> {
+        // self.access_control_service
+        //     .assert_principal_not_anonymous(&calling_principal)?;
+
+        let deployment_id = DeploymentId::try_from(&deployment_id[..])
+            .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
+
+        let dseq = self
+            .deployments_service
+            .get_akash_deployment_info(&deployment_id)?
+            .ok_or(ApiError::not_found("Deployment has not been created"))?;
+
+        print(&format!("Closing deployment: {}", dseq));
+
+        // call close_deployment on akash service passing dseq
+        // set deployment to closed in deployments service
+        Ok(())
     }
 }
 
