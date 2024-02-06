@@ -41,11 +41,19 @@ type DeploymentId = text;
 
 type DeploymentUpdate = variant {
     Initialized;
-    DeploymentCreated : record { text; nat64 };
-    LeaseCreated : record { text; text };
+    DeploymentCreated : record {
+        tx_hash : text;
+        dseq : nat64;
+    };
+    LeaseCreated : record {
+        tx_hash : text;
+        provider_url : text;
+    };
     Active;
     Closed;
-    Failed : text;
+    Failed : record {
+        reason : text;
+    };
 };
 
 type Deployment = record {

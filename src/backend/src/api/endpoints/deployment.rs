@@ -196,7 +196,10 @@ async fn handle_create_deployment(
         .await
         .map_err(|e| ApiError::internal(&format!("Error creating deployment: {}", e)))?;
 
-    let deployment_update = DeploymentUpdate::DeploymentCreated(tx_hash.clone(), dseq);
+    let deployment_update = DeploymentUpdate::DeploymentCreated {
+        tx_hash: tx_hash.clone(),
+        dseq,
+    };
 
     deployment_service
         .update_deployment(deployment_id, deployment_update.clone())
@@ -269,12 +272,15 @@ async fn handle_create_lease(
     let akash_service = AkashService::default();
     let mut deployment_service = DeploymentsService::default();
 
-    let (tx_hash, deployment_url) = akash_service
+    let (tx_hash, provider_url) = akash_service
         .create_lease(dseq)
         .await
         .map_err(|e| ApiError::internal(&format!("Error creating lease: {}", e)))?;
 
-    let deployment_update = DeploymentUpdate::LeaseCreated(tx_hash.clone(), deployment_url.clone());
+    let deployment_update = DeploymentUpdate::LeaseCreated {
+        tx_hash: tx_hash.clone(),
+        provider_url: provider_url.clone(),
+    };
     deployment_service
         .update_deployment(deployment_id, deployment_update.clone())
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
@@ -284,7 +290,7 @@ async fn handle_create_lease(
         DeploymentUpdateWsMessage::new(deployment_id.to_string(), deployment_update),
     );
 
-    Ok((tx_hash, deployment_url))
+    Ok((tx_hash, provider_url))
 }
 
 async fn handle_close_deployment(deployment_id: DeploymentId) -> Result<(), ApiError> {
@@ -321,12 +327,12 @@ fn set_failed_deployment_and_notify(
         // however, this should not happen
         .is_ok()
     {
-    send_canister_update(
-        calling_principal,
+        send_canister_update(
+            calling_principal,
             DeploymentUpdateWsMessage::new(
                 deployment_id.to_string(),
-                DeploymentUpdate::Failed(reason),
+                DeploymentUpdate::Failed { reason },
             ),
-    );
+        );
     }
 }
