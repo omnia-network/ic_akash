@@ -314,11 +314,19 @@ fn set_failed_deployment_and_notify(
     calling_principal: Principal,
     reason: String,
 ) {
-    DeploymentsService::default()
+    if DeploymentsService::default()
         .set_failed_deployment(deployment_id, reason.clone())
-        .expect("Failed to set deployment to failed");
+        // this can fail if the deployment has already failed or been closed
+        // in such a case, we don't need to notify the user
+        // however, this should not happen
+        .is_ok()
+    {
     send_canister_update(
         calling_principal,
-        DeploymentUpdateWsMessage::new(deployment_id.to_string(), DeploymentUpdate::Failed(reason)),
+            DeploymentUpdateWsMessage::new(
+                deployment_id.to_string(),
+                DeploymentUpdate::Failed(reason),
+            ),
     );
+    }
 }
