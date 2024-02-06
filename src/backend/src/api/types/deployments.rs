@@ -89,7 +89,7 @@ pub enum DeploymentUpdate {
         tx_hash: String,
         provider_url: String,
     },
-    Opened,
+    Active,
     Closed,
     Failed {
         reason: String,

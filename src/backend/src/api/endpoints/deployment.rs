@@ -40,6 +40,19 @@ fn get_deployments() -> ApiResult<Vec<GetDeploymentResponse>> {
 }
 
 #[update]
+async fn create_certificate(
+    cert_pem_base64: String,
+    pub_key_pem_base64: String,
+) -> ApiResult<String> {
+    let calling_principal = caller();
+
+    DeploymentsEndpoints::default()
+        .create_certificate(calling_principal, cert_pem_base64, pub_key_pem_base64)
+        .await
+        .into()
+}
+
+#[update]
 async fn create_deployment(sdl: String) -> ApiResult<String> {
     let calling_principal = caller();
 
@@ -47,6 +60,15 @@ async fn create_deployment(sdl: String) -> ApiResult<String> {
         .create_deployment(calling_principal, sdl)
         .await
         .map(|id| id.to_string())
+        .into()
+}
+
+#[update]
+fn update_deployment(deployment_id: String, update: DeploymentUpdate) -> ApiResult<()> {
+    let calling_principal = caller();
+
+    DeploymentsEndpoints::default()
+        .update_deployment(calling_principal, deployment_id, update)
         .into()
 }
 
@@ -110,6 +132,20 @@ impl DeploymentsEndpoints {
         Ok(deployments)
     }
 
+    pub async fn create_certificate(
+        &self,
+        calling_principal: Principal,
+        cert_pem_base64: String,
+        pub_key_pem_base64: String,
+    ) -> Result<String, ApiError> {
+        self.access_control_service
+            .assert_principal_not_anonymous(&calling_principal)?;
+        AkashService::default()
+            .create_certificate(cert_pem_base64, pub_key_pem_base64)
+            .await
+            .map_err(|e| ApiError::internal(&format!("Error creating certificate: {}", e)))
+    }
+
     pub async fn create_deployment(
         &mut self,
         calling_principal: Principal,
@@ -143,6 +179,30 @@ impl DeploymentsEndpoints {
         });
 
         Ok(deployment_id)
+    }
+
+    pub fn update_deployment(
+        &mut self,
+        calling_principal: Principal,
+        deployment_id: String,
+        update: DeploymentUpdate,
+    ) -> Result<(), ApiError> {
+        self.access_control_service
+            .assert_principal_not_anonymous(&calling_principal)?;
+
+        let deployment_id = DeploymentId::try_from(&deployment_id[..])
+            .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
+
+        match update {
+            DeploymentUpdate::Active | DeploymentUpdate::Failed { .. } => self
+                .deployments_service
+                .update_deployment(deployment_id, update),
+
+            _ => Err(ApiError::invalid_argument(&format!(
+                "Invalid update for deployment: {:?}",
+                update
+            ))),
+        }
     }
 
     pub async fn close_deployment(
