@@ -133,16 +133,10 @@ impl DeploymentsEndpoints {
                 if let Err(e) =
                     handle_deployment(calling_principal, parsed_sdl, deployment_id).await
                 {
-                    print(&format!("Error handling deployment: {:?}", e));
-                    DeploymentsService::default()
-                        .set_failed_deployment(deployment_id)
-                        .expect("Failed to set deployment to failed");
-                    send_canister_update(
+                    set_failed_deployment_and_notify(
+                        deployment_id,
                         calling_principal,
-                        DeploymentUpdateWsMessage::new(
-                            deployment_id.to_string(),
-                            DeploymentUpdate::Failed,
-                        ),
+                        format!("Error handling deployment: {:?}", e),
                     );
                 }
             });
@@ -162,17 +156,16 @@ impl DeploymentsEndpoints {
         let deployment_id = DeploymentId::try_from(&deployment_id[..])
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
 
-        let dseq = self
-            .deployments_service
-            .get_akash_deployment_info(&deployment_id)?
-            .ok_or(ApiError::not_found(
-                "Deployment {} is initialized but has not been created",
-            ))?;
+        if let Err(e) = handle_close_deployment(deployment_id).await {
+            set_failed_deployment_and_notify(
+                deployment_id,
+                calling_principal,
+                format!("Error closing deployment: {:?}", e),
+            );
+        }
 
-        print(&format!("Closing deployment: {}", dseq));
+        print(&format!("Deployment closed: {:?}", deployment_id));
 
-        // call close_deployment on akash service passing dseq
-        // set deployment to closed in deployments service
         Ok(())
     }
 }
@@ -182,7 +175,8 @@ async fn handle_deployment(
     parsed_sdl: SdlV3,
     deployment_id: DeploymentId,
 ) -> Result<(), ApiError> {
-    let dseq = handle_create_deployment(calling_principal, parsed_sdl, deployment_id).await?;
+    let (_tx_hash, dseq) =
+        handle_create_deployment(calling_principal, parsed_sdl, deployment_id).await?;
 
     handle_lease(calling_principal, dseq, deployment_id);
 
@@ -193,7 +187,7 @@ async fn handle_create_deployment(
     calling_principal: Principal,
     parsed_sdl: SdlV3,
     deployment_id: DeploymentId,
-) -> Result<u64, ApiError> {
+) -> Result<(String, u64), ApiError> {
     let akash_service = AkashService::default();
     let mut deployment_service = DeploymentsService::default();
 
@@ -202,7 +196,7 @@ async fn handle_create_deployment(
         .await
         .map_err(|e| ApiError::internal(&format!("Error creating deployment: {}", e)))?;
 
-    let deployment_update = DeploymentUpdate::DeploymentCreated(tx_hash, dseq);
+    let deployment_update = DeploymentUpdate::DeploymentCreated(tx_hash.clone(), dseq);
 
     deployment_service
         .update_deployment(deployment_id, deployment_update.clone())
@@ -213,7 +207,7 @@ async fn handle_create_deployment(
         DeploymentUpdateWsMessage::new(deployment_id.to_string(), deployment_update),
     );
 
-    Ok(dseq)
+    Ok((tx_hash, dseq))
 }
 
 fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: DeploymentId) {
@@ -227,16 +221,10 @@ fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: Deployme
                     handle_lease(calling_principal, dseq, deployment_id);
                 }
                 Err(e) => {
-                    print(&format!("Error fetching bids and creating lease: {:?}", e));
-                    DeploymentsService::default()
-                        .set_failed_deployment(deployment_id)
-                        .expect("Failed to set deployment to failed");
-                    send_canister_update(
+                    set_failed_deployment_and_notify(
+                        deployment_id,
                         calling_principal,
-                        DeploymentUpdateWsMessage::new(
-                            deployment_id.to_string(),
-                            DeploymentUpdate::Failed,
-                        ),
+                        format!("Error fetching bids and creating lease: {:?}", e),
                     );
                 }
             }
@@ -286,7 +274,7 @@ async fn handle_create_lease(
         .await
         .map_err(|e| ApiError::internal(&format!("Error creating lease: {}", e)))?;
 
-    let deployment_update = DeploymentUpdate::LeaseCreated(deployment_url.clone());
+    let deployment_update = DeploymentUpdate::LeaseCreated(tx_hash.clone(), deployment_url.clone());
     deployment_service
         .update_deployment(deployment_id, deployment_update.clone())
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
@@ -297,4 +285,40 @@ async fn handle_create_lease(
     );
 
     Ok((tx_hash, deployment_url))
+}
+
+async fn handle_close_deployment(deployment_id: DeploymentId) -> Result<(), ApiError> {
+    let mut deployment_service = DeploymentsService::default();
+
+    let dseq = deployment_service
+        .get_akash_deployment_info(&deployment_id)?
+        .ok_or(ApiError::not_found(&format!(
+            "Deployment {:?} is initialized but has not been created",
+            deployment_id
+        )))?;
+
+    print(&format!("Closing deployment: {:?}", deployment_id));
+
+    AkashService::default()
+        .close_deployment(dseq)
+        .await
+        .map_err(|e| ApiError::internal(&format!("Error closing Akash deployment: {}", e)))?;
+
+    deployment_service.close_deployment(deployment_id)?;
+
+    Ok(())
+}
+
+fn set_failed_deployment_and_notify(
+    deployment_id: DeploymentId,
+    calling_principal: Principal,
+    reason: String,
+) {
+    DeploymentsService::default()
+        .set_failed_deployment(deployment_id, reason.clone())
+        .expect("Failed to set deployment to failed");
+    send_canister_update(
+        calling_principal,
+        DeploymentUpdateWsMessage::new(deployment_id.to_string(), DeploymentUpdate::Failed(reason)),
+    );
 }

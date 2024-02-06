@@ -40,11 +40,12 @@ type CreateUserResult = variant {
 type DeploymentId = text;
 
 type DeploymentUpdate = variant {
-    Initialized;
+    Initialized : text;
     DeploymentCreated : record { text; nat64 };
-    LeaseCreated : text;
+    LeaseCreated : record { text; text };
     Active;
     Closed;
+    Failed : text;
 };
 
 type Deployment = record {

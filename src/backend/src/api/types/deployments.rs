@@ -15,11 +15,14 @@ pub struct Deployment {
 }
 
 impl Deployment {
-    pub fn new(sdl: String, user_id: UserId) -> Self {
+    pub fn new(sdl: String, user_id: UserId, deployment_id: String) -> Self {
         Self {
             sdl,
             user_id,
-            state_history: vec![(get_time_nanos(), DeploymentUpdate::Initialized)],
+            state_history: vec![(
+                get_time_nanos(),
+                DeploymentUpdate::Initialized(deployment_id),
+            )],
         }
     }
 
@@ -80,12 +83,12 @@ impl Storable for Deployment {
 /// Deployment update sent to the client via IC WebSocket
 #[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum DeploymentUpdate {
-    Initialized,
+    Initialized(String),
     DeploymentCreated(String, u64),
-    LeaseCreated(String),
+    LeaseCreated(String, String),
     Opened,
     Closed,
-    Failed,
+    Failed(String),
 }
 
 impl DeploymentUpdate {

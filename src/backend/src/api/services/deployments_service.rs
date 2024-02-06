@@ -39,7 +39,7 @@ impl DeploymentsService {
             .await
             .map_err(|e| ApiError::internal(&format!("Failed to create deployment id: {}", e)))?;
 
-        let deployment = Deployment::new(sdl, user_id);
+        let deployment = Deployment::new(sdl, user_id, deployment_id.to_string());
 
         self.deployments_memory.insert(deployment_id, deployment);
 
@@ -51,41 +51,15 @@ impl DeploymentsService {
         deployment_id: DeploymentId,
         deployment_update: DeploymentUpdate,
     ) -> Result<(), ApiError> {
-        let mut deployment = self.deployments_memory.get(&deployment_id).ok_or_else(|| {
-            ApiError::internal(&format!("Deployment {} not found", deployment_id))
-        })?;
-
-        if let DeploymentUpdate::Failed = deployment.state() {
-            return Err(ApiError::internal(&format!(
-                "Deployment {} already failed",
-                deployment_id
-            )));
-        }
-
-        if let DeploymentUpdate::Closed = deployment_update {
-            return Err(ApiError::internal(&format!(
-                "Deployment {} already closed",
-                deployment_id
-            )));
-        }
-
-        deployment.update_state(deployment_update);
-        self.deployments_memory.insert(deployment_id, deployment);
-
-        Ok(())
+        self.update_deployment_state(deployment_id, deployment_update)
     }
 
-    pub fn set_failed_deployment(&mut self, deployment_id: DeploymentId) -> Result<(), ApiError> {
-        let mut deployment =
-            self.deployments_memory
-                .get(&deployment_id)
-                .ok_or(ApiError::not_found(&format!(
-                    "Deployment {} not found",
-                    deployment_id
-                )))?;
-        deployment.update_state(DeploymentUpdate::Failed);
-        self.deployments_memory.insert(deployment_id, deployment);
-        Ok(())
+    pub fn set_failed_deployment(
+        &mut self,
+        deployment_id: DeploymentId,
+        reason: String,
+    ) -> Result<(), ApiError> {
+        self.update_deployment_state(deployment_id, DeploymentUpdate::Failed(reason))
     }
 
     pub fn get_akash_deployment_info(
@@ -99,5 +73,38 @@ impl DeploymentsService {
                 "Deployment {} not found",
                 deployment_id
             )))
+    }
+
+    pub fn close_deployment(&mut self, deployment_id: DeploymentId) -> Result<(), ApiError> {
+        self.update_deployment_state(deployment_id, DeploymentUpdate::Closed)
+    }
+
+    fn update_deployment_state(
+        &mut self,
+        deployment_id: DeploymentId,
+        deployment_update: DeploymentUpdate,
+    ) -> Result<(), ApiError> {
+        let mut deployment = self.deployments_memory.get(&deployment_id).ok_or_else(|| {
+            ApiError::not_found(&format!("Deployment {} not found", deployment_id))
+        })?;
+
+        if let DeploymentUpdate::Failed(_) = deployment.state() {
+            return Err(ApiError::internal(&format!(
+                "Deployment {} already failed",
+                deployment_id
+            )));
+        }
+
+        if let DeploymentUpdate::Closed = deployment.state() {
+            return Err(ApiError::internal(&format!(
+                "Deployment {} already closed",
+                deployment_id
+            )));
+        }
+
+        deployment.update_state(deployment_update);
+        self.deployments_memory.insert(deployment_id, deployment);
+
+        Ok(())
     }
 }
