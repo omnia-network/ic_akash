@@ -12,6 +12,9 @@ use candid::Principal;
 use ic_cdk::*;
 use std::time::Duration;
 
+const POLLING_BIDS_INTERVAL: u64 = 3;
+const MAX_FETCH_BIDS_RETRIES: u64 = 5;
+
 #[query]
 fn get_deployment(deployment_id: String) -> ApiResult<GetDeploymentResponse> {
     let calling_principal = caller();
@@ -238,7 +241,7 @@ async fn handle_deployment(
     let (_tx_hash, dseq) =
         handle_create_deployment(calling_principal, parsed_sdl, deployment_id).await?;
 
-    handle_lease(calling_principal, dseq, deployment_id);
+    handle_lease(calling_principal, dseq, deployment_id, 0);
 
     Ok(())
 }
@@ -273,15 +276,23 @@ async fn handle_create_deployment(
     Ok((tx_hash, dseq))
 }
 
-fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: DeploymentId) {
-    ic_cdk_timers::set_timer(Duration::from_secs(3), move || {
+fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: DeploymentId, retry: u64) {
+    ic_cdk_timers::set_timer(Duration::from_secs(POLLING_BIDS_INTERVAL), move || {
         ic_cdk::spawn(async move {
             match try_fetch_bids_and_create_lease(calling_principal, dseq, deployment_id).await {
                 Ok(Some((_tx_hash, deployment_url))) => {
                     print(&format!("Deployment URL: {}", deployment_url));
                 }
                 Ok(None) => {
-                    handle_lease(calling_principal, dseq, deployment_id);
+                    if retry > MAX_FETCH_BIDS_RETRIES {
+                        set_failed_deployment_and_notify(
+                            deployment_id,
+                            calling_principal,
+                            String::from("No bids found"),
+                        );
+                    } else {
+                        handle_lease(calling_principal, dseq, deployment_id, retry + 1);
+                    }
                 }
                 Err(e) => {
                     set_failed_deployment_and_notify(
