@@ -4,7 +4,29 @@
       "candid": "src/backend/backend.did",
       "package": "backend",
       "type": "rust",
-      "gzip": true
+      "gzip": true,
+      "declarations": {
+        "output": "frontend/declarations/"
+      }
+    },
+    "frontend": {
+      "dependencies": [
+        "backend"
+      ],
+      "frontend": {
+        "entrypoint": "frontend/out/index.html"
+      },
+      "source": [
+        "frontend/out"
+      ],
+      "type": "assets",
+      "build": [
+        "./scripts/build-frontend.sh"
+      ]
+    },
+    "internet_identity" : {
+      "type": "pull",
+      "id": "rdmx6-jaaaa-aaaaa-aaadq-cai"
     }
   },
   "defaults": {

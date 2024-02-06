@@ -81,17 +81,25 @@ impl Storable for Deployment {
 #[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum DeploymentUpdate {
     Initialized,
-    DeploymentCreated(String, u64),
-    LeaseCreated(String, String),
+    DeploymentCreated {
+        tx_hash: String,
+        dseq: u64,
+    },
+    LeaseCreated {
+        tx_hash: String,
+        provider_url: String,
+    },
     Opened,
     Closed,
-    Failed(String),
+    Failed {
+        reason: String,
+    },
 }
 
 impl DeploymentUpdate {
     pub fn get_akash_info(&self) -> Option<u64> {
         match self {
-            DeploymentUpdate::DeploymentCreated(_, info) => Some(*info),
+            DeploymentUpdate::DeploymentCreated { dseq, .. } => Some(*dseq),
             _ => None,
         }
     }

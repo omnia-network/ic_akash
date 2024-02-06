@@ -59,7 +59,7 @@ impl DeploymentsService {
         deployment_id: DeploymentId,
         reason: String,
     ) -> Result<(), ApiError> {
-        self.update_deployment_state(deployment_id, DeploymentUpdate::Failed(reason))
+        self.update_deployment_state(deployment_id, DeploymentUpdate::Failed { reason })
     }
 
     pub fn get_akash_deployment_info(
@@ -88,7 +88,7 @@ impl DeploymentsService {
             ApiError::not_found(&format!("Deployment {} not found", deployment_id))
         })?;
 
-        if let DeploymentUpdate::Failed(_) = deployment.state() {
+        if let DeploymentUpdate::Failed { .. } = deployment.state() {
             return Err(ApiError::internal(&format!(
                 "Deployment {} already failed",
                 deployment_id
