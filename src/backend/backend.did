@@ -95,6 +95,8 @@ service : (bool) -> {
     "create_test_deployment" : () -> (CreateDeploymentResult);
 
     //// IC WebSocket methods ////
+    "ws_open" : (CanisterWsOpenArguments) -> (CanisterWsOpenResult);
+    "ws_close" : (CanisterWsCloseArguments) -> (CanisterWsCloseResult);
     "ws_get_messages" : (CanisterWsGetMessagesArguments) -> (CanisterWsGetMessagesResult) query;
     //// End IC WebSocket methods ////
 };
