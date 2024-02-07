@@ -21,7 +21,9 @@ impl EcdsaKeyIds {
         EcdsaKeyId {
             curve: EcdsaCurve::Secp256k1,
             name: match self {
-                Self::TestKeyLocalDevelopment => "dfx_test_key",
+                Self::TestKeyLocalDevelopment => {
+                    "master_ecdsa_public_key_yndj2-3ybaa-aaaaa-aaaap-yai"
+                }
                 Self::TestKey1 => "test_key_1",
                 Self::ProductionKey1 => "key_1",
             }

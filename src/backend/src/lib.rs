@@ -2,6 +2,7 @@ mod akash;
 mod api;
 mod fixtures;
 mod helpers;
+mod tests;
 
 // In the following, we register a custom getrandom implementation because
 // otherwise getrandom (which is a dependency of some packages) fails to compile.
