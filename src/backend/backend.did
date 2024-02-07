@@ -51,7 +51,10 @@ type DeploymentUpdate = variant {
     };
     Active;
     Closed;
-    Failed : record {
+    FailedOnClient : record {
+        reason : text;
+    };
+    FailedOnCanister : record {
         reason : text;
     };
 };

@@ -91,7 +91,10 @@ pub enum DeploymentUpdate {
     },
     Active,
     Closed,
-    Failed {
+    FailedOnCanister {
+        reason: String,
+    },
+    FailedOnClient {
         reason: String,
     },
 }

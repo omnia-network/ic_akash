@@ -67,11 +67,12 @@ async fn create_deployment(sdl: String) -> ApiResult<String> {
 }
 
 #[update]
-fn update_deployment(deployment_id: String, update: DeploymentUpdate) -> ApiResult<()> {
+async fn update_deployment(deployment_id: String, update: DeploymentUpdate) -> ApiResult<()> {
     let calling_principal = caller();
 
     DeploymentsEndpoints::default()
         .update_deployment(calling_principal, deployment_id, update)
+        .await
         .into()
 }
 
@@ -178,7 +179,9 @@ impl DeploymentsEndpoints {
                         deployment_id,
                         calling_principal,
                         format!("Error handling deployment: {:?}", e),
-                    );
+                        true,
+                    )
+                    .await;
                 }
             });
         });
@@ -186,7 +189,7 @@ impl DeploymentsEndpoints {
         Ok(deployment_id)
     }
 
-    pub fn update_deployment(
+    pub async fn update_deployment(
         &mut self,
         calling_principal: Principal,
         deployment_id: String,
@@ -198,11 +201,32 @@ impl DeploymentsEndpoints {
         self.access_control_service
             .assert_principal_owns_deployment(&calling_principal, &deployment_id)?;
 
+        // the client can only update the deployment state only after a lease has been created
+        match self
+            .deployments_service
+            .get_deployment(&deployment_id)?
+            .state()
+        {
+            DeploymentUpdate::LeaseCreated { .. } => {}
+            _ => {
+                return Err(ApiError::invalid_argument(&format!(
+                    "Deployment must be in LeaseCreated state"
+                )))
+            }
+        }
+
         match update {
-            DeploymentUpdate::Active | DeploymentUpdate::Failed { .. } => self
+            DeploymentUpdate::Active => self
                 .deployments_service
                 .update_deployment(deployment_id, update),
+            DeploymentUpdate::FailedOnClient { .. } => {
+                self.deployments_service
+                    .update_deployment(deployment_id, update)?;
 
+                try_close_akash_deployment(&deployment_id).await?;
+
+                Ok(())
+            }
             _ => Err(ApiError::invalid_argument(&format!(
                 "Invalid update for deployment: {:?}",
                 update
@@ -226,7 +250,10 @@ impl DeploymentsEndpoints {
                 deployment_id,
                 calling_principal,
                 format!("Error closing deployment: {:?}", e),
-            );
+                // the failure happened while closing the deployment, so there is no need to do it again
+                false,
+            )
+            .await;
         }
 
         print(&format!("Deployment closed: {:?}", deployment_id));
@@ -291,7 +318,9 @@ fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: Deployme
                             deployment_id,
                             calling_principal,
                             String::from("No bids found"),
-                        );
+                            true,
+                        )
+                        .await;
                     } else {
                         handle_lease(calling_principal, dseq, deployment_id, retry + 1);
                     }
@@ -301,7 +330,9 @@ fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: Deployme
                         deployment_id,
                         calling_principal,
                         format!("Error fetching bids and creating lease: {:?}", e),
-                    );
+                        true,
+                    )
+                    .await;
                 }
             }
         })
@@ -313,6 +344,26 @@ async fn try_fetch_bids_and_create_lease(
     dseq: u64,
     deployment_id: DeploymentId,
 ) -> Result<Option<(String, String)>, ApiError> {
+    // if the deployment has failed, there is no need to keep fetching bids
+    if let DeploymentUpdate::FailedOnCanister { .. } = DeploymentsService::default()
+        .get_deployment(&deployment_id)?
+        .state()
+    {
+        return Err(ApiError::internal(&format!(
+            "Deployment failed. Stopped fetching bids"
+        )));
+    }
+
+    // if the deployment is closed, there is no need to keep fetching bids
+    if let DeploymentUpdate::Closed = DeploymentsService::default()
+        .get_deployment(&deployment_id)?
+        .state()
+    {
+        return Err(ApiError::internal(&format!(
+            "Deployment closed. Stopped fetching bids"
+        )));
+    }
+
     let akash_service = AkashService::default();
     let config = akash_service.get_config();
     let public_key = config
@@ -367,7 +418,48 @@ async fn handle_create_lease(
 }
 
 async fn handle_close_deployment(deployment_id: DeploymentId) -> Result<(), ApiError> {
+    try_close_akash_deployment(&deployment_id).await?;
+
+    DeploymentsService::default().close_deployment(deployment_id)?;
+
+    Ok(())
+}
+
+async fn set_failed_deployment_and_notify(
+    deployment_id: DeploymentId,
+    calling_principal: Principal,
+    reason: String,
+    and_close: bool,
+) {
     let mut deployment_service = DeploymentsService::default();
+
+    if and_close {
+        let _ = try_close_akash_deployment(&deployment_id).await;
+    }
+
+    if deployment_service
+        .set_failed_deployment(deployment_id, reason.clone())
+        // this can fail if the deployment has already failed or been closed
+        // in such a case, we don't need to notify the user
+        // however, this should not happen
+        .is_ok()
+    {
+        print(&format!(
+            "Sending failed deployment notification: {:?}",
+            deployment_id
+        ));
+        send_canister_update(
+            calling_principal,
+            DeploymentUpdateWsMessage::new(
+                deployment_id.to_string(),
+                DeploymentUpdate::FailedOnCanister { reason },
+            ),
+        );
+    }
+}
+
+async fn try_close_akash_deployment(deployment_id: &DeploymentId) -> Result<(), ApiError> {
+    let deployment_service = DeploymentsService::default();
 
     let dseq = deployment_service
         .get_akash_deployment_info(&deployment_id)?
@@ -383,29 +475,7 @@ async fn handle_close_deployment(deployment_id: DeploymentId) -> Result<(), ApiE
         .await
         .map_err(|e| ApiError::internal(&format!("Error closing Akash deployment: {}", e)))?;
 
-    deployment_service.close_deployment(deployment_id)?;
+    print(&format!("Deployment closed: {:?}", deployment_id));
 
     Ok(())
-}
-
-fn set_failed_deployment_and_notify(
-    deployment_id: DeploymentId,
-    calling_principal: Principal,
-    reason: String,
-) {
-    if DeploymentsService::default()
-        .set_failed_deployment(deployment_id, reason.clone())
-        // this can fail if the deployment has already failed or been closed
-        // in such a case, we don't need to notify the user
-        // however, this should not happen
-        .is_ok()
-    {
-        send_canister_update(
-            calling_principal,
-            DeploymentUpdateWsMessage::new(
-                deployment_id.to_string(),
-                DeploymentUpdate::Failed { reason },
-            ),
-        );
-    }
 }
