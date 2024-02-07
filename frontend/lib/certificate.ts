@@ -48,9 +48,9 @@ export const createX509 = async (canisterAkashAddress: String): Promise<X509Cert
     notBefore,
     notAfter,
     extensions: [
-      new x509.BasicConstraintsExtension(true, undefined, true),
-      new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage.clientAuth]),
       new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyEncipherment | x509.KeyUsageFlags.dataEncipherment, true),
+      new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage.clientAuth]),
+      new x509.BasicConstraintsExtension(true, undefined, true),
     ],
     signingAlgorithm: SIGNING_ALGORITHM,
     publicKey: keyPair.publicKey,

@@ -3,10 +3,13 @@
 import { LoadingButton } from "@/components/loading-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useDeploymentContext } from "@/contexts/DeploymentContext";
 import { useIcContext } from "@/contexts/IcContext";
-import { getDeploymentCreatedDate, getDeploymentUpdateName, getLastDeploymentUpdate, isDeploymentClosed, isDeploymentFailed } from "@/helpers/deployment";
+import { getDeploymentCreatedDate, getDeploymentUpdateDate, getDeploymentUpdateName, getLastDeploymentUpdate, isDeploymentClosed, isDeploymentFailed } from "@/helpers/deployment";
+import { CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible";
+import { ChevronsUpDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -64,11 +67,28 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div>
-                Created at: {getDeploymentCreatedDate(el.deployment).toLocaleString()}
+                Created at: {getDeploymentCreatedDate(el.deployment).toISOString()}
               </div>
               <div>
                 Status: <span className="text-xl font-bold">{getDeploymentUpdateName(getLastDeploymentUpdate(el.deployment))}</span>
               </div>
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-4 w-full mt-4">
+                  Status history
+                  <ChevronsUpDown className="h-4 w-4" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="flex flex-col gap-1">
+                  {el.deployment.state_history.map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex flex-col gap-2 rounded-md border px-4 py-3 font-mono text-sm"
+                    >
+                      {getDeploymentUpdateName(item[1])}
+                      <p className="text-xs">{getDeploymentUpdateDate(item).toISOString()}</p>
+                    </div>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
             </CardContent>
             {!isDeploymentClosed(el.deployment) && (
               <CardFooter>

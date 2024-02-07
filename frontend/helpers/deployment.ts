@@ -75,5 +75,9 @@ export const getDeploymentCreatedDate = (dep: Deployment) => {
     throw new Error("Deployment does not contain an Initialized step");
   }
 
-  return new Date(Number(initializedStep[0] / BigInt(1_000_000)));
+  return getDeploymentUpdateDate(initializedStep);
 };
+
+export const getDeploymentUpdateDate = ([timestampNs, _]: [bigint, DeploymentUpdate]) => {
+  return new Date(Number(timestampNs / BigInt(1_000_000)));
+}
