@@ -11,6 +11,15 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 type WebSocketActor = IcWebSocket<_SERVICE, DeploymentUpdateWsMessage>;
 export type OnWsOpenCallback = NonNullable<WebSocketActor["onopen"]>;
 export type OnWsMessageCallback = NonNullable<WebSocketActor["onmessage"]>;
+export type OnWsCloseCallback = NonNullable<WebSocketActor["onclose"]>;
+export type OnWsErrorCallback = NonNullable<WebSocketActor["onerror"]>;
+
+type WsCallbacks = {
+  onOpen?: OnWsOpenCallback;
+  onMessage?: OnWsMessageCallback;
+  onClose?: OnWsCloseCallback;
+  onError?: OnWsErrorCallback;
+};
 
 type IcContextType = {
   identity: DelegationIdentity | null;
@@ -20,7 +29,8 @@ type IcContextType = {
   logout: () => Promise<void>;
   backendActor: BackendActor | null;
   wsActor: WebSocketActor | null;
-  openWs: (onOpenCallback: OnWsOpenCallback, onMessageCallback: OnWsMessageCallback) => void;
+  openWs: (wsCallbacks: WsCallbacks) => void;
+  setWsCallbacks: (wsCallbacks: WsCallbacks) => void;
   closeWs: () => void;
 };
 
@@ -34,6 +44,7 @@ export const IcProvider: React.FC<IcProviderProps> = ({ children }) => {
   const [identity, setIdentity] = useState<DelegationIdentity | null>(null);
   const [backendActor, setBackendActor] = useState<BackendActor | null>(null);
   const [wsActor, setWsActor] = useState<WebSocketActor | null>(null);
+  const [wsCallbacks, setWsCallbacks] = useState<WsCallbacks>({});
   const [isLoading, setIsLoading] = useState(true);
   const isLoggedIn = useMemo(() => identity !== null && !identity.getPrincipal().isAnonymous(), [identity]);
 
@@ -86,22 +97,32 @@ export const IcProvider: React.FC<IcProviderProps> = ({ children }) => {
   }, [isLoggedIn]);
 
   useEffect(() => {
-    const getIdentity = async () => {
+    const loadIdentity = async () => {
       setIsLoading(true);
 
-      const authClient = await AuthClient.create();
-      const identity = authClient.getIdentity() as DelegationIdentity;
-      setIdentity(identity);
-      const backendActor = createBackendActor(identity);
-      setBackendActor(backendActor);
+      const authClient = await AuthClient.create({
+        keyType: "ECDSA",
+      });
+      const _identity = authClient.getIdentity();
+
+      setIdentity(_identity as DelegationIdentity);
+      const _backendActor = createBackendActor(_identity);
+      setBackendActor(_backendActor);
 
       setIsLoading(false);
     };
 
-    getIdentity();
+    loadIdentity();
   }, []);
 
-  const openWs = useCallback((onOpenCallback: OnWsOpenCallback, onMessageCallback: OnWsMessageCallback) => {
+  const updateWsCallbacks = useCallback((wsActor: WebSocketActor, inputWsCallbacks: WsCallbacks) => {
+    wsActor.onopen = inputWsCallbacks.onOpen || null;
+    wsActor.onmessage = inputWsCallbacks.onMessage || null;
+    wsActor.onclose = inputWsCallbacks.onClose || null;
+    wsActor.onerror = inputWsCallbacks.onError || null;
+  }, []);
+
+  const openWs = useCallback((inputWsCallbacks: WsCallbacks) => {
     if (!isLoggedIn) {
       throw new Error("Not logged in");
     }
@@ -114,18 +135,11 @@ export const IcProvider: React.FC<IcProviderProps> = ({ children }) => {
     });
 
     const ws = new IcWebSocket(icWsGatewayUrl, undefined, wsConfig);
-    ws.onopen = onOpenCallback;
-    ws.onmessage = onMessageCallback;
-    ws.onclose = () => {
-      console.log("ws close");
-      setWsActor(null);
-    };
-    ws.onerror = (err) => {
-      console.error("ws error", err);
-    };
+    updateWsCallbacks(ws, inputWsCallbacks);
+    setWsCallbacks(inputWsCallbacks);
 
     setWsActor(ws);
-  }, [isLoggedIn, backendActor, identity]);
+  }, [isLoggedIn, backendActor, identity, updateWsCallbacks]);
 
   const closeWs = useCallback(() => {
     if (wsActor) {
@@ -133,6 +147,12 @@ export const IcProvider: React.FC<IcProviderProps> = ({ children }) => {
       setWsActor(null);
     }
   }, [wsActor]);
+
+  useEffect(() => {
+    if (wsActor) {
+      updateWsCallbacks(wsActor, wsCallbacks);
+    }
+  }, [wsActor, wsCallbacks, updateWsCallbacks]);
 
   return (
     <IcContext.Provider value={{
@@ -144,6 +164,7 @@ export const IcProvider: React.FC<IcProviderProps> = ({ children }) => {
       backendActor,
       wsActor,
       openWs,
+      setWsCallbacks,
       closeWs,
     }}>
       {children}

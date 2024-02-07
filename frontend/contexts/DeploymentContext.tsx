@@ -1,9 +1,9 @@
-import { type GetDeploymentsResult } from "@/declarations/backend.did";
+import { type _SERVICE, type GetDeploymentsResult } from "@/declarations/backend.did";
 import { type OkType, extractOk } from "@/helpers/result";
 import { X509CertificateData, createX509, loadCertificate, saveCertificate } from "@/lib/certificate";
 import { type BackendActor } from "@/services/backend";
 import { DelegationIdentity } from "@dfinity/identity";
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 export type Deployments = OkType<GetDeploymentsResult>;
 
@@ -38,8 +38,11 @@ export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({ children
     } else {
       try {
         const akashAddress = extractOk(await actor.address());
-        certData = await createX509(identity, akashAddress);
-        extractOk(await actor.create_certificate(certData.cert, certData.pubKey));
+        certData = await createX509(akashAddress);
+        extractOk(await actor.create_certificate(
+          Buffer.from(certData.cert, "utf-8").toString("base64"),
+          Buffer.from(certData.pubKey, "utf-8").toString("base64"),
+        ));
 
         saveCertificate(certData);
       } catch (e) {
