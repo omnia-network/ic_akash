@@ -11,11 +11,6 @@ use std::{
 
 pub const IS_MAINNET: bool = false;
 
-/// (`is_mainnet`)
-pub type CanisterInitArgs = bool;
-
-pub const DEFAULT_CANISTER_INIT_ARGS: CanisterInitArgs = IS_MAINNET;
-
 lazy_static! {
     pub static ref TEST_ENV: Mutex<TestEnv> = Mutex::new(TestEnv::new());
     static ref TEST_CANISTER_WASM_MODULE: Vec<u8> = load_canister_wasm_from_path(&PathBuf::from(
