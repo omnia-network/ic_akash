@@ -11,7 +11,7 @@ export const sendManifestToProvider = async (
     console.log("Try sending manifest #" + i);
     try {
       if (!response) {
-        response = await fetch("https://providerproxy.cloudmos.io/", {
+        response = await fetch("https://akash-provider-proxy.icws.io/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
