@@ -1,4 +1,5 @@
 import { type _SERVICE, type GetDeploymentsResult } from "@/declarations/backend.did";
+import { getDeploymentCreatedDate } from "@/helpers/deployment";
 import { type OkType, extractOk } from "@/helpers/result";
 import { X509CertificateData, createX509, loadCertificate, saveCertificate } from "@/lib/certificate";
 import { type BackendActor } from "@/services/backend";
@@ -28,7 +29,11 @@ export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({ children
     const res = await actor.get_deployments();
 
     const _deployments = extractOk(res);
-    setDeployments(_deployments);
+    setDeployments(
+      _deployments.sort((el1, el2) =>
+        getDeploymentCreatedDate(el2.deployment).getTime() - getDeploymentCreatedDate(el1.deployment).getTime()
+      )
+    );
   }, []);
 
   const loadOrCreateCertificate = useCallback(async (actor: BackendActor, identity: DelegationIdentity) => {

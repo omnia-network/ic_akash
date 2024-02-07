@@ -8,10 +8,12 @@ import { DeploymentUpdate } from "@/declarations/backend.did";
 import { extractDeploymentCreated } from "@/helpers/deployment";
 import { extractOk } from "@/helpers/result";
 import { sendManifestToProvider } from "@/services/deployment";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 export default function NewDeployment() {
-  const { identity, backendActor, openWs, setWsCallbacks } = useIcContext();
+  const router = useRouter();
+  const { identity, backendActor, openWs, closeWs, setWsCallbacks } = useIcContext();
   const { tlsCertificateData, loadOrCreateCertificate, fetchDeployments } = useDeploymentContext();
   const [isLoading, setIsLoading] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
@@ -89,24 +91,25 @@ export default function NewDeployment() {
 
     try {
       if (leaseCreated) {
+        closeWs();
+
         const stepActive = {
           Active: null,
         };
-
         setDeploymentSteps((prev) => [...prev, stepActive]);
-
         extractOk(await backendActor!.update_deployment(deploymentUpdate.id, stepActive));
 
         await fetchDeployments(backendActor!);
 
         setIsDeploying(false);
+        router.push("/dashboard");
       }
     } catch (e) {
       console.error(e);
       alert("Failed to complete deployment, see console for details");
       setIsDeploying(false);
     }
-  }, [tlsCertificateData, setDeploymentSteps, deploymentSteps, backendActor, fetchDeployments]);
+  }, [tlsCertificateData, setDeploymentSteps, deploymentSteps, backendActor, fetchDeployments, router, closeWs]);
 
   const handleDeploy = async () => {
     setIsLoading(true);

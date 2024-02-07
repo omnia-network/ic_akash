@@ -145,6 +145,7 @@ export const IcProvider: React.FC<IcProviderProps> = ({ children }) => {
     if (wsActor) {
       wsActor.close();
       setWsActor(null);
+      setWsCallbacks({});
     }
   }, [wsActor]);
 

@@ -103,9 +103,8 @@ export default function Dashboard() {
                     <DialogHeader>
                       <DialogTitle>Are you sure?</DialogTitle>
                       <DialogDescription>
-                        This action cannot be undone.
-
                         <p>Deployment id to close: <pre>{el.id}</pre></p>
+                        <b>This action cannot be undone.</b>
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>

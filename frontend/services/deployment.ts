@@ -1,4 +1,3 @@
-import axios from "axios";
 import { X509CertificateData } from "@/lib/certificate";
 import { wait } from "@/helpers/timer";
 
@@ -7,18 +6,29 @@ export const sendManifestToProvider = async (
   manifest: string,
   certData: X509CertificateData,
 ) => {
-  let response;
+  let response: Response | undefined = undefined;
   for (let i = 1; i <= 3; i++) {
-    console.log("Try #" + i);
+    console.log("Try sending manifest #" + i);
     try {
       if (!response) {
-        response = await axios.post(providerUrl, {
-          method: "PUT",
-          certPem: certData.cert,
-          keyPem: certData.privKey,
-          body: manifest,
-          timeout: 60_000,
+        response = await fetch("https://providerproxy.cloudmos.io/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            method: "PUT",
+            url: providerUrl,
+            certPem: certData.cert,
+            keyPem: certData.privKey,
+            body: manifest,
+            timeout: 60_000,
+          }),
         });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
 
         i = 3;
       }
