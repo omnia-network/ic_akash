@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIcContext } from "@/contexts/IcContext";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 export default function DashboardLayout({
   children,
@@ -15,18 +15,28 @@ export default function DashboardLayout({
   const { identity, logout, isLoggedIn, isLoading } = useIcContext();
   const userPrincipal = useMemo(() => identity?.getPrincipal().toText(), [identity]);
 
+  const goToHome = useCallback(() => {
+    router.replace("/");
+  }, [router]);
+
   const handleLogout = useCallback(async () => {
     await logout();
 
-    router.replace("/");
-  }, [logout, router])
+    goToHome();
+  }, [logout, goToHome]);
+
+  useEffect(() => {
+    if (!isLoading && !isLoggedIn) {
+      goToHome();
+    }
+  }, [isLoading, isLoggedIn, goToHome]);
 
   if (isLoading) {
     return <div>Loading...</div>;
   }
 
   if (!isLoggedIn) {
-    router.replace("/");
+    return null;
   }
 
   return (
