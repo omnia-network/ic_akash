@@ -6,7 +6,6 @@ use crate::{
     helpers::send_canister_update,
 };
 use candid::Principal;
-use ic_cdk::print;
 
 pub struct DeploymentsService {
     deployments_memory: DeploymentsMemory,
@@ -45,8 +44,6 @@ impl DeploymentsService {
             .map_err(|e| ApiError::internal(&format!("Failed to create deployment id: {}", e)))?;
 
         let deployment = Deployment::new(sdl, user_id);
-
-        print(&format!("[{:?}]: Initialized", deployment_id));
 
         self.deployments_memory.insert(deployment_id, deployment);
 
