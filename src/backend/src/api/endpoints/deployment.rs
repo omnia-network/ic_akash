@@ -2,14 +2,13 @@ use crate::{
     akash::{address::get_account_id_from_public_key, bids::fetch_bids, sdl::SdlV3},
     api::{
         map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult,
-        Deployment, DeploymentId, DeploymentUpdate, DeploymentUpdateWsMessage, DeploymentsService,
-        GetDeploymentResponse, UserId,
+        Deployment, DeploymentId, DeploymentUpdate, DeploymentsService, GetDeploymentResponse,
+        UserId,
     },
     fixtures::example_sdl,
-    helpers::send_canister_update,
 };
 use candid::Principal;
-use ic_cdk::*;
+use ic_cdk::{caller, print, query, update};
 use std::time::Duration;
 
 const POLLING_BIDS_INTERVAL: u64 = 3;
@@ -172,6 +171,11 @@ impl DeploymentsEndpoints {
 
         ic_cdk_timers::set_timer(Duration::from_secs(0), move || {
             ic_cdk::spawn(async move {
+                print(&format!(
+                    "[{:?}]: Starting to handle deployment creation",
+                    deployment_id
+                ));
+
                 if let Err(e) =
                     handle_deployment(calling_principal, parsed_sdl, deployment_id).await
                 {
@@ -216,12 +220,19 @@ impl DeploymentsEndpoints {
         }
 
         match update {
-            DeploymentUpdate::Active => self
-                .deployments_service
-                .update_deployment(deployment_id, update),
+            DeploymentUpdate::Active => self.deployments_service.update_deployment(
+                calling_principal,
+                deployment_id,
+                update,
+                false,
+            ),
             DeploymentUpdate::FailedOnClient { .. } => {
-                self.deployments_service
-                    .update_deployment(deployment_id, update)?;
+                self.deployments_service.update_deployment(
+                    calling_principal,
+                    deployment_id,
+                    update,
+                    false,
+                )?;
 
                 try_close_akash_deployment(&deployment_id).await?;
 
@@ -294,13 +305,8 @@ async fn handle_create_deployment(
     };
 
     deployment_service
-        .update_deployment(deployment_id, deployment_update.clone())
+        .update_deployment(calling_principal, deployment_id, deployment_update, true)
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
-
-    send_canister_update(
-        calling_principal,
-        DeploymentUpdateWsMessage::new(deployment_id.to_string(), deployment_update),
-    );
 
     Ok((tx_hash, dseq))
 }
@@ -406,13 +412,8 @@ async fn handle_create_lease(
         provider_url: provider_url.clone(),
     };
     deployment_service
-        .update_deployment(deployment_id, deployment_update.clone())
+        .update_deployment(calling_principal, deployment_id, deployment_update, true)
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
-
-    send_canister_update(
-        calling_principal,
-        DeploymentUpdateWsMessage::new(deployment_id.to_string(), deployment_update),
-    );
 
     Ok((tx_hash, provider_url))
 }
@@ -438,7 +439,7 @@ async fn set_failed_deployment_and_notify(
     }
 
     if deployment_service
-        .set_failed_deployment(deployment_id, reason.clone())
+        .set_failed_deployment(calling_principal, deployment_id, reason.clone())
         // this can fail if the deployment has already failed or been closed
         // in such a case, we don't need to notify the user
         // however, this should not happen
@@ -448,13 +449,6 @@ async fn set_failed_deployment_and_notify(
             "Sending failed deployment notification: {:?}",
             deployment_id
         ));
-        send_canister_update(
-            calling_principal,
-            DeploymentUpdateWsMessage::new(
-                deployment_id.to_string(),
-                DeploymentUpdate::FailedOnCanister { reason },
-            ),
-        );
     }
 }
 

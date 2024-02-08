@@ -1,7 +1,12 @@
-use crate::api::{
-    init_deployments, ApiError, Deployment, DeploymentId, DeploymentUpdate, DeploymentsMemory,
-    UserId,
+use crate::{
+    api::{
+        init_deployments, ApiError, Deployment, DeploymentId, DeploymentUpdate,
+        DeploymentUpdateWsMessage, DeploymentsMemory, UserId,
+    },
+    helpers::send_canister_update,
 };
+use candid::Principal;
+use ic_cdk::print;
 
 pub struct DeploymentsService {
     deployments_memory: DeploymentsMemory,
@@ -41,6 +46,8 @@ impl DeploymentsService {
 
         let deployment = Deployment::new(sdl, user_id);
 
+        print(&format!("[{:?}]: Initialized", deployment_id));
+
         self.deployments_memory.insert(deployment_id, deployment);
 
         Ok(deployment_id)
@@ -48,18 +55,45 @@ impl DeploymentsService {
 
     pub fn update_deployment(
         &mut self,
+        calling_principal: Principal,
         deployment_id: DeploymentId,
         deployment_update: DeploymentUpdate,
+        notify_client: bool,
     ) -> Result<(), ApiError> {
-        self.update_deployment_state(deployment_id, deployment_update)
+        self.update_deployment_state(deployment_id, deployment_update.clone())?;
+
+        if notify_client {
+            send_canister_update(
+                calling_principal,
+                DeploymentUpdateWsMessage::new(deployment_id.to_string(), deployment_update),
+            );
+        }
+
+        Ok(())
     }
 
     pub fn set_failed_deployment(
         &mut self,
+        calling_principal: Principal,
         deployment_id: DeploymentId,
         reason: String,
     ) -> Result<(), ApiError> {
-        self.update_deployment_state(deployment_id, DeploymentUpdate::FailedOnCanister { reason })
+        self.update_deployment_state(
+            deployment_id,
+            DeploymentUpdate::FailedOnCanister {
+                reason: reason.clone(),
+            },
+        )?;
+
+        send_canister_update(
+            calling_principal,
+            DeploymentUpdateWsMessage::new(
+                deployment_id.to_string(),
+                DeploymentUpdate::FailedOnCanister { reason },
+            ),
+        );
+
+        Ok(())
     }
 
     pub fn get_akash_deployment_info(
