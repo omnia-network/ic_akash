@@ -2,8 +2,9 @@
 
 import { BackButton } from "@/components/back-button";
 import { LoadingButton } from "@/components/loading-button";
+import { useToast } from "@/components/ui/use-toast";
 import { useDeploymentContext } from "@/contexts/DeploymentContext";
-import { type OnWsMessageCallback, type OnWsOpenCallback, useIcContext } from "@/contexts/IcContext";
+import { type OnWsMessageCallback, type OnWsOpenCallback, useIcContext, OnWsErrorCallback } from "@/contexts/IcContext";
 import { DeploymentUpdate } from "@/declarations/backend.did";
 import { extractDeploymentCreated } from "@/helpers/deployment";
 import { extractOk } from "@/helpers/result";
@@ -18,6 +19,17 @@ export default function NewDeployment() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [deploymentSteps, setDeploymentSteps] = useState<Array<DeploymentUpdate>>([]);
+  const { toast } = useToast();
+
+  const toastError = useCallback((message: string) => {
+    setIsLoading(false);
+
+    toast({
+      variant: "destructive",
+      title: "Something went wrong.",
+      description: message,
+    });
+  }, [toast]);
 
   const onWsOpen: OnWsOpenCallback = useCallback(async () => {
     console.log("ws open");
@@ -37,11 +49,11 @@ export default function NewDeployment() {
 
     } catch (e) {
       console.error(e);
-      alert("Failed to create deployment, see console for details");
+      toastError("Failed to create deployment, see console for details");
     }
 
     setIsLoading(false);
-  }, [backendActor, identity, loadOrCreateCertificate]);
+  }, [backendActor, identity, loadOrCreateCertificate, toastError]);
 
   const onWsMessage: OnWsMessageCallback = useCallback(async (ev) => {
     console.log("ws message");
@@ -53,7 +65,7 @@ export default function NewDeployment() {
     if ("Failed" in deploymentUpdate.update) {
       const err = deploymentUpdate.update.Failed.reason;
       console.error("Failed to deploy", err);
-      alert("Failed to deploy, see console for details");
+      toastError("Failed to deploy, see console for details");
       return;
     }
 
@@ -85,7 +97,7 @@ export default function NewDeployment() {
         console.error("Failed to update deployment", e);
       }
 
-      alert("Failed to send manifest to provider, see console for details");
+      toastError("Failed to send manifest to provider, see console for details");
       setIsDeploying(false);
     }
 
@@ -106,12 +118,17 @@ export default function NewDeployment() {
       }
     } catch (e) {
       console.error(e);
-      alert("Failed to complete deployment, see console for details");
+      toastError("Failed to complete deployment, see console for details");
       setIsDeploying(false);
     }
-  }, [tlsCertificateData, setDeploymentSteps, deploymentSteps, backendActor, fetchDeployments, router, closeWs]);
+  }, [tlsCertificateData, setDeploymentSteps, deploymentSteps, backendActor, fetchDeployments, router, closeWs, toastError]);
 
-  const handleDeploy = async () => {
+  const onWsError: OnWsErrorCallback = useCallback((err) => {
+    console.error("WebSocket error:", err);
+    toastError("The WebSocket connection returned an error.");
+  }, [toastError]);
+
+  const handleDeploy = useCallback(async () => {
     setIsLoading(true);
 
     openWs({
@@ -120,12 +137,9 @@ export default function NewDeployment() {
       onClose: () => {
         console.log("ws close");
       },
-      onError: (err) => {
-        console.error(err);
-        setIsLoading(false);
-      },
+      onError: onWsError,
     });
-  };
+  }, [onWsOpen, onWsMessage, onWsError, openWs]);
 
   useEffect(() => {
     setWsCallbacks({
@@ -134,12 +148,9 @@ export default function NewDeployment() {
       onClose: () => {
         console.log("ws close");
       },
-      onError: (err) => {
-        console.error(err);
-        setIsLoading(false);
-      },
+      onError: onWsError,
     });
-  }, [onWsOpen, onWsMessage, setWsCallbacks]);
+  }, [onWsOpen, onWsMessage, onWsError, setWsCallbacks]);
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
