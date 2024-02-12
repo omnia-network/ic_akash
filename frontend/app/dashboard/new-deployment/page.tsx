@@ -11,6 +11,10 @@ import { extractOk } from "@/helpers/result";
 import { sendManifestToProvider } from "@/services/deployment";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { Textarea } from "@/components/ui/textarea"
+import { TEST_DEPLOYMENT_CONFIG } from "@/fixtures/deployment";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
 export default function NewDeployment() {
   const router = useRouter();
@@ -160,8 +164,22 @@ export default function NewDeployment() {
         <BackButton />
         <h2 className="ml-4 text-3xl font-bold tracking-tight">Create Deployment</h2>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <LoadingButton onClick={handleDeploy} isLoading={isLoading || isDeploying}>Deploy</LoadingButton>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="flex flex-col gap-4">
+          <Textarea
+            value={TEST_DEPLOYMENT_CONFIG}
+            rows={TEST_DEPLOYMENT_CONFIG.split("\n").length}
+            disabled
+          />
+          <LoadingButton onClick={handleDeploy} isLoading={isLoading || isDeploying}>Deploy IC WebSocket Gateway</LoadingButton>
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Coming soon</AlertTitle>
+            <AlertDescription>
+              In the next versions, you will be able to deploy your own services.
+            </AlertDescription>
+          </Alert>
+        </div>
         {deploymentSteps.length > 0 && (
           <div className="flex flex-col gap-3">
             <p className="text-sm font-medium">Deployment Steps</p>

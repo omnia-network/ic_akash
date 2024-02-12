@@ -87,7 +87,7 @@ export default function Dashboard() {
           <Button onClick={handleNewDeployment}>New Deployment</Button>
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {deployments.length === 0 && (
           <p>You don&apos;t have any deployments</p>
         )}
