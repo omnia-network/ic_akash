@@ -1,13 +1,17 @@
 "use client";
 
 import { LoadingButton } from "@/components/loading-button";
+import { Spinner } from "@/components/spinner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
 import { useDeploymentContext } from "@/contexts/DeploymentContext";
 import { useIcContext } from "@/contexts/IcContext";
-import { getDeploymentCreatedDate, getDeploymentUpdateDate, getDeploymentUpdateName, getLastDeploymentUpdate, isDeploymentClosed, isDeploymentFailed } from "@/helpers/deployment";
+import { Deployment } from "@/declarations/backend.did";
+import { extractDeploymentCreated, extractLeaseCreated, getDeploymentCreatedDate, getDeploymentUpdateDate, getDeploymentUpdateName, getLastDeploymentUpdate, isDeploymentActive, isDeploymentClosed, isDeploymentFailed } from "@/helpers/deployment";
+import { queryLeaseStatus } from "@/services/deployment";
 import { CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible";
 import { ChevronsUpDown } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -16,9 +20,13 @@ import { useCallback, useEffect, useState } from "react";
 export default function Dashboard() {
   const router = useRouter();
   const { isLoggedIn, backendActor } = useIcContext();
-  const { deployments, fetchDeployments } = useDeploymentContext();
+  const { deployments, fetchDeployments, loadOrCreateCertificate } = useDeploymentContext();
   const [isClosingDeployment, setIsClosingDeployment] = useState(false);
   const [dialogDeploymentId, setDialogDeploymentId] = useState<string>();
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+  const [isFetchingStatus, setIsFetchingStatus] = useState(false);
+  const [leaseStatusData, setLeaseStatusData] = useState<Record<string, unknown>>();
+  const { toast } = useToast();
 
   const handleNewDeployment = useCallback(async () => {
     router.push("/dashboard/new-deployment");
@@ -39,6 +47,32 @@ export default function Dashboard() {
 
     await fetchDeployments(backendActor!);
   }, [backendActor, fetchDeployments]);
+
+  const handleFetchStatus = useCallback(async (deployment: Deployment) => {
+    setIsStatusDialogOpen(true);
+    setIsFetchingStatus(true);
+
+    try {
+      const certData = await loadOrCreateCertificate(backendActor!);
+      const updates = deployment.state_history.map(([_, d]) => d);
+      const { dseq } = extractDeploymentCreated(updates.find((el) => el.hasOwnProperty("DeploymentCreated"))!);
+      const { provider_url } = extractLeaseCreated(updates.find((el) => el.hasOwnProperty("LeaseCreated"))!);
+
+      const queryLeaseUrl = new URL(`/lease/${dseq}/1/1/status`, provider_url);
+
+      const statusData = await queryLeaseStatus(queryLeaseUrl.toString(), certData);
+      setLeaseStatusData(statusData);
+    } catch (e) {
+      console.error("Failed to query lease status", e);
+      toast({
+        variant: "destructive",
+        title: "Something went wrong.",
+        description: "Failed to query lease status, see console for details.",
+      });
+    }
+
+    setIsFetchingStatus(false);
+  }, [toast, loadOrCreateCertificate, backendActor]);
 
   useEffect(() => {
     if (isLoggedIn && backendActor) {
@@ -91,7 +125,36 @@ export default function Dashboard() {
               </Collapsible>
             </CardContent>
             {!isDeploymentClosed(el.deployment) && (
-              <CardFooter>
+              <CardFooter className="gap-2">
+                {isDeploymentActive(el.deployment) && (
+                  <>
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleFetchStatus(el.deployment)}
+                    >
+                      Fetch status
+                    </Button>
+                    <Dialog
+                      open={isStatusDialogOpen}
+                      onOpenChange={setIsStatusDialogOpen}
+                    >
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Deployment status</DialogTitle>
+                          <DialogDescription>
+                            {isFetchingStatus ? (
+                              <Spinner />
+                            ) : (
+                              Boolean(leaseStatusData) && (
+                                <span className="font-mono">{JSON.stringify(leaseStatusData, null, 2)}</span>
+                              )
+                            )}
+                          </DialogDescription>
+                        </DialogHeader>
+                      </DialogContent>
+                    </Dialog>
+                  </>
+                )}
                 <Dialog
                   open={dialogDeploymentId === el.id}
                   onOpenChange={(open) => setDialogDeploymentId(open ? el.id : undefined)}

@@ -3,14 +3,13 @@ import { getDeploymentCreatedDate } from "@/helpers/deployment";
 import { type OkType, extractOk } from "@/helpers/result";
 import { X509CertificateData, createX509, loadCertificate, saveCertificate } from "@/lib/certificate";
 import { type BackendActor } from "@/services/backend";
-import { DelegationIdentity } from "@dfinity/identity";
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 
 export type Deployments = OkType<GetDeploymentsResult>;
 
 type DeploymentContextType = {
   tlsCertificateData: X509CertificateData | null;
-  loadOrCreateCertificate: (actor: BackendActor, identity: DelegationIdentity) => Promise<void>;
+  loadOrCreateCertificate: (actor: BackendActor) => Promise<X509CertificateData>;
   deployments: Deployments;
   fetchDeployments: (actor: BackendActor) => Promise<void>;
 };
@@ -36,7 +35,7 @@ export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({ children
     );
   }, []);
 
-  const loadOrCreateCertificate = useCallback(async (actor: BackendActor, identity: DelegationIdentity) => {
+  const loadOrCreateCertificate = useCallback(async (actor: BackendActor): Promise<X509CertificateData> => {
     let certData = loadCertificate();
     if (certData) {
       setCertificateData(certData);
@@ -55,6 +54,8 @@ export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({ children
         alert("Failed to create certificate, see console for details");
       }
     }
+
+    return certData!;
   }, []);
 
   return (

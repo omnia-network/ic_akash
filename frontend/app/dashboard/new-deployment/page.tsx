@@ -14,7 +14,7 @@ import { useCallback, useEffect, useState } from "react";
 
 export default function NewDeployment() {
   const router = useRouter();
-  const { identity, backendActor, openWs, closeWs, setWsCallbacks } = useIcContext();
+  const { backendActor, openWs, closeWs, setWsCallbacks } = useIcContext();
   const { tlsCertificateData, loadOrCreateCertificate, fetchDeployments } = useDeploymentContext();
   const [isLoading, setIsLoading] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
@@ -36,7 +36,7 @@ export default function NewDeployment() {
 
     setIsDeploying(true);
     try {
-      await loadOrCreateCertificate(backendActor!, identity!);
+      await loadOrCreateCertificate(backendActor!);
 
       const res = await backendActor!.create_test_deployment();
       const deploymentId = extractOk(res);
@@ -53,7 +53,7 @@ export default function NewDeployment() {
     }
 
     setIsLoading(false);
-  }, [backendActor, identity, loadOrCreateCertificate, toastError]);
+  }, [backendActor, loadOrCreateCertificate, toastError]);
 
   const onWsMessage: OnWsMessageCallback = useCallback(async (ev) => {
     console.log("ws message");
@@ -73,10 +73,12 @@ export default function NewDeployment() {
 
     try {
       if ("LeaseCreated" in deploymentUpdate.update) {
-        const { manifest_sorted_json } = extractDeploymentCreated(deploymentSteps.find((el) => el.hasOwnProperty("DeploymentCreated"))!);
+        const { manifest_sorted_json, dseq } = extractDeploymentCreated(deploymentSteps.find((el) => el.hasOwnProperty("DeploymentCreated"))!);
         const { provider_url } = deploymentUpdate.update.LeaseCreated;
 
-        await sendManifestToProvider(provider_url, manifest_sorted_json, tlsCertificateData!);
+        const manifestUrl = new URL(`/deployment/${dseq}/manifest`, provider_url);
+
+        await sendManifestToProvider(manifestUrl.toString(), manifest_sorted_json, tlsCertificateData!);
 
         leaseCreated = true;
       }

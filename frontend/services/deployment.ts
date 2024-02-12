@@ -1,24 +1,30 @@
 import { X509CertificateData } from "@/lib/certificate";
 import { wait } from "@/helpers/timer";
 
+const PROVIDER_PROXY_URL = "https://akash-provider-proxy.icws.io/";
+
+// from https://github.com/akash-network/cloudmos/blob/main/deploy-web/src/utils/deploymentUtils.ts
 export const sendManifestToProvider = async (
-  providerUrl: string,
+  manifestUrl: string,
   manifest: string,
   certData: X509CertificateData,
 ) => {
+  // wait for 5 sec for provider to have lease
+  await wait(5_000);
+
   let response: Response | undefined = undefined;
   for (let i = 1; i <= 3; i++) {
     console.log("Try sending manifest #" + i);
     try {
       if (!response) {
-        response = await fetch("https://akash-provider-proxy.icws.io/", {
+        response = await fetch(PROVIDER_PROXY_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             method: "PUT",
-            url: providerUrl,
+            url: manifestUrl,
             certPem: certData.cert,
             keyPem: certData.privKey,
             body: manifest,
@@ -41,4 +47,26 @@ export const sendManifestToProvider = async (
       }
     }
   }
+};
+
+export const queryLeaseStatus = async (queryLeaseUrl: string, certData: X509CertificateData) => {
+  const res = await fetch(PROVIDER_PROXY_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      method: "GET",
+      url: queryLeaseUrl,
+      certPem: certData.cert,
+      keyPem: certData.privKey,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Failed to query lease status: ${err}`);
+  }
+
+  return await res.json();
 };

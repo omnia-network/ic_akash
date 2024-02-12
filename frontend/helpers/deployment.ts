@@ -8,7 +8,7 @@ export const extractDeploymentCreated = (dep: DeploymentUpdate) => {
   throw new Error("DeploymentUpdate does not contain a DeploymentCreated");
 };
 
-export const extractDeaseCreated = (dep: DeploymentUpdate) => {
+export const extractLeaseCreated = (dep: DeploymentUpdate) => {
   if ("LeaseCreated" in dep) {
     return dep.LeaseCreated;
   }
@@ -67,6 +67,10 @@ export const isDeploymentClosed = (dep: Deployment) => {
 export const isDeploymentFailed = (dep: Deployment) => {
   return isDeploymentInState(dep, "Failed");
 };
+
+export const isDeploymentActive = (dep: Deployment) => {
+  return isDeploymentInState(dep, "Active");
+}
 
 export const getDeploymentCreatedDate = (dep: Deployment) => {
   const initializedStep = dep.state_history.find(([_, update]) => getDeploymentUpdateName(update) === "Initialized");
