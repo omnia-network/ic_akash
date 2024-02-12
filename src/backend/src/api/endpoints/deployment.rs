@@ -56,14 +56,8 @@ async fn create_certificate(
 }
 
 #[update]
-async fn create_deployment(sdl: String) -> ApiResult<String> {
-    let calling_principal = caller();
-
-    DeploymentsEndpoints::default()
-        .create_deployment(calling_principal, sdl)
-        .await
-        .map(|id| id.to_string())
-        .into()
+async fn create_deployment(_sdl: String) -> ApiResult<String> {
+    Err(ApiError::permission_denied("Not implemented")).into()
 }
 
 #[update]
@@ -77,9 +71,14 @@ fn update_deployment(deployment_id: String, update: DeploymentUpdate) -> ApiResu
 
 #[update]
 async fn create_test_deployment() -> ApiResult<String> {
+    let calling_principal = caller();
     let sdl = example_sdl().to_string();
 
-    create_deployment(sdl).await
+    DeploymentsEndpoints::default()
+        .create_deployment(calling_principal, sdl)
+        .await
+        .map(|id| id.to_string())
+        .into()
 }
 
 #[update]
