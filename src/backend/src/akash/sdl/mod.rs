@@ -1065,15 +1065,15 @@ fn validate_gpu(name: &String, gpu: Option<ResourceGpuV3>) -> Result<(), String>
         return Err("GPU must not have attributes if units is 0".to_string());
     }
 
-    if gpu.attributes.is_none() {
+    if units > 0 && gpu.attributes.is_none() {
         return Err("GPU must have attributes if units is not 0".to_string());
     }
 
-    let vendor = gpu.attributes.unwrap().vendor;
-    if vendor.is_empty() {
+    let vendor = gpu.attributes.map(|a| a.vendor).unwrap_or_default();
+    if units > 0 && vendor.is_empty() {
         return Err("GPU must specify a vendor if units is not 0".to_string());
     }
-    if !vendor.contains_key("nvidia") {
+    if units > 0 && !vendor.contains_key("nvidia") {
         return Err("GPU must specify models if units is not 0".to_string());
     }
 
