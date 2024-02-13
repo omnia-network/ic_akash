@@ -84,6 +84,7 @@ pub enum DeploymentUpdate {
     DeploymentCreated {
         tx_hash: String,
         dseq: u64,
+        manifest_sorted_json: String,
     },
     LeaseCreated {
         tx_hash: String,

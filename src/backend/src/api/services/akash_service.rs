@@ -167,9 +167,7 @@ impl AkashService {
 
         let provider = fetch_provider(config.tendermint_rpc_url(), bid_id.provider).await?;
 
-        let deployment_url = format!("{}/deployment/{}/manifest", provider.hostURI, bid_id.DSeq);
-
-        Ok((tx_hash, deployment_url))
+        Ok((tx_hash, provider.hostURI))
     }
 
     pub async fn close_deployment(&self, dseq: u64) -> Result<String, String> {
