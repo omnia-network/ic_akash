@@ -1,6 +1,7 @@
 "use client";
 
 import { ThemeProvider } from "@/components/theme-provider";
+import { DeploymentProvider } from "@/contexts/DeploymentContext";
 import { IcProvider } from "@/contexts/IcContext";
 
 export function Providers({ children }: Readonly<{
@@ -13,7 +14,11 @@ export function Providers({ children }: Readonly<{
       enableSystem={false}
       disableTransitionOnChange
     >
-      <IcProvider>{children}</IcProvider>
+      <IcProvider>
+        <DeploymentProvider>
+          {children}
+        </DeploymentProvider>
+      </IcProvider>
     </ThemeProvider>
   );
 }

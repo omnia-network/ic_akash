@@ -14,6 +14,7 @@ export const idlFactory = ({ IDL }) => {
     'Initialized' : IDL.Null,
     'Failed' : IDL.Record({ 'reason' : IDL.Text }),
     'DeploymentCreated' : IDL.Record({
+      'manifest_sorted_json' : IDL.Text,
       'dseq' : IDL.Nat64,
       'tx_hash' : IDL.Text,
     }),
@@ -97,6 +98,11 @@ export const idlFactory = ({ IDL }) => {
     'address' : IDL.Func([], [ApiStringResult], []),
     'balance' : IDL.Func([], [ApiStringResult], []),
     'close_deployment' : IDL.Func([IDL.Text], [ApiEmptyResult], []),
+    'create_certificate' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [ApiStringResult],
+        [],
+      ),
     'create_deployment' : IDL.Func([IDL.Text], [CreateDeploymentResult], []),
     'create_test_deployment' : IDL.Func([], [CreateDeploymentResult], []),
     'create_user' : IDL.Func([], [CreateUserResult], []),
@@ -104,6 +110,11 @@ export const idlFactory = ({ IDL }) => {
     'get_deployments' : IDL.Func([], [GetDeploymentsResult], ['query']),
     'get_user' : IDL.Func([], [GetUserResult], ['query']),
     'promote_user_to_admin' : IDL.Func([UserId], [ApiEmptyResult], []),
+    'update_deployment' : IDL.Func(
+        [IDL.Text, DeploymentUpdate],
+        [ApiEmptyResult],
+        [],
+      ),
     'ws_close' : IDL.Func(
         [CanisterWsCloseArguments],
         [CanisterWsCloseResult],

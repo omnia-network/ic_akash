@@ -56,14 +56,8 @@ async fn create_certificate(
 }
 
 #[update]
-async fn create_deployment(sdl: String) -> ApiResult<String> {
-    let calling_principal = caller();
-
-    DeploymentsEndpoints::default()
-        .create_deployment(calling_principal, sdl)
-        .await
-        .map(|id| id.to_string())
-        .into()
+async fn create_deployment(_sdl: String) -> ApiResult<String> {
+    Err(ApiError::permission_denied("Not implemented")).into()
 }
 
 #[update]
@@ -77,9 +71,14 @@ fn update_deployment(deployment_id: String, update: DeploymentUpdate) -> ApiResu
 
 #[update]
 async fn create_test_deployment() -> ApiResult<String> {
+    let calling_principal = caller();
     let sdl = example_sdl().to_string();
 
-    create_deployment(sdl).await
+    DeploymentsEndpoints::default()
+        .create_deployment(calling_principal, sdl)
+        .await
+        .map(|id| id.to_string())
+        .into()
 }
 
 #[update]
@@ -240,8 +239,7 @@ async fn handle_deployment(
     parsed_sdl: SdlV3,
     deployment_id: DeploymentId,
 ) -> Result<(), ApiError> {
-    let (_tx_hash, dseq) =
-        handle_create_deployment(calling_principal, parsed_sdl, deployment_id).await?;
+    let dseq = handle_create_deployment(calling_principal, parsed_sdl, deployment_id).await?;
 
     handle_lease(calling_principal, dseq, deployment_id, 0);
 
@@ -252,11 +250,11 @@ async fn handle_create_deployment(
     calling_principal: Principal,
     parsed_sdl: SdlV3,
     deployment_id: DeploymentId,
-) -> Result<(String, u64), ApiError> {
+) -> Result<u64, ApiError> {
     let akash_service = AkashService::default();
     let mut deployment_service = DeploymentsService::default();
 
-    let (tx_hash, dseq, _manifest) = akash_service
+    let (tx_hash, dseq, manifest) = akash_service
         .create_deployment(parsed_sdl)
         .await
         .map_err(|e| ApiError::internal(&format!("Error creating deployment: {}", e)))?;
@@ -264,6 +262,7 @@ async fn handle_create_deployment(
     let deployment_update = DeploymentUpdate::DeploymentCreated {
         tx_hash: tx_hash.clone(),
         dseq,
+        manifest_sorted_json: manifest,
     };
 
     deployment_service
@@ -275,7 +274,7 @@ async fn handle_create_deployment(
         DeploymentUpdateWsMessage::new(deployment_id.to_string(), deployment_update),
     );
 
-    Ok((tx_hash, dseq))
+    Ok(dseq)
 }
 
 fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: DeploymentId, retry: u64) {

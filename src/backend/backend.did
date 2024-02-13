@@ -44,6 +44,7 @@ type DeploymentUpdate = variant {
     DeploymentCreated : record {
         tx_hash : text;
         dseq : nat64;
+        manifest_sorted_json : text;
     };
     LeaseCreated : record {
         tx_hash : text;
