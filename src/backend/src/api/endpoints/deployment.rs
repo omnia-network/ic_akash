@@ -235,9 +235,7 @@ impl DeploymentsEndpoints {
                     false,
                 )?;
 
-                try_close_akash_deployment(&deployment_id).await?;
-
-                Ok(())
+                try_close_akash_deployment(&deployment_id).await
             }
             _ => Err(ApiError::invalid_argument(&format!(
                 "Invalid update for deployment: {:?}",
@@ -262,22 +260,22 @@ impl DeploymentsEndpoints {
             .state();
         // if the deployment is not in the Active or LeaseCreated state, it cannot be closed
         // either it fails while being creating deployment and lease (and thus there is no need to close it)
-        // or it eventually gets to the LeaseCreated or Activestate (and from that point on it can be closed)
+        // or it eventually gets to the LeaseCreated or Active state (and from that point on it can be closed)
         match deployment_state {
             DeploymentUpdate::Active | DeploymentUpdate::LeaseCreated { .. } => {
-        if let Err(e) = handle_close_deployment(deployment_id).await {
+                if let Err(e) = handle_close_deployment(deployment_id).await {
                     set_failed_deployment(
-                deployment_id,
-                calling_principal,
-                format!("Error closing deployment: {:?}", e),
-                // the failure happened while closing the deployment, so there is no need to do it again
-                false,
-            )
-            .await;
+                        deployment_id,
+                        calling_principal,
+                        format!("Error closing deployment: {:?}", e),
+                        // the failure happened while closing the deployment, so there is no need to do it again
+                        false,
+                    )
+                    .await;
                 } else {
                     print(&format!("[{:?}]: Closed", deployment_id));
                 }
-        Ok(())
+                Ok(())
             }
             _ => Err(ApiError::internal(&format!(
                 "Deployment is not active. Cannot close it now. Current state: {:?}",
