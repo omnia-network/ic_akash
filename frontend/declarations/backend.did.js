@@ -11,8 +11,8 @@ export const idlFactory = ({ IDL }) => {
   const CreateUserResult = IDL.Variant({ 'Ok' : UserId, 'Err' : ApiError });
   const TimestampNs = IDL.Nat64;
   const DeploymentUpdate = IDL.Variant({
+    'FailedOnClient' : IDL.Record({ 'reason' : IDL.Text }),
     'Initialized' : IDL.Null,
-    'Failed' : IDL.Record({ 'reason' : IDL.Text }),
     'DeploymentCreated' : IDL.Record({
       'manifest_sorted_json' : IDL.Text,
       'dseq' : IDL.Nat64,
@@ -24,6 +24,7 @@ export const idlFactory = ({ IDL }) => {
       'provider_url' : IDL.Text,
       'tx_hash' : IDL.Text,
     }),
+    'FailedOnCanister' : IDL.Record({ 'reason' : IDL.Text }),
   });
   const Deployment = IDL.Record({
     'sdl' : IDL.Text,

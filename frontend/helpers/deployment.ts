@@ -64,8 +64,16 @@ export const isDeploymentClosed = (dep: Deployment) => {
   return isDeploymentInState(dep, "Closed");
 };
 
+export const isDeploymentFailedOnCanister = (dep: Deployment) => {
+  return isDeploymentInState(dep, "FailedOnCanister");
+};
+
+export const isDeploymentFailedOnClient = (dep: Deployment) => {
+  return isDeploymentInState(dep, "FailedOnClient");
+};
+
 export const isDeploymentFailed = (dep: Deployment) => {
-  return isDeploymentInState(dep, "Failed");
+  return isDeploymentFailedOnCanister(dep) || isDeploymentFailedOnClient(dep);
 };
 
 export const isDeploymentActive = (dep: Deployment) => {

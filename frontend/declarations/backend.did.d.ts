@@ -50,8 +50,8 @@ export interface Deployment {
   'state_history' : Array<[TimestampNs, DeploymentUpdate]>,
 }
 export type DeploymentId = string;
-export type DeploymentUpdate = { 'Initialized' : null } |
-  { 'Failed' : { 'reason' : string } } |
+export type DeploymentUpdate = { 'FailedOnClient' : { 'reason' : string } } |
+  { 'Initialized' : null } |
   {
     'DeploymentCreated' : {
       'manifest_sorted_json' : string,
@@ -61,7 +61,8 @@ export type DeploymentUpdate = { 'Initialized' : null } |
   } |
   { 'Closed' : null } |
   { 'Active' : null } |
-  { 'LeaseCreated' : { 'provider_url' : string, 'tx_hash' : string } };
+  { 'LeaseCreated' : { 'provider_url' : string, 'tx_hash' : string } } |
+  { 'FailedOnCanister' : { 'reason' : string } };
 export interface DeploymentUpdateWsMessage {
   'id' : string,
   'update' : DeploymentUpdate,
