@@ -1,7 +1,11 @@
-use crate::api::{
-    init_deployments, ApiError, Deployment, DeploymentId, DeploymentUpdate, DeploymentsMemory,
-    UserId,
+use crate::{
+    api::{
+        init_deployments, ApiError, Deployment, DeploymentId, DeploymentUpdate,
+        DeploymentUpdateWsMessage, DeploymentsMemory, UserId,
+    },
+    helpers::send_canister_update,
 };
+use candid::Principal;
 
 pub struct DeploymentsService {
     deployments_memory: DeploymentsMemory,
@@ -48,18 +52,45 @@ impl DeploymentsService {
 
     pub fn update_deployment(
         &mut self,
+        calling_principal: Principal,
         deployment_id: DeploymentId,
         deployment_update: DeploymentUpdate,
+        notify_client: bool,
     ) -> Result<(), ApiError> {
-        self.update_deployment_state(deployment_id, deployment_update)
+        self.update_deployment_state(deployment_id, deployment_update.clone())?;
+
+        if notify_client {
+            send_canister_update(
+                calling_principal,
+                DeploymentUpdateWsMessage::new(deployment_id.to_string(), deployment_update),
+            );
+        }
+
+        Ok(())
     }
 
     pub fn set_failed_deployment(
         &mut self,
+        calling_principal: Principal,
         deployment_id: DeploymentId,
         reason: String,
     ) -> Result<(), ApiError> {
-        self.update_deployment_state(deployment_id, DeploymentUpdate::Failed { reason })
+        self.update_deployment_state(
+            deployment_id,
+            DeploymentUpdate::FailedOnCanister {
+                reason: reason.clone(),
+            },
+        )?;
+
+        send_canister_update(
+            calling_principal,
+            DeploymentUpdateWsMessage::new(
+                deployment_id.to_string(),
+                DeploymentUpdate::FailedOnCanister { reason },
+            ),
+        );
+
+        Ok(())
     }
 
     pub fn get_akash_deployment_info(
@@ -88,7 +119,7 @@ impl DeploymentsService {
             ApiError::not_found(&format!("Deployment {} not found", deployment_id))
         })?;
 
-        if let DeploymentUpdate::Failed { .. } = deployment.state() {
+        if let DeploymentUpdate::FailedOnCanister { .. } = deployment.state() {
             return Err(ApiError::internal(&format!(
                 "Deployment {} already failed",
                 deployment_id

@@ -13,7 +13,6 @@ use crate::{
     api::{init_config, Config, ConfigMemory},
 };
 use cosmrs::AccountId;
-use ic_cdk::print;
 use std::str::FromStr;
 use utils::base64_decode;
 
@@ -125,10 +124,10 @@ impl AkashService {
         let tx_hash =
             ic_tendermint_rpc::broadcast_tx_sync(config.is_mainnet(), rpc_url, tx_raw).await?;
 
-        print(&format!(
-            "[create_deployment] tx_hash: {}, dseq: {}",
-            tx_hash, dseq
-        ));
+        // print(&format!(
+        //     "[create_deployment] tx_hash: {}, dseq: {}",
+        //     tx_hash, dseq
+        // ));
 
         Ok((tx_hash, dseq, sdl.manifest_sorted_json()))
     }
@@ -149,7 +148,7 @@ impl AkashService {
         let account = get_account(rpc_url.clone(), &public_key).await?;
 
         let bids = fetch_bids(rpc_url.clone(), &account_id, dseq).await?;
-        print(format!("[create_lease] bids: {:?}", bids));
+        // print(format!("[create_lease] bids: {:?}", bids));
 
         // TODO: take the "best" bid
         // SAFETY:

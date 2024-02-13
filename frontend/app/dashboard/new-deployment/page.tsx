@@ -66,8 +66,8 @@ export default function NewDeployment() {
     console.log("deployment update", deploymentUpdate);
     setDeploymentSteps((prev) => [...prev, deploymentUpdate.update]);
 
-    if ("Failed" in deploymentUpdate.update) {
-      const err = deploymentUpdate.update.Failed.reason;
+    if ("FailedOnCanister" in deploymentUpdate.update) {
+      const err = deploymentUpdate.update.FailedOnCanister.reason;
       console.error("Failed to deploy", err);
       toastError("Failed to deploy, see console for details");
       return;
@@ -91,7 +91,7 @@ export default function NewDeployment() {
 
       try {
         const stepFailed = {
-          Failed: {
+          FailedOnClient: {
             reason: JSON.stringify(e),
           },
         };

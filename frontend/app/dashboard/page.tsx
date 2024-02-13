@@ -10,7 +10,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useDeploymentContext } from "@/contexts/DeploymentContext";
 import { useIcContext } from "@/contexts/IcContext";
 import { type Deployment } from "@/declarations/backend.did";
-import { extractDeploymentCreated, extractLeaseCreated, getDeploymentCreatedDate, getDeploymentUpdateDate, getDeploymentUpdateName, getLastDeploymentUpdate, isDeploymentActive, isDeploymentClosed } from "@/helpers/deployment";
+import { extractDeploymentCreated, extractLeaseCreated, getDeploymentCreatedDate, getDeploymentUpdateDate, getDeploymentUpdateName, getLastDeploymentUpdate, isDeploymentActive, isDeploymentClosed, isDeploymentFailed } from "@/helpers/deployment";
 import { queryLeaseStatus } from "@/services/deployment";
 import { ChevronsUpDown } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -123,7 +123,7 @@ export default function Dashboard() {
                 </CollapsibleContent>
               </Collapsible>
             </CardContent>
-            {!isDeploymentClosed(el.deployment) && (
+            {!(isDeploymentClosed(el.deployment) || isDeploymentFailed(el.deployment)) && (
               <CardFooter className="gap-2">
                 {isDeploymentActive(el.deployment) && (
                   <>
