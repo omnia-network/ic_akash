@@ -10,9 +10,16 @@ services:
       - port: 9000
         as: 80
         accept:
-        - "peerjs-test.icws.io"
+        - "peerjs-test.omnia-network.com"
         to:
           - global: true
+    command:
+      - "node"
+      - "peerjs.js"
+      - "--cors"
+      - "127.0.0.1"
+      - "--cors"
+      - "localhost"
 profiles:
   compute:
     peerjs-server:
