@@ -27,6 +27,18 @@
     "internet_identity" : {
       "type": "pull",
       "id": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+    },
+    "webrtc_test": {
+      "frontend": {
+        "entrypoint": "src/webrtc_test/dist/index.html"
+      },
+      "source": [
+        "src/webrtc_test/dist"
+      ],
+      "type": "assets",
+      "build": [
+        "./scripts/build-webrtc-frontend.sh"
+      ]
     }
   },
   "defaults": {
