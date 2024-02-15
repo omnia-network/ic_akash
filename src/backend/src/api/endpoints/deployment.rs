@@ -413,7 +413,7 @@ async fn try_fetch_bids_and_create_lease(
 
     let bids = fetch_bids(rpc_url.clone(), &account_id, dseq)
         .await
-        .expect("failed to fetch bids");
+        .map_err(|e| ApiError::internal(e.as_str()))?;
 
     if bids.len() > 0 {
         print(&format!("[{:?}]: Bids found", deployment_id));
