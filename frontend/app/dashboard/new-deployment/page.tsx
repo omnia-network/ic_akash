@@ -171,7 +171,7 @@ export default function NewDeployment() {
             rows={TEST_DEPLOYMENT_CONFIG.split("\n").length}
             disabled
           />
-          <LoadingButton onClick={handleDeploy} isLoading={isLoading || isDeploying}>Deploy IC WebSocket Gateway</LoadingButton>
+          <LoadingButton onClick={handleDeploy} isLoading={isLoading || isDeploying}>Deploy Peerjs Server</LoadingButton>
           <Alert>
             <Info className="h-4 w-4" />
             <AlertTitle>Coming soon</AlertTitle>

@@ -1,4 +1,4 @@
-export const TEST_DEPLOYMENT_CONFIG = `ic-websocket-gateway:
+export const TEST_DEPLOYMENT_CONFIG = `peerjs-server:
     resources:
         cpu:
             units: 0.5

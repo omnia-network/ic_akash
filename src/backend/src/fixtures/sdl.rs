@@ -4,26 +4,18 @@ pub fn example_sdl<'a>() -> &'a str {
     r#"
 version: "3.0"
 services:
-  ic-websocket-gateway:
-    image: omniadevs/ic-websocket-gateway:v1.3.2
+  peerjs-server:
+    image: peerjs/peerjs-server:1.0.2
     expose:
-      - port: 8080
+      - port: 9000
         as: 80
         accept:
-          - "akash-gateway.icws.io"
+        - "peerjs-test.icws.io"
         to:
           - global: true
-    command:
-      - "/ic-ws-gateway/ic_websocket_gateway"
-      - "--gateway-address"
-      - "0.0.0.0:8080"
-      - "--ic-network-url"
-      - "https://icp-api.io"
-      - "--polling-interval"
-      - "400"
 profiles:
   compute:
-    ic-websocket-gateway:
+    peerjs-server:
       resources:
         cpu:
           units: 0.5
@@ -36,13 +28,13 @@ profiles:
   placement:
     dcloud:
       pricing:
-        ic-websocket-gateway:
+        peerjs-server:
           denom: uakt
           amount: 1000
 deployment:
-  ic-websocket-gateway:
+  peerjs-server:
     dcloud:
-      profile: ic-websocket-gateway
+      profile: peerjs-server
       count: 1
   "#
 }
