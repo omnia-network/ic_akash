@@ -27,6 +27,16 @@
     "internet_identity" : {
       "type": "pull",
       "id": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+    },
+    "icp_ledger_canister": {
+      "type": "custom",
+      "candid": "src/icp_ledger/icp_ledger.did",
+      "wasm": "src/icp_ledger/icp_ledger.wasm.gz",
+      "remote": {
+        "id": {
+          "ic": "ryjl3-tyaaa-aaaaa-aaaba-cai"
+        }
+      }
     }
   },
   "defaults": {
