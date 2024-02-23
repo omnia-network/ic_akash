@@ -1,6 +1,8 @@
 use candid::Principal;
-use ic_cdk::api::call::call;
-use ic_ledger_types::{GetBlocksArgs, QueryBlocksResponse};
+use ic_cdk::{api::call::call, print};
+use ic_ledger_types::{
+    AccountIdentifier, GetBlocksArgs, Operation, QueryBlocksResponse, Subaccount,
+};
 
 use crate::api::ApiError;
 
@@ -40,9 +42,40 @@ impl LedgerService {
         let query_blocks_response = self.query_blocks(args).await?;
 
         if query_blocks_response.blocks.is_empty() {
+            print(&format!("no blocks found"));
             return Ok(None);
         }
-        // TODO: check that the sender is the caller
-        Ok(Some(()))
+        if let Some(Operation::Transfer {
+            from,
+            to,
+            amount,
+            fee: _fee,
+        }) = query_blocks_response.blocks[0].transaction.operation
+        {
+            let caller_account_id =
+                AccountIdentifier::new(&calling_principal, &Subaccount([0; 32]));
+            let orchestrator_account_id =
+                AccountIdentifier::new(&ic_cdk::api::id(), &Subaccount([0; 32]));
+
+            if from != caller_account_id {
+                return Err(ApiError::not_found(
+                    "caller is not the sender of the payment",
+                ));
+            }
+            if to != orchestrator_account_id {
+                return Err(ApiError::not_found(
+                    "orchestrator is not the recipient of the payment",
+                ));
+            }
+            if amount.e8s() < 500_000_000 {
+                return Err(ApiError::not_found("payment amount is less than 5 ICPs"));
+            }
+
+            // TODO: store payment_block_height so that it cannot be reused for another deployment
+            print(&format!("payment found"));
+            return Ok(Some(()));
+        }
+        print(&format!("no transfer found"));
+        Ok(None)
     }
 }
