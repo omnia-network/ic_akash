@@ -18,16 +18,9 @@ impl Default for LedgerEndpoints {
         }
     }
 }
+
 impl LedgerEndpoints {
     pub async fn query_blocks(&self, args: GetBlocksArgs) -> Result<QueryBlocksResponse, ApiError> {
-        self.ledger_service
-            .query_blocks(args)
-            .await
-            .map_err(|(code, e)| {
-                ApiError::internal(&format!(
-                    "failed to query blocks. Rejection code: {:?}, error: {}",
-                    code, e
-                ))
-            })
+        self.ledger_service.query_blocks(args).await
     }
 }

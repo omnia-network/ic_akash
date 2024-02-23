@@ -3,7 +3,7 @@ use crate::{
     api::{
         map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult,
         Deployment, DeploymentId, DeploymentUpdate, DeploymentsService, GetDeploymentResponse,
-        UserId,
+        LedgerService, UserId,
     },
     fixtures::example_sdl,
 };
@@ -55,7 +55,7 @@ async fn create_certificate(
 }
 
 #[update]
-async fn create_deployment(_sdl: String) -> ApiResult<String> {
+async fn create_deployment(_payment_block_height: u64, _sdl: String) -> ApiResult<String> {
     Err(ApiError::permission_denied("Not implemented")).into()
 }
 
@@ -70,12 +70,12 @@ async fn update_deployment(deployment_id: String, update: DeploymentUpdate) -> A
 }
 
 #[update]
-async fn create_test_deployment() -> ApiResult<String> {
+async fn create_test_deployment(payment_block_height: u64) -> ApiResult<String> {
     let calling_principal = caller();
     let sdl = example_sdl().to_string();
 
     DeploymentsEndpoints::default()
-        .create_deployment(calling_principal, sdl)
+        .create_deployment(calling_principal, payment_block_height, sdl)
         .await
         .map(|id| id.to_string())
         .into()
@@ -94,6 +94,7 @@ async fn close_deployment(deployment_id: String) -> ApiResult {
 struct DeploymentsEndpoints {
     deployments_service: DeploymentsService,
     access_control_service: AccessControlService,
+    ledger_service: LedgerService,
 }
 
 impl Default for DeploymentsEndpoints {
@@ -101,6 +102,7 @@ impl Default for DeploymentsEndpoints {
         Self {
             deployments_service: DeploymentsService::default(),
             access_control_service: AccessControlService::default(),
+            ledger_service: LedgerService::default(),
         }
     }
 }
@@ -153,10 +155,25 @@ impl DeploymentsEndpoints {
     pub async fn create_deployment(
         &mut self,
         calling_principal: Principal,
+        payment_block_height: u64,
         sdl: String,
     ) -> Result<DeploymentId, ApiError> {
-        self.access_control_service
-            .assert_principal_is_user(&calling_principal)?;
+        if let None = self
+            .ledger_service
+            .check_payment(calling_principal, payment_block_height)
+            .await?
+        {
+            print(&format!(
+                "[{:?}]: Did not send payment",
+                calling_principal.to_string()
+            ));
+            return Err(ApiError::permission_denied("Did not send payment"));
+        }
+
+        print(&format!(
+            "[{:?}]: Received payment for deployment",
+            calling_principal.to_string()
+        ));
 
         let parsed_sdl = SdlV3::try_from_str(&sdl)
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid SDL: {}", e)))?;
@@ -334,7 +351,6 @@ fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: Deployme
         ic_cdk::spawn(async move {
             match try_fetch_bids_and_create_lease(calling_principal, dseq, deployment_id).await {
                 Ok(Some((_tx_hash, deployment_url))) => {
-                    print(&format!("[{:?}]: Lease created", deployment_id));
                     print(&format!(
                         "[{:?}]: Deployment URL: {}",
                         deployment_id, deployment_url
