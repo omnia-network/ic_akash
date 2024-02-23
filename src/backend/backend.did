@@ -96,6 +96,15 @@ type DeploymentUpdateWsMessage = record {
 };
 //// End IC WebSocket types ////
 
+//// Ledger types ////
+import "./ledger_types.did";
+
+type QueryBlocksResult = variant {
+    Ok : QueryBlocksResponse;
+    Err : ApiError;
+};
+//// End Ledger types ////
+
 service : (bool) -> {
     "address" : () -> (ApiStringResult);
     "balance" : () -> (ApiStringResult);
@@ -116,4 +125,8 @@ service : (bool) -> {
     "ws_message" : (CanisterWsMessageArguments, opt DeploymentUpdateWsMessage) -> (CanisterWsMessageResult);
     "ws_get_messages" : (CanisterWsGetMessagesArguments) -> (CanisterWsGetMessagesResult) query;
     //// End IC WebSocket methods ////
+
+    //// Ledger methods ////
+    "query_blocks" : (GetBlocksArgs) -> (QueryBlocksResult) composite_query;
+    //// End Ledger methods ////
 };
