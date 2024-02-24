@@ -3,7 +3,7 @@ use crate::{
     api::{
         map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult,
         Deployment, DeploymentId, DeploymentUpdate, DeploymentsService, GetDeploymentResponse,
-        LedgerService, UserId,
+        LedgerService, UserId, UsersService,
     },
     fixtures::example_sdl,
 };
@@ -95,6 +95,7 @@ struct DeploymentsEndpoints {
     deployments_service: DeploymentsService,
     access_control_service: AccessControlService,
     ledger_service: LedgerService,
+    users_service: UsersService,
 }
 
 impl Default for DeploymentsEndpoints {
@@ -103,6 +104,7 @@ impl Default for DeploymentsEndpoints {
             deployments_service: DeploymentsService::default(),
             access_control_service: AccessControlService::default(),
             ledger_service: LedgerService::default(),
+            users_service: UsersService::default(),
         }
     }
 }
@@ -158,10 +160,12 @@ impl DeploymentsEndpoints {
         payment_block_height: u64,
         sdl: String,
     ) -> Result<DeploymentId, ApiError> {
-        if let None = self
+        // check if the payment has been sent from the caller to the orchestrator and with the correct amount
+        if self
             .ledger_service
             .check_payment(calling_principal, payment_block_height)
             .await?
+            .is_none()
         {
             print(&format!(
                 "[{:?}]: Did not send payment",
@@ -169,6 +173,10 @@ impl DeploymentsEndpoints {
             ));
             return Err(ApiError::permission_denied("Did not send payment"));
         }
+
+        // check if the payment has not been used for a previous deployment by the same user
+        self.users_service
+            .add_payment_to_user_once(&UserId::new(calling_principal), payment_block_height)?;
 
         print(&format!(
             "[{:?}]: Received payment for deployment",

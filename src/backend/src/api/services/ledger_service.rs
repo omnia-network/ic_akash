@@ -71,10 +71,13 @@ impl LedgerService {
                 return Err(ApiError::not_found("payment amount is less than 5 ICPs"));
             }
 
-            // TODO: store payment_block_height so that it cannot be reused for another deployment
-            print(&format!("payment found"));
+            // the payment might still be a double spend,
+            // therefore it is important to check that this 'payment_block_heihgt'
+            // has not been used for a previous deployment
+            // this is taken care of by the `users_service`
             return Ok(Some(()));
         }
+
         print(&format!("no transfer found"));
         Ok(None)
     }

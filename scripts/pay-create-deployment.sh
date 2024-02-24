@@ -16,3 +16,8 @@ echo "Waiting 60 seconds before closing deployment..."
 sleep 60
 
 dfx canister call backend close_deployment '('$deployment_id')'
+echo "Deployment closed"
+
+echo "Trying to double spend the deployment..."
+result=$(dfx canister call backend create_test_deployment '('$block_height')')
+echo "Deployment creation failed: $result"

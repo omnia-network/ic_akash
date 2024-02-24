@@ -71,6 +71,7 @@ impl Storable for UserRole {
 pub struct User {
     role: UserRole,
     created_at: TimestampNs,
+    payments: Vec<u64>,
 }
 
 impl User {
@@ -78,6 +79,7 @@ impl User {
         Self {
             role,
             created_at: get_time_nanos(),
+            payments: vec![],
         }
     }
 
@@ -87,6 +89,14 @@ impl User {
 
     pub fn set_role(&mut self, role: UserRole) {
         self.role = role
+    }
+
+    pub fn add_payment(&mut self, payment_block_height: u64) {
+        self.payments.push(payment_block_height);
+    }
+
+    pub fn is_double_payment(&self, payment_block_height: u64) -> bool {
+        self.payments.contains(&payment_block_height)
     }
 }
 

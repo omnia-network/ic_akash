@@ -25,6 +25,7 @@ type UserRole = variant {
 type User = record {
     role : UserRole;
     created_at : TimestampNs;
+    payments : vec nat64;
 };
 
 type GetUserResult = variant {
