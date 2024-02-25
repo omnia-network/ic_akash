@@ -21,7 +21,15 @@ async fn query_blocks(args: GetBlocksArgs) -> ApiResult<QueryBlocksResponse> {
 #[update]
 async fn get_icp_price() -> ApiResult<f64> {
     LedgerEndpoints::default()
-        .get_icp_usd_exchange()
+        .get_usd_exchange("ICP")
+        .await
+        .into()
+}
+
+#[update]
+async fn get_akt_price() -> ApiResult<f64> {
+    LedgerEndpoints::default()
+        .get_usd_exchange("AKT")
         .await
         .into()
 }
@@ -34,7 +42,7 @@ fn price_transform(raw: TransformArgs) -> HttpResponse {
         ..Default::default()
     };
 
-    if res.status == 200u64 {
+    if res.status == 200 {
         res.body = raw.response.body;
     } else {
         ic_cdk::api::print(format!("Received an error from coinbase: err = {:?}", raw));
@@ -59,12 +67,13 @@ impl LedgerEndpoints {
         self.ledger_service.query_blocks(args).await
     }
 
-    pub async fn get_icp_usd_exchange(&self) -> Result<f64, ApiError> {
+    pub async fn get_usd_exchange(&self, ticker: &str) -> Result<f64, ApiError> {
         let current_timestamp_s = get_time_nanos() / 1_000_000_000;
         let host = "api.pro.coinbase.com";
         let url = format!(
-            "https://{}/products/ICP-USD/candles?start={}&end={}",
+            "https://{}/products/{}-USD/candles?start={}&end={}",
             host,
+            ticker,
             // price info is updated every 60 seconds
             // by requesting prices in the last 300 seconds, it is guaranteed that the response contains at least one price
             current_timestamp_s - 300,
@@ -84,7 +93,7 @@ impl LedgerEndpoints {
             MAX_RESPONSE_SIZE,
         )
         .await
-        .map_err(|e| ApiError::internal(&format!("failed to get icp price: {}", e)))?;
+        .map_err(|e| ApiError::internal(&format!("failed to get {} price: {}", ticker, e)))?;
 
         // the response body will looks like this:
         // ("[[1682978460,5.714,5.718,5.714,5.714,243.5678], ...]")
@@ -103,7 +112,11 @@ impl LedgerEndpoints {
         let string_body =
             String::from_utf8(response.body).expect("Transformed response is not UTF-8 encoded.");
         let parsed_body: Vec<Vec<f64>> = serde_json::from_str(&string_body).map_err(|e| {
-            ApiError::internal(&format!("failed to parse icp price: {:?}", e.to_string()))
+            ApiError::internal(&format!(
+                "failed to parse {} price: {:?}",
+                ticker,
+                e.to_string()
+            ))
         })?;
 
         if parsed_body.len() == 0 {

@@ -135,5 +135,6 @@ service : (bool) -> {
     //// Ledger methods ////
     "query_blocks" : (GetBlocksArgs) -> (QueryBlocksResult) composite_query;
     "get_icp_price" : () -> (ApiFloatResult);
+    "get_akt_price" : () -> (ApiFloatResult);
     //// End Ledger methods ////
 };
