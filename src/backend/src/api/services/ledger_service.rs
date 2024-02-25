@@ -1,10 +1,16 @@
+use crate::api::ApiError;
 use candid::Principal;
+use ic_cdk::api::management_canister::http_request::{HttpMethod, TransformContext};
 use ic_cdk::{api::call::call, print};
 use ic_ledger_types::{
     AccountIdentifier, GetBlocksArgs, Operation, QueryBlocksResponse, Subaccount,
 };
+use utils::{get_time_nanos, make_http_request};
 
-use crate::api::ApiError;
+/// assume requests are at most 1kb
+const REQUEST_SIZE: u128 = 1_000;
+/// refuse responses that return more than 10kb
+const MAX_RESPONSE_SIZE: u64 = 10_000;
 
 pub struct LedgerService {
     ledger_canister_id: Principal,
@@ -33,7 +39,7 @@ impl LedgerService {
         &self,
         calling_principal: Principal,
         payment_block_heihgt: u64,
-    ) -> Result<Option<()>, ApiError> {
+    ) -> Result<Option<f64>, ApiError> {
         let args = GetBlocksArgs {
             start: payment_block_heihgt,
             length: 1,
@@ -67,18 +73,91 @@ impl LedgerService {
                     "orchestrator is not the recipient of the payment",
                 ));
             }
-            if amount.e8s() < 500_000_000 {
-                return Err(ApiError::not_found("payment amount is less than 5 ICPs"));
+            let paid_akt =
+                (amount.e8s() / 100_000_000) as f64 * self.get_icp_2_akt_conversion_rate().await?;
+            if paid_akt < 5.0 {
+                return Err(ApiError::not_found(&format!(
+                    "payment amount is less than 5 AKT, received: {} AKT",
+                    paid_akt,
+                )));
             }
 
             // the payment might still be a double spend,
             // therefore it is important to check that this 'payment_block_heihgt'
             // has not been used for a previous deployment
             // this is taken care of by the `users_service`
-            return Ok(Some(()));
+            return Ok(Some(paid_akt));
         }
 
         print(&format!("no transfer found"));
         Ok(None)
+    }
+
+    pub async fn get_usd_exchange(&self, ticker: &str) -> Result<f64, ApiError> {
+        let current_timestamp_s = get_time_nanos() / 1_000_000_000;
+        let host = "api.pro.coinbase.com";
+        let url = format!(
+            "https://{}/products/{}-USD/candles?start={}&end={}",
+            host,
+            ticker,
+            // price info is updated every 60 seconds
+            // by requesting prices in the last 300 seconds, it is guaranteed that the response contains at least one price
+            current_timestamp_s - 300,
+            current_timestamp_s
+        );
+
+        let response = make_http_request(
+            url.to_string(),
+            HttpMethod::GET,
+            None,
+            vec![],
+            Some(TransformContext::from_name(
+                "price_transform".to_string(),
+                vec![],
+            )),
+            REQUEST_SIZE,
+            MAX_RESPONSE_SIZE,
+        )
+        .await
+        .map_err(|e| ApiError::internal(&format!("failed to get {} price: {}", ticker, e)))?;
+
+        // the response body will looks like this:
+        // ("[[1682978460,5.714,5.718,5.714,5.714,243.5678], ...]")
+        // which can be formatted as this
+        //  [
+        //     [
+        //         1682978460, <-- start/timestamp
+        //         5.714, <-- low
+        //         5.718, <-- high
+        //         5.714, <-- open
+        //         5.714, <-- close
+        //         243.5678 <-- volume
+        //     ],
+        //     ...
+        //  ]
+        let string_body =
+            String::from_utf8(response.body).expect("Transformed response is not UTF-8 encoded.");
+        let parsed_body: Vec<Vec<f64>> = serde_json::from_str(&string_body).map_err(|e| {
+            ApiError::internal(&format!(
+                "failed to parse {} price: {:?}",
+                ticker,
+                e.to_string()
+            ))
+        })?;
+
+        if parsed_body.len() == 0 {
+            return Err(ApiError::internal("API did not return any prices"));
+        }
+        // within the latest price range (index 0 of outer vec), return the lowest price (index 1 of inner vec)
+        Ok(parsed_body[0][1])
+    }
+
+    pub async fn get_icp_2_akt_conversion_rate(&self) -> Result<f64, ApiError> {
+        let icp_price = self.get_usd_exchange("ICP").await?;
+        // as the AKT price is not available on the coinbase API, use a hardcoded value
+        // let akt_price = self.get_usd_exchange("AKT").await;
+        let akt_price = 5.0;
+
+        Ok(icp_price / akt_price)
     }
 }
