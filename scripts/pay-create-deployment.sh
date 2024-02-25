@@ -4,10 +4,16 @@ export BACKEND_PRINCIPAL=$(dfx canister id backend)
 export BACKEND_ACCOUNT_ID=$(dfx ledger account-id --of-principal $BACKEND_PRINCIPAL)
 
 echo "Deploying with enough ICPs..."
-result=$(dfx ledger transfer $BACKEND_ACCOUNT_ID --icp 5 --memo 0)
+result=$(dfx ledger transfer $BACKEND_ACCOUNT_ID --icp 3 --memo 0)
 block_height=$(echo "$result" | grep -o '[0-9]*' | awk '{print $NF}')
 # echo "Extracted Block Height: $block_height"
-result=$(dfx canister call backend create_test_deployment '('$block_height')')
+dfx canister call backend update_akt_balance '('$block_height')'
+
+echo "Trying to double spend..."
+result=$(dfx canister call backend update_akt_balance '('$block_height')')
+echo "Failure: $result"
+
+result=$(dfx canister call backend create_test_deployment)
 deployment_id=$(echo "$result" | grep -o '"[^"]*"')
 # echo "Extracted Deployment ID: $deployment_id"
 echo "Waiting 60 seconds before closing deployment..."
@@ -15,12 +21,6 @@ sleep 60
 dfx canister call backend close_deployment '('$deployment_id')'
 echo "Deployment closed"
 
-echo "Trying to double spend the deployment..."
-result=$(dfx canister call backend create_test_deployment '('$block_height')')
-echo "Deployment creation failed: $result"
-
 echo "Trying to deploy without enough ICPs..."
-result=$(dfx ledger transfer $BACKEND_ACCOUNT_ID --icp 0 --memo 0)
-block_height=$(echo "$result" | grep -o '[0-9]*' | awk '{print $NF}')
-result=$(dfx canister call backend create_test_deployment '('$block_height')')
-echo "Deployment creation failed: $result"
+result=$(dfx canister call backend create_test_deployment)
+echo "Failure: $result"

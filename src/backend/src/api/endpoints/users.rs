@@ -1,7 +1,9 @@
 use candid::Principal;
 use ic_cdk::*;
 
-use crate::api::{AccessControlService, ApiError, ApiResult, User, UserId, UserRole, UsersService};
+use crate::api::{
+    AccessControlService, ApiError, ApiResult, LedgerService, User, UserId, UserRole, UsersService,
+};
 
 #[query]
 fn get_user() -> ApiResult<User> {
@@ -31,8 +33,19 @@ fn promote_user_to_admin(admin_principal: Principal) -> ApiResult {
         .into()
 }
 
+#[update]
+pub async fn update_akt_balance(payment_block_height: u64) -> ApiResult<f64> {
+    let calling_principal = caller();
+
+    UsersEndpoints::default()
+        .update_akt_balance(calling_principal, payment_block_height)
+        .await
+        .into()
+}
+
 struct UsersEndpoints {
     users_service: UsersService,
+    ledger_service: LedgerService,
     access_control_service: AccessControlService,
 }
 
@@ -40,6 +53,7 @@ impl Default for UsersEndpoints {
     fn default() -> Self {
         Self {
             users_service: UsersService::default(),
+            ledger_service: LedgerService::default(),
             access_control_service: AccessControlService::default(),
         }
     }
@@ -74,5 +88,41 @@ impl UsersEndpoints {
 
         self.users_service
             .change_user_role(&admin_id, UserRole::Admin)
+    }
+
+    pub async fn update_akt_balance(
+        &mut self,
+        calling_principal: Principal,
+        payment_block_height: u64,
+    ) -> Result<f64, ApiError> {
+        self.access_control_service
+            .assert_principal_not_anonymous(&calling_principal)?;
+
+        // check if the payment has been sent from the caller to the orchestrator
+        let Some(paid_akt) = self
+            .ledger_service
+            .check_payment(calling_principal, payment_block_height)
+            .await?
+        else {
+            print(&format!(
+                "[{:?}]: Did not send payment",
+                calling_principal.to_string()
+            ));
+            return Err(ApiError::permission_denied("Did not send payment"));
+        };
+
+        // check if the payment has not been used for a previous deployment by the same user
+        let user_id = UserId::new(calling_principal);
+        self.users_service
+            .add_payment_to_user_once(&user_id, payment_block_height, paid_akt)?;
+
+        print(&format!(
+            "[{:?}]: Received payment of {} AKT. Current balance: {:?} AKT",
+            calling_principal.to_string(),
+            paid_akt,
+            self.users_service.get_user_akt_balance(&user_id)?
+        ));
+
+        Ok(paid_akt)
     }
 }

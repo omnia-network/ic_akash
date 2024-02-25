@@ -55,7 +55,7 @@ async fn create_certificate(
 }
 
 #[update]
-async fn create_deployment(_payment_block_height: u64, _sdl: String) -> ApiResult<String> {
+async fn create_deployment(_sdl: String) -> ApiResult<String> {
     Err(ApiError::permission_denied("Not implemented")).into()
 }
 
@@ -70,12 +70,12 @@ async fn update_deployment(deployment_id: String, update: DeploymentUpdate) -> A
 }
 
 #[update]
-async fn create_test_deployment(payment_block_height: u64) -> ApiResult<String> {
+async fn create_test_deployment() -> ApiResult<String> {
     let calling_principal = caller();
     let sdl = example_sdl().to_string();
 
     DeploymentsEndpoints::default()
-        .create_deployment(calling_principal, payment_block_height, sdl)
+        .create_deployment(calling_principal, sdl)
         .await
         .map(|id| id.to_string())
         .into()
@@ -94,7 +94,6 @@ async fn close_deployment(deployment_id: String) -> ApiResult {
 struct DeploymentsEndpoints {
     deployments_service: DeploymentsService,
     access_control_service: AccessControlService,
-    ledger_service: LedgerService,
     users_service: UsersService,
 }
 
@@ -103,7 +102,6 @@ impl Default for DeploymentsEndpoints {
         Self {
             deployments_service: DeploymentsService::default(),
             access_control_service: AccessControlService::default(),
-            ledger_service: LedgerService::default(),
             users_service: UsersService::default(),
         }
     }
@@ -157,36 +155,17 @@ impl DeploymentsEndpoints {
     pub async fn create_deployment(
         &mut self,
         calling_principal: Principal,
-        payment_block_height: u64,
         sdl: String,
     ) -> Result<DeploymentId, ApiError> {
-        // check if the payment has been sent from the caller to the orchestrator and with the correct amount
-        let Some(paid_akt) = self
-            .ledger_service
-            .check_payment(calling_principal, payment_block_height)
-            .await?
-        else {
-            print(&format!(
-                "[{:?}]: Did not send payment",
-                calling_principal.to_string()
-            ));
-            return Err(ApiError::permission_denied("Did not send payment"));
-        };
-
-        // check if the payment has not been used for a previous deployment by the same user
-        self.users_service
-            .add_payment_to_user_once(&UserId::new(calling_principal), payment_block_height)?;
-
-        print(&format!(
-            "[{:?}]: Received payment of {} for deployment",
-            calling_principal.to_string(),
-            paid_akt
-        ));
+        self.access_control_service
+            .assert_principal_is_user(&calling_principal)?;
 
         let parsed_sdl = SdlV3::try_from_str(&sdl)
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid SDL: {}", e)))?;
 
         let user_id = UserId::new(calling_principal);
+        // deduct AKT from user's balance for deplyment escrow
+        self.users_service.charge_user_for_deployment(&user_id)?;
 
         let deployment_id = self
             .deployments_service
@@ -299,6 +278,7 @@ impl DeploymentsEndpoints {
                     .await;
                 } else {
                     print(&format!("[{:?}]: Closed", deployment_id));
+                    // TODO: add back to the user's balance the AKT tokens remaining from the escrow
                 }
                 Ok(())
             }

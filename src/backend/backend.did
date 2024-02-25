@@ -120,10 +120,11 @@ service : (bool) -> {
     "get_deployment" : (text) -> (GetDeploymentResult) query;
     "get_deployments" : () -> (GetDeploymentsResult) query;
     "create_certificate" : (text, text) -> (ApiStringResult);
-    "create_deployment" : (nat64, text) -> (CreateDeploymentResult);
-    "create_test_deployment" : (nat64) -> (CreateDeploymentResult);
+    "create_deployment" : (text) -> (CreateDeploymentResult);
+    "create_test_deployment" : () -> (CreateDeploymentResult);
     "update_deployment" : (text, DeploymentUpdate) -> (ApiEmptyResult);
     "close_deployment" : (text) -> (ApiEmptyResult);
+    "update_akt_balance" : (nat64) -> (ApiFloatResult);
 
     //// IC WebSocket methods ////
     "ws_open" : (CanisterWsOpenArguments) -> (CanisterWsOpenResult);

@@ -87,12 +87,6 @@ impl LedgerService {
             }
             let paid_akt =
                 (amount.e8s() / 100_000_000) as f64 * self.get_icp_2_akt_conversion_rate().await?;
-            if paid_akt < 5.0 {
-                return Err(ApiError::not_found(&format!(
-                    "payment amount is less than 5 AKT, received: {} AKT",
-                    paid_akt,
-                )));
-            }
 
             // the payment might still be a double spend,
             // therefore it is important to check that this 'payment_block_heihgt'

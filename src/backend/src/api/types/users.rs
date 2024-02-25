@@ -67,11 +67,12 @@ impl Storable for UserRole {
     const BOUND: Bound = Bound::Unbounded;
 }
 
-#[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, CandidType, Deserialize, Clone)]
 pub struct User {
     role: UserRole,
     created_at: TimestampNs,
     payments: Vec<u64>,
+    akt_balance: f64,
 }
 
 impl User {
@@ -80,6 +81,7 @@ impl User {
             role,
             created_at: get_time_nanos(),
             payments: vec![],
+            akt_balance: 0.0,
         }
     }
 
@@ -97,6 +99,20 @@ impl User {
 
     pub fn is_double_payment(&self, payment_block_height: u64) -> bool {
         self.payments.contains(&payment_block_height)
+    }
+
+    pub fn akt_balance(&self) -> f64 {
+        self.akt_balance
+    }
+
+    pub fn add_to_akt_balance(&mut self, amount: f64) -> f64 {
+        self.akt_balance += amount;
+        self.akt_balance
+    }
+
+    pub fn subtract_from_akt_balance(&mut self, amount: f64) -> f64 {
+        self.akt_balance -= amount;
+        self.akt_balance
     }
 }
 
