@@ -26,9 +26,7 @@ impl AkashService {
             config_memory: init_config(),
         }
     }
-}
 
-impl AkashService {
     pub fn get_config(&self) -> Config {
         self.config_memory.get().clone()
     }

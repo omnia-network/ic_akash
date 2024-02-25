@@ -41,5 +41,7 @@ dfx deploy --specified-id ryjl3-tyaaa-aaaaa-aaaba-cai icp_ledger_canister --argu
   })
 "
 
+dfx deploy --specified-id uf6dk-hyaaa-aaaaq-qaaaq-cai xrc --with-cycles 10000000000
+
 echo "Backend account balance: $(dfx ledger balance $BACKEND_ACCOUNT_ID)"
 echo "Default account balance: $(dfx ledger balance $DEFAULT_ACCOUNT_ID)"

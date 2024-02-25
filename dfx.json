@@ -37,6 +37,18 @@
           "ic": "ryjl3-tyaaa-aaaaa-aaaba-cai"
         }
       }
+    },
+    "xrc": {
+      "type": "custom",
+      "candid": "src/xrc/xrc.did",
+      "wasm": "src/xrc/xrc.wasm.gz",
+      "optimize": "cycles",
+      "gzip": true,
+      "remote": {
+        "id": {
+          "ic": "uf6dk-hyaaa-aaaaq-qaaaq-cai"
+        }
+      }
     }
   },
   "defaults": {

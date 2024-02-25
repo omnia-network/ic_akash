@@ -1,5 +1,9 @@
-use crate::api::ApiError;
+use crate::api::{
+    init_config, ApiError, Asset, AssetClass, Config, ConfigMemory, GetExchangeRateRequest,
+    GetExchangeRateResult,
+};
 use candid::Principal;
+use ic_cdk::api::call::call_with_payment;
 use ic_cdk::api::management_canister::http_request::{HttpMethod, TransformContext};
 use ic_cdk::{api::call::call, print};
 use ic_ledger_types::{
@@ -13,14 +17,22 @@ const REQUEST_SIZE: u128 = 1_000;
 const MAX_RESPONSE_SIZE: u64 = 10_000;
 
 pub struct LedgerService {
+    config_memory: ConfigMemory,
     ledger_canister_id: Principal,
+    xrc_id: Principal,
 }
 
 impl LedgerService {
     pub fn default() -> Self {
         Self {
+            config_memory: init_config(),
             ledger_canister_id: Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap(),
+            xrc_id: Principal::from_text("uf6dk-hyaaa-aaaaq-qaaaq-cai").unwrap(),
         }
+    }
+
+    pub fn get_config(&self) -> Config {
+        self.config_memory.get().clone()
     }
 
     pub async fn query_blocks(&self, args: GetBlocksArgs) -> Result<QueryBlocksResponse, ApiError> {
@@ -153,6 +165,38 @@ impl LedgerService {
     }
 
     pub async fn get_icp_2_akt_conversion_rate(&self) -> Result<f64, ApiError> {
+        if self.get_config().is_mainnet() {
+            let args = GetExchangeRateRequest {
+                base_asset: Asset {
+                    symbol: "AKT".to_string(),
+                    class: AssetClass::Cryptocurrency,
+                },
+                quote_asset: Asset {
+                    symbol: "ICP".to_string(),
+                    class: AssetClass::Cryptocurrency,
+                },
+                timestamp: None,
+            };
+
+            let (res,): (GetExchangeRateResult,) =
+                call_with_payment(self.xrc_id, "get_exchange_rate", (args,), 10_000_000_000)
+                    .await
+                    .map_err(|(code, e)| {
+                        ApiError::internal(&format!(
+                            "failed to get exchange rate. Rejection code: {:?}, error: {}",
+                            code, e
+                        ))
+                    })?;
+
+            let exchange_rate =
+                res.map_err(|e| ApiError::internal(&format!("exchange rate error: {:?}", e)))?;
+
+            return Ok(
+                exchange_rate.rate as f64 * 10_f64.powi(exchange_rate.metadata.decimals as i32)
+            );
+        }
+
+        // used only when testing locally
         let icp_price = self.get_usd_exchange("ICP").await?;
         // as the AKT price is not available on the coinbase API, use a hardcoded value
         // let akt_price = self.get_usd_exchange("AKT").await;
