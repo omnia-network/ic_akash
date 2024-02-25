@@ -8,6 +8,11 @@ type ApiStringResult = variant {
     Err : ApiError;
 };
 
+type ApiFloatResult = variant {
+    Ok : float64;
+    Err : ApiError;
+};
+
 type ApiEmptyResult = variant {
     Ok;
     Err : ApiError;
@@ -129,5 +134,6 @@ service : (bool) -> {
 
     //// Ledger methods ////
     "query_blocks" : (GetBlocksArgs) -> (QueryBlocksResult) composite_query;
+    "get_icp_price" : () -> (ApiFloatResult);
     //// End Ledger methods ////
 };

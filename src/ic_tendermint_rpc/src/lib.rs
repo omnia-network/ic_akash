@@ -1,6 +1,6 @@
 use ic_cdk::{
     api::management_canister::http_request::{
-        HttpMethod, HttpResponse, TransformArgs, TransformContext,
+        HttpHeader, HttpMethod, HttpResponse, TransformArgs, TransformContext,
     },
     print, query,
 };
@@ -26,21 +26,6 @@ use utils::{make_http_request, sha256};
 const REQUEST_SIZE: u128 = 1_000;
 /// refuse responses that return more than 10kb
 const MAX_RESPONSE_SIZE: u64 = 10_000;
-/// assume deployment on an application subnet
-const SUBNET_SIZE: u128 = 13;
-/// cycles cost for each HTTP outcall
-const PER_CALL_COST: u128 = (3_000_000 + 60_000 * SUBNET_SIZE) * SUBNET_SIZE;
-/// cycles cost for each byte in the request
-const PER_REQUEST_BYTES_COST: u128 = 400 * SUBNET_SIZE;
-/// cycles cost for each byte in the response
-const PER_RESPONSE_BYTES_COST: u128 = 800 * SUBNET_SIZE;
-// previous calculations according to: https://internetcomputer.org/docs/current/developer-docs/gas-cost#special-features
-
-/// price calculated according to: https://internetcomputer.org/docs/current/developer-docs/integrations/https-outcalls/https-outcalls-how-it-works#pricing
-const MAX_CYCLES_PER_OUTCALL: u128 = (PER_CALL_COST
-    + PER_REQUEST_BYTES_COST * REQUEST_SIZE
-    + PER_RESPONSE_BYTES_COST * MAX_RESPONSE_SIZE as u128)
-    * (SUBNET_SIZE / 13);
 
 // TODO: fix deserialization
 // pub async fn latest_block(url: String) -> Result<<BlockRequest as Request>::Response, String> {
@@ -54,13 +39,19 @@ const MAX_CYCLES_PER_OUTCALL: u128 = (PER_CALL_COST
 pub async fn abci_info(url: String) -> Result<<AbciInfoRequest as Request>::Response, String> {
     let request_body = Wrapper::new(AbciInfoRequest).await.into_json().into_bytes();
 
+    let request_headers = vec![HttpHeader {
+        name: "Content-Type".to_string(),
+        value: "application/json".to_string(),
+    }];
+
     let response = make_http_request(
         url,
         HttpMethod::GET,
         Some(request_body),
+        request_headers,
         None,
+        REQUEST_SIZE,
         MAX_RESPONSE_SIZE,
-        MAX_CYCLES_PER_OUTCALL,
     )
     .await?;
     <AbciInfoRequest as Request>::Response::from_string(&response.body)
@@ -81,16 +72,22 @@ pub async fn abci_query(
     };
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
+    let request_headers = vec![HttpHeader {
+        name: "Content-Type".to_string(),
+        value: "application/json".to_string(),
+    }];
+
     let response = make_http_request(
         url,
         HttpMethod::POST,
         Some(request_body),
+        request_headers,
         Some(TransformContext::from_name(
             "abci_transform".to_string(),
             vec![],
         )),
+        REQUEST_SIZE,
         MAX_RESPONSE_SIZE,
-        MAX_CYCLES_PER_OUTCALL,
     )
     .await?;
     <AbciQueryRequest as Request>::Response::from_string(&response.body)
@@ -103,13 +100,19 @@ pub async fn check_tx(url: String, hash_hex: String) -> Result<(), String> {
     );
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
+    let request_headers = vec![HttpHeader {
+        name: "Content-Type".to_string(),
+        value: "application/json".to_string(),
+    }];
+
     let response = make_http_request(
         url,
         HttpMethod::GET,
         Some(request_body),
+        request_headers,
         None,
+        REQUEST_SIZE,
         MAX_RESPONSE_SIZE,
-        MAX_CYCLES_PER_OUTCALL,
     )
     .await?;
     let response_body = <TxRequest as Request>::Response::from_string(&response.body);
@@ -131,16 +134,22 @@ pub async fn broadcast_tx_sync(
     let request = TxSyncRequest::new(tx_raw.clone());
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
+    let request_headers = vec![HttpHeader {
+        name: "Content-Type".to_string(),
+        value: "application/json".to_string(),
+    }];
+
     let response = make_http_request(
         url.clone(),
         HttpMethod::POST,
         Some(request_body),
+        request_headers,
         Some(TransformContext::from_name(
             "broadcast_tx_sync_transform".to_string(),
             vec![],
         )),
+        REQUEST_SIZE,
         MAX_RESPONSE_SIZE,
-        MAX_CYCLES_PER_OUTCALL,
     )
     .await?;
 
