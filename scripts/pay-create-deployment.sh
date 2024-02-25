@@ -3,6 +3,7 @@
 export BACKEND_PRINCIPAL=$(dfx canister id backend)
 export BACKEND_ACCOUNT_ID=$(dfx ledger account-id --of-principal $BACKEND_PRINCIPAL)
 
+echo "Deploying with enough ICPs..."
 result=$(dfx ledger transfer $BACKEND_ACCOUNT_ID --icp 5 --memo 0)
 block_height=$(echo "$result" | grep -o '[0-9]*' | awk '{print $NF}')
 # echo "Extracted Block Height: $block_height"

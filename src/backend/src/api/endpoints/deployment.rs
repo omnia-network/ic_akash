@@ -161,26 +161,26 @@ impl DeploymentsEndpoints {
         sdl: String,
     ) -> Result<DeploymentId, ApiError> {
         // check if the payment has been sent from the caller to the orchestrator and with the correct amount
-        if self
+        let Some(paid_akt) = self
             .ledger_service
             .check_payment(calling_principal, payment_block_height)
             .await?
-            .is_none()
-        {
+        else {
             print(&format!(
                 "[{:?}]: Did not send payment",
                 calling_principal.to_string()
             ));
             return Err(ApiError::permission_denied("Did not send payment"));
-        }
+        };
 
         // check if the payment has not been used for a previous deployment by the same user
         self.users_service
             .add_payment_to_user_once(&UserId::new(calling_principal), payment_block_height)?;
 
         print(&format!(
-            "[{:?}]: Received payment for deployment",
-            calling_principal.to_string()
+            "[{:?}]: Received payment of {} for deployment",
+            calling_principal.to_string(),
+            paid_akt
         ));
 
         let parsed_sdl = SdlV3::try_from_str(&sdl)
