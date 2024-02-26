@@ -11,6 +11,11 @@ async fn balance() -> ApiResult<String> {
     AkashEndpoints::default().balance().await.into()
 }
 
+#[update]
+async fn check_tx(tx_hash_hex: String) -> ApiResult<()> {
+    AkashEndpoints::default().check_tx(tx_hash_hex).await.into()
+}
+
 struct AkashEndpoints {
     akash_service: AkashService,
 }
@@ -34,5 +39,12 @@ impl AkashEndpoints {
             .balance()
             .await
             .map_err(|e| ApiError::internal(&format!("failed to get balance: {}", e)))
+    }
+
+    pub async fn check_tx(&self, tx_hash_hex: String) -> Result<(), ApiError> {
+        self.akash_service
+            .check_tx(tx_hash_hex)
+            .await
+            .map_err(|e| ApiError::internal(&format!("failed to check tx: {}", e)))
     }
 }

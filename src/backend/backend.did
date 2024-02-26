@@ -114,6 +114,7 @@ type QueryBlocksResult = variant {
 service : (bool) -> {
     "address" : () -> (ApiStringResult);
     "balance" : () -> (ApiStringResult);
+    "check_tx" : (text) -> (ApiEmptyResult);
     "get_user" : () -> (GetUserResult) query;
     "create_user" : () -> (CreateUserResult);
     "promote_user_to_admin" : (UserId) -> (ApiEmptyResult);
