@@ -39,14 +39,18 @@ impl AkashService {
         Ok(get_account_id_from_public_key(&public_key)?.to_string())
     }
 
-    pub async fn balance(&self) -> Result<String, String> {
+    pub async fn balance(&self) -> Result<u64, String> {
         let config = self.get_config();
 
         let public_key = config.public_key().await?;
 
-        get_balance(config.tendermint_rpc_url(), &public_key)
+        let balance = get_balance(config.tendermint_rpc_url(), &public_key)
             .await
-            .and_then(|coin| Ok(coin.amount))
+            .and_then(|coin| Ok(coin.amount))?;
+
+        Ok(balance
+            .parse()
+            .map_err(|e| format!("could not parse balance: {:?}", e))?)
     }
 
     pub async fn send(&self, to_address: String, amount: u64) -> Result<String, String> {

@@ -7,7 +7,7 @@ async fn address() -> ApiResult<String> {
 }
 
 #[update]
-async fn balance() -> ApiResult<String> {
+async fn balance() -> ApiResult<u64> {
     AkashEndpoints::default().balance().await.into()
 }
 
@@ -34,11 +34,11 @@ impl AkashEndpoints {
             .map_err(|e| ApiError::internal(&format!("failed to get address: {}", e)))
     }
 
-    pub async fn balance(&self) -> Result<String, ApiError> {
+    pub async fn balance(&self) -> Result<u64, ApiError> {
         self.akash_service
             .balance()
             .await
-            .map_err(|e| ApiError::internal(&format!("failed to get balance: {}", e)))
+            .map_err(|e| ApiError::internal(&format!("could not get balance: {}", e)))
     }
 
     pub async fn check_tx(&self, tx_hash_hex: String) -> Result<(), ApiError> {

@@ -173,6 +173,17 @@ impl DeploymentsEndpoints {
         self.access_control_service
             .assert_principal_is_user(&calling_principal)?;
 
+        let balance = self
+            .akash_service
+            .balance()
+            .await
+            .map_err(|e| ApiError::internal(&format!("could not get balance: {}", e)))?;
+        if balance < 5_000_000 {
+            return Err(ApiError::internal(&format!(
+                "Insufficient AKT balance. Remaining balance: {}",
+                balance
+            )));
+        }
         let parsed_sdl = SdlV3::try_from_str(&sdl)
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid SDL: {}", e)))?;
 

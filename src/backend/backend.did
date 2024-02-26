@@ -8,6 +8,11 @@ type ApiStringResult = variant {
     Err : ApiError;
 };
 
+type ApiNatResult = variant {
+    Ok : nat64;
+    Err : ApiError;
+};
+
 type ApiFloatResult = variant {
     Ok : float64;
     Err : ApiError;
@@ -113,7 +118,7 @@ type QueryBlocksResult = variant {
 
 service : (bool) -> {
     "address" : () -> (ApiStringResult);
-    "balance" : () -> (ApiStringResult);
+    "balance" : () -> (ApiNatResult);
     "check_tx" : (text) -> (ApiEmptyResult);
     "get_user" : () -> (GetUserResult) query;
     "create_user" : () -> (CreateUserResult);
