@@ -5,7 +5,7 @@ use crate::{
         bank::{create_send_tx, get_balance},
         bids::fetch_bids,
         certificate::create_certificate_tx,
-        deployment::{close_deployment_tx, create_deployment_tx},
+        deployment::{close_deployment_tx, create_deployment_tx, update_deployment_sdl_tx},
         lease::create_lease_tx,
         provider::fetch_provider,
         sdl::SdlV3,
@@ -124,6 +124,33 @@ impl AkashService {
 
         // print(&format!(
         //     "[create_deployment] tx_hash: {}, dseq: {}",
+        //     tx_hash, dseq
+        // ));
+
+        Ok((tx_hash, dseq, sdl.manifest_sorted_json()))
+    }
+
+    pub async fn update_deployment_sdl(
+        &self,
+        dseq: u64,
+        sdl: SdlV3,
+    ) -> Result<(String, u64, String), String> {
+        let config = self.get_config();
+
+        let public_key = config.public_key().await?;
+        let rpc_url = config.tendermint_rpc_url();
+
+        let account = get_account(rpc_url.clone(), &public_key).await?;
+
+        let tx_raw =
+            update_deployment_sdl_tx(&public_key, &sdl, dseq, &account, &config.ecdsa_key())
+                .await?;
+
+        let tx_hash =
+            ic_tendermint_rpc::broadcast_tx_sync(config.is_mainnet(), rpc_url, tx_raw).await?;
+
+        // print(&format!(
+        //     "[update_deployment_sdl] tx_hash: {}, dseq: {}",
         //     tx_hash, dseq
         // ));
 

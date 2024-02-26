@@ -3,9 +3,9 @@ use crate::{
     api::{
         map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult,
         Deployment, DeploymentId, DeploymentUpdate, DeploymentsService, GetDeploymentResponse,
-        LedgerService, UserId, UsersService,
+        UserId, UsersService,
     },
-    fixtures::example_sdl,
+    fixtures::{example_sdl, updated_example_sdl},
 };
 use candid::Principal;
 use ic_cdk::{caller, print, query, update};
@@ -82,6 +82,17 @@ async fn create_test_deployment() -> ApiResult<String> {
 }
 
 #[update]
+async fn update_test_deployment_sdl(deployment_id: String) -> ApiResult<()> {
+    let calling_principal = caller();
+    let sdl = updated_example_sdl().to_string();
+
+    DeploymentsEndpoints::default()
+        .update_deployment_sdl(calling_principal, deployment_id, sdl)
+        .await
+        .into()
+}
+
+#[update]
 async fn close_deployment(deployment_id: String) -> ApiResult {
     let calling_principal = caller();
 
@@ -95,6 +106,7 @@ struct DeploymentsEndpoints {
     deployments_service: DeploymentsService,
     access_control_service: AccessControlService,
     users_service: UsersService,
+    akash_service: AkashService,
 }
 
 impl Default for DeploymentsEndpoints {
@@ -103,6 +115,7 @@ impl Default for DeploymentsEndpoints {
             deployments_service: DeploymentsService::default(),
             access_control_service: AccessControlService::default(),
             users_service: UsersService::default(),
+            akash_service: AkashService::default(),
         }
     }
 }
@@ -196,6 +209,43 @@ impl DeploymentsEndpoints {
         });
 
         Ok(deployment_id)
+    }
+
+    pub async fn update_deployment_sdl(
+        &mut self,
+        calling_principal: Principal,
+        deployment_id: String,
+        sdl: String,
+    ) -> Result<(), ApiError> {
+        // self.access_control_service
+        //     .assert_principal_is_user(&calling_principal)?;
+
+        let deployment_id = DeploymentId::try_from(&deployment_id[..])
+            .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
+
+        let parsed_sdl = SdlV3::try_from_str(&sdl)
+            .map_err(|e| ApiError::invalid_argument(&format!("Invalid SDL: {}", e)))?;
+
+        // no need to deduct AKT from user's balance for udating deplyment as the needed tokens are taken from the escrow contract
+
+        print(&format!(
+            "[{:?}]: Starting to update Akash deployment",
+            deployment_id
+        ));
+
+        let dseq = DeploymentsService::default()
+            .get_akash_deployment_info(&deployment_id)?
+            .ok_or(ApiError::not_found(&format!(
+                "Deployment {:?} is initialized but has not been created",
+                deployment_id
+            )))?;
+
+        self.akash_service
+            .update_deployment_sdl(dseq, parsed_sdl)
+            .await
+            .map_err(|e| ApiError::internal(&format!("Error updating deployment: {}", e)))?;
+        print(&format!("[{:?}]: Updated deployment", deployment_id));
+        Ok(())
     }
 
     pub async fn update_deployment(
