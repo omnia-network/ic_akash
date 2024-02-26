@@ -25,6 +25,25 @@ impl Name for MsgCreateDeployment {
     const PACKAGE: &'static str = "akash.deployment.v1beta3";
 }
 
+/// MsgDepositDeployment deposits more funds into the deposit account
+///
+/// from https://github.com/akash-network/akash-api/blob/8b3ecebafedd45c27653f34cfe8917cbdcc7c970/proto/node/akash/deployment/v1beta3/deploymentmsg.proto#L48
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MsgDepositDeployment {
+    #[prost(message, tag = "1")]
+    pub id: ::core::option::Option<DeploymentID>,
+    #[prost(message, tag = "2")]
+    pub amount: ::core::option::Option<cosmrs::proto::cosmos::base::v1beta1::Coin>,
+    #[prost(string, tag = "3")]
+    pub depositor: ::prost::alloc::string::String,
+}
+
+/// from https://github.com/akash-network/cloudmos/blob/d644be8430a57ebbf195afd2c460946b38e5a56f/deploy-web/src/utils/TransactionMessageData.ts#L10
+impl Name for MsgDepositDeployment {
+    const NAME: &'static str = "MsgDepositDeployment";
+    const PACKAGE: &'static str = "akash.deployment.v1beta3";
+}
+
 /// MsgUpdateDeployment defines an SDK message for updating deployment
 ///
 /// from https://github.com/akash-network/akash-api/blob/8b3ecebafedd45c27653f34cfe8917cbdcc7c970/proto/node/akash/deployment/v1beta3/deploymentmsg.proto#L75

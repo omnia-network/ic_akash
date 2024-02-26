@@ -100,4 +100,32 @@ impl UsersService {
             user_balance,
         )))
     }
+
+    pub fn charge_user_for_deposit(
+        &mut self,
+        user_id: &UserId,
+        amount_akt: f64,
+    ) -> Result<(), ApiError> {
+        let mut user = self
+            .users_memory
+            .get(user_id)
+            .ok_or_else(|| ApiError::not_found("User not found"))?;
+
+        let user_balance = user.akt_balance();
+        if user_balance >= amount_akt {
+            let updated_balance = user.subtract_from_akt_balance(amount_akt);
+            print(&format!(
+                "[{:?}]: Updated balance after deposit: {:?} AKT",
+                user_id.to_string(),
+                updated_balance
+            ));
+            self.users_memory.insert(*user_id, user);
+            return Ok(());
+        }
+
+        Err(ApiError::permission_denied(&format!(
+            "Not enough AKT balance. Current balance: {} AKT",
+            user_balance,
+        )))
+    }
 }

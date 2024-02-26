@@ -127,6 +127,7 @@ service : (bool) -> {
     "get_deployments" : () -> (GetDeploymentsResult) query;
     "create_certificate" : (text, text) -> (ApiStringResult);
     "create_deployment" : (text) -> (CreateDeploymentResult);
+    "deposit_deployment" : (text, nat64) -> (ApiEmptyResult);
     "update_test_deployment_sdl" : (text) -> (ApiEmptyResult);
     "create_test_deployment" : () -> (CreateDeploymentResult);
     "update_deployment" : (text, DeploymentUpdate) -> (ApiEmptyResult);

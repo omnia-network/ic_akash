@@ -82,6 +82,16 @@ async fn create_test_deployment() -> ApiResult<String> {
 }
 
 #[update]
+async fn deposit_deployment(deployment_id: String, amount_uakt: u64) -> ApiResult<()> {
+    let calling_principal = caller();
+
+    DeploymentsEndpoints::default()
+        .deposit_deployment(calling_principal, deployment_id, amount_uakt)
+        .await
+        .into()
+}
+
+#[update]
 async fn update_test_deployment_sdl(deployment_id: String) -> ApiResult<()> {
     let calling_principal = caller();
     let sdl = updated_example_sdl().to_string();
@@ -188,7 +198,7 @@ impl DeploymentsEndpoints {
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid SDL: {}", e)))?;
 
         let user_id = UserId::new(calling_principal);
-        // deduct AKT from user's balance for deplyment escrow
+        // deduct AKT from user's balance for deployment escrow
         self.users_service.charge_user_for_deployment(&user_id)?;
 
         let deployment_id = self
@@ -222,8 +232,43 @@ impl DeploymentsEndpoints {
         Ok(deployment_id)
     }
 
-    pub async fn update_deployment_sdl(
+    pub async fn deposit_deployment(
         &mut self,
+        calling_principal: Principal,
+        deployment_id: String,
+        amount_uakt: u64,
+    ) -> Result<(), ApiError> {
+        // self.access_control_service
+        //     .assert_principal_is_user(&calling_principal)?;
+
+        let deployment_id = DeploymentId::try_from(&deployment_id[..])
+            .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
+
+        // TODO: check if deployment is not closed or failed
+
+        let dseq = DeploymentsService::default()
+            .get_akash_deployment_info(&deployment_id)?
+            .ok_or(ApiError::not_found(&format!(
+                "Deployment {:?} is initialized but has not been created",
+                deployment_id
+            )))?;
+
+        self.akash_service
+            .deposit_deployment(dseq, amount_uakt)
+            .await
+            .map_err(|e| ApiError::internal(&format!("Error updating deployment: {}", e)))?;
+
+        let user_id = UserId::new(calling_principal);
+        // deduct AKT from user's balance for deposit to deployment escrow
+        self.users_service
+            .charge_user_for_deposit(&user_id, amount_uakt as f64 / 1_000_000.0)?;
+
+        print(&format!("[{:?}]: Deposit deployment", deployment_id));
+        Ok(())
+    }
+
+    pub async fn update_deployment_sdl(
+        &self,
         calling_principal: Principal,
         deployment_id: String,
         sdl: String,
