@@ -1,12 +1,12 @@
 use candid::{CandidType, Deserialize, Principal};
 
-use crate::api::{Deployment, DeploymentUpdate, TimestampNs};
+use crate::api::{Deployment, DeploymentState, TimestampNs};
 
 #[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
 pub struct MappedDeployment {
     sdl: String,
     user_id: Principal,
-    state_history: Vec<(TimestampNs, DeploymentUpdate)>,
+    state_history: Vec<(TimestampNs, DeploymentState)>,
 }
 
 impl From<Deployment> for MappedDeployment {

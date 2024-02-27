@@ -47,10 +47,10 @@ export type CreateUserResult = { 'Ok' : UserId } |
 export interface Deployment {
   'sdl' : string,
   'user_id' : UserId,
-  'state_history' : Array<[TimestampNs, DeploymentUpdate]>,
+  'state_history' : Array<[TimestampNs, DeploymentState]>,
 }
 export type DeploymentId = string;
-export type DeploymentUpdate = { 'FailedOnClient' : { 'reason' : string } } |
+export type DeploymentState = { 'FailedOnClient' : { 'reason' : string } } |
   { 'Initialized' : null } |
   {
     'DeploymentCreated' : {
@@ -102,7 +102,7 @@ export interface _SERVICE {
   'get_deployments' : ActorMethod<[], GetDeploymentsResult>,
   'get_user' : ActorMethod<[], GetUserResult>,
   'promote_user_to_admin' : ActorMethod<[UserId], ApiEmptyResult>,
-  'update_deployment' : ActorMethod<[string, DeploymentUpdate], ApiEmptyResult>,
+  'update_deployment' : ActorMethod<[string, DeploymentState], ApiEmptyResult>,
   'ws_close' : ActorMethod<[CanisterWsCloseArguments], CanisterWsCloseResult>,
   'ws_get_messages' : ActorMethod<
     [CanisterWsGetMessagesArguments],

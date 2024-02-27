@@ -10,7 +10,7 @@ export const idlFactory = ({ IDL }) => {
   const UserId = IDL.Principal;
   const CreateUserResult = IDL.Variant({ 'Ok' : UserId, 'Err' : ApiError });
   const TimestampNs = IDL.Nat64;
-  const DeploymentUpdate = IDL.Variant({
+  const DeploymentState = IDL.Variant({
     'FailedOnClient' : IDL.Record({ 'reason' : IDL.Text }),
     'Initialized' : IDL.Null,
     'DeploymentCreated' : IDL.Record({
@@ -29,7 +29,7 @@ export const idlFactory = ({ IDL }) => {
   const Deployment = IDL.Record({
     'sdl' : IDL.Text,
     'user_id' : UserId,
-    'state_history' : IDL.Vec(IDL.Tuple(TimestampNs, DeploymentUpdate)),
+    'state_history' : IDL.Vec(IDL.Tuple(TimestampNs, DeploymentState)),
   });
   const GetDeploymentResult = IDL.Variant({
     'Ok' : IDL.Record({ 'id' : DeploymentId, 'deployment' : Deployment }),
@@ -80,7 +80,7 @@ export const idlFactory = ({ IDL }) => {
   const CanisterWsMessageArguments = IDL.Record({ 'msg' : WebsocketMessage });
   const DeploymentUpdateWsMessage = IDL.Record({
     'id' : IDL.Text,
-    'update' : DeploymentUpdate,
+    'update' : DeploymentState,
   });
   const CanisterWsMessageResult = IDL.Variant({
     'Ok' : IDL.Null,
@@ -112,7 +112,7 @@ export const idlFactory = ({ IDL }) => {
     'get_user' : IDL.Func([], [GetUserResult], ['query']),
     'promote_user_to_admin' : IDL.Func([UserId], [ApiEmptyResult], []),
     'update_deployment' : IDL.Func(
-        [IDL.Text, DeploymentUpdate],
+        [IDL.Text, DeploymentState],
         [ApiEmptyResult],
         [],
       ),

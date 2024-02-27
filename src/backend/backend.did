@@ -50,7 +50,7 @@ type CreateUserResult = variant {
 
 type DeploymentId = text;
 
-type DeploymentUpdate = variant {
+type DeploymentState = variant {
     Initialized;
     DeploymentCreated : record {
         tx_hash : text;
@@ -74,7 +74,7 @@ type DeploymentUpdate = variant {
 type Deployment = record {
     sdl : text;
     user_id : UserId;
-    state_history : vec record { TimestampNs; DeploymentUpdate };
+    state_history : vec record { TimestampNs; DeploymentState };
 };
 
 type GetDeploymentResult = variant {
@@ -103,7 +103,7 @@ import "./ws_types.did";
 
 type DeploymentUpdateWsMessage = record {
     id : text;
-    update : DeploymentUpdate;
+    update : DeploymentState;
 };
 //// End IC WebSocket types ////
 
@@ -130,7 +130,7 @@ service : (bool) -> {
     "deposit_deployment" : (text, nat64) -> (ApiEmptyResult);
     "update_test_deployment_sdl" : (text) -> (ApiEmptyResult);
     "create_test_deployment" : () -> (CreateDeploymentResult);
-    "update_deployment_state" : (text, DeploymentUpdate) -> (ApiEmptyResult);
+    "update_deployment_state" : (text, DeploymentState) -> (ApiEmptyResult);
     "close_deployment" : (text) -> (ApiEmptyResult);
     "update_akt_balance" : (nat64) -> (ApiFloatResult);
 

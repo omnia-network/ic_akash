@@ -1,6 +1,6 @@
 use crate::{
     api::{
-        init_deployments, ApiError, Deployment, DeploymentId, DeploymentUpdate,
+        init_deployments, ApiError, Deployment, DeploymentId, DeploymentState,
         DeploymentUpdateWsMessage, DeploymentsMemory, UserId,
     },
     helpers::send_canister_update,
@@ -57,7 +57,7 @@ impl DeploymentsService {
         // either it fails while being creating deployment and lease (and thus there is no need to close it)
         // or it eventually gets to the LeaseCreated or Active state (and from that point on it can be closed, updated or deposited being made to it)
         match deployment_state {
-            DeploymentUpdate::Active | DeploymentUpdate::LeaseCreated { .. } => Ok(()),
+            DeploymentState::Active | DeploymentState::LeaseCreated { .. } => Ok(()),
             _ => Err(ApiError::internal(&format!(
                 "Deployment is not active. Cannot close it now. Current state: {:?}",
                 deployment_state
@@ -74,7 +74,7 @@ impl DeploymentsService {
         self.update_deployment_state(
             calling_principal,
             deployment_id,
-            DeploymentUpdate::FailedOnCanister {
+            DeploymentState::FailedOnCanister {
                 reason: reason.clone(),
             },
             true,
@@ -104,7 +104,7 @@ impl DeploymentsService {
         self.update_deployment_state(
             calling_principal,
             deployment_id,
-            DeploymentUpdate::Closed,
+            DeploymentState::Closed,
             false,
         )
     }
@@ -113,21 +113,21 @@ impl DeploymentsService {
         &mut self,
         calling_principal: Principal,
         deployment_id: DeploymentId,
-        deployment_update: DeploymentUpdate,
+        deployment_update: DeploymentState,
         notify_client: bool,
     ) -> Result<(), ApiError> {
         let mut deployment = self.deployments_memory.get(&deployment_id).ok_or_else(|| {
             ApiError::not_found(&format!("Deployment {} not found", deployment_id))
         })?;
 
-        if let DeploymentUpdate::FailedOnCanister { .. } = deployment.state() {
+        if let DeploymentState::FailedOnCanister { .. } = deployment.state() {
             return Err(ApiError::internal(&format!(
                 "Deployment {} already failed",
                 deployment_id
             )));
         }
 
-        if let DeploymentUpdate::Closed = deployment.state() {
+        if let DeploymentState::Closed = deployment.state() {
             return Err(ApiError::internal(&format!(
                 "Deployment {} already closed",
                 deployment_id

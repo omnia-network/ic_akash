@@ -2,7 +2,7 @@ use crate::{
     akash::{address::get_account_id_from_public_key, bids::fetch_bids, sdl::SdlV3},
     api::{
         map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult,
-        Deployment, DeploymentId, DeploymentUpdate, DeploymentsService, GetDeploymentResponse,
+        Deployment, DeploymentId, DeploymentState, DeploymentsService, GetDeploymentResponse,
         UserId, UsersService,
     },
     fixtures::{example_sdl, updated_example_sdl},
@@ -60,7 +60,7 @@ async fn create_deployment(_sdl: String) -> ApiResult<String> {
 }
 
 #[update]
-async fn update_deployment_state(deployment_id: String, update: DeploymentUpdate) -> ApiResult<()> {
+async fn update_deployment_state(deployment_id: String, update: DeploymentState) -> ApiResult<()> {
     let calling_principal = caller();
 
     DeploymentsEndpoints::default()
@@ -306,7 +306,7 @@ impl DeploymentsEndpoints {
         &mut self,
         calling_principal: Principal,
         deployment_id: String,
-        update: DeploymentUpdate,
+        update: DeploymentState,
     ) -> Result<(), ApiError> {
         let deployment_id = DeploymentId::try_from(&deployment_id[..])
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
@@ -320,7 +320,7 @@ impl DeploymentsEndpoints {
             .get_deployment(&deployment_id)?
             .state()
         {
-            DeploymentUpdate::LeaseCreated { .. } => {}
+            DeploymentState::LeaseCreated { .. } => {}
             _ => {
                 return Err(ApiError::invalid_argument(&format!(
                     "Deployment must be in LeaseCreated state"
@@ -329,13 +329,13 @@ impl DeploymentsEndpoints {
         }
 
         match update {
-            DeploymentUpdate::Active => self.deployments_service.update_deployment_state(
+            DeploymentState::Active => self.deployments_service.update_deployment_state(
                 calling_principal,
                 deployment_id,
                 update,
                 false,
             ),
-            DeploymentUpdate::FailedOnClient { .. } => {
+            DeploymentState::FailedOnClient { .. } => {
                 self.deployments_service.update_deployment_state(
                     calling_principal,
                     deployment_id,
@@ -412,7 +412,7 @@ async fn handle_create_deployment(
         .await
         .map_err(|e| ApiError::internal(&format!("Error creating deployment: {}", e)))?;
 
-    let deployment_update = DeploymentUpdate::DeploymentCreated {
+    let deployment_update = DeploymentState::DeploymentCreated {
         tx_hash: tx_hash.clone(),
         dseq,
         manifest_sorted_json: manifest,
@@ -474,7 +474,7 @@ async fn try_fetch_bids_and_create_lease(
     deployment_id: DeploymentId,
 ) -> Result<Option<(String, String)>, ApiError> {
     // if the deployment has failed, there is no need to keep fetching bids
-    if let DeploymentUpdate::FailedOnCanister { .. } = DeploymentsService::default()
+    if let DeploymentState::FailedOnCanister { .. } = DeploymentsService::default()
         .get_deployment(&deployment_id)?
         .state()
     {
@@ -484,7 +484,7 @@ async fn try_fetch_bids_and_create_lease(
     }
 
     // if the deployment is closed, there is no need to keep fetching bids
-    if let DeploymentUpdate::Closed = DeploymentsService::default()
+    if let DeploymentState::Closed = DeploymentsService::default()
         .get_deployment(&deployment_id)?
         .state()
     {
@@ -534,7 +534,7 @@ async fn handle_create_lease(
         .await
         .map_err(|e| ApiError::internal(&format!("Error creating lease: {}", e)))?;
 
-    let deployment_update = DeploymentUpdate::LeaseCreated {
+    let deployment_update = DeploymentState::LeaseCreated {
         tx_hash: tx_hash.clone(),
         provider_url: provider_url.clone(),
     };
