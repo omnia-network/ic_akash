@@ -60,11 +60,11 @@ async fn create_deployment(_sdl: String) -> ApiResult<String> {
 }
 
 #[update]
-async fn update_deployment(deployment_id: String, update: DeploymentUpdate) -> ApiResult<()> {
+async fn update_deployment_state(deployment_id: String, update: DeploymentUpdate) -> ApiResult<()> {
     let calling_principal = caller();
 
     DeploymentsEndpoints::default()
-        .update_deployment(calling_principal, deployment_id, update)
+        .update_deployment_state(calling_principal, deployment_id, update)
         .await
         .into()
 }
@@ -238,15 +238,16 @@ impl DeploymentsEndpoints {
         deployment_id: String,
         amount_uakt: u64,
     ) -> Result<(), ApiError> {
-        // self.access_control_service
-        //     .assert_principal_is_user(&calling_principal)?;
-
         let deployment_id = DeploymentId::try_from(&deployment_id[..])
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
 
+        self.access_control_service
+            .assert_principal_owns_deployment(&calling_principal, &deployment_id)?;
+
         // TODO: check if deployment is not closed or failed
 
-        let dseq = DeploymentsService::default()
+        let dseq = self
+            .deployments_service
             .get_akash_deployment_info(&deployment_id)?
             .ok_or(ApiError::not_found(&format!(
                 "Deployment {:?} is initialized but has not been created",
@@ -273,23 +274,19 @@ impl DeploymentsEndpoints {
         deployment_id: String,
         sdl: String,
     ) -> Result<(), ApiError> {
-        // self.access_control_service
-        //     .assert_principal_is_user(&calling_principal)?;
-
         let deployment_id = DeploymentId::try_from(&deployment_id[..])
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid deployment id: {}", e)))?;
+
+        self.access_control_service
+            .assert_principal_owns_deployment(&calling_principal, &deployment_id)?;
 
         let parsed_sdl = SdlV3::try_from_str(&sdl)
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid SDL: {}", e)))?;
 
         // no need to deduct AKT from user's balance for udating deplyment as the needed tokens are taken from the escrow contract
 
-        print(&format!(
-            "[{:?}]: Starting to update Akash deployment",
-            deployment_id
-        ));
-
-        let dseq = DeploymentsService::default()
+        let dseq = self
+            .deployments_service
             .get_akash_deployment_info(&deployment_id)?
             .ok_or(ApiError::not_found(&format!(
                 "Deployment {:?} is initialized but has not been created",
@@ -300,11 +297,12 @@ impl DeploymentsEndpoints {
             .update_deployment_sdl(dseq, parsed_sdl)
             .await
             .map_err(|e| ApiError::internal(&format!("Error updating deployment: {}", e)))?;
+
         print(&format!("[{:?}]: Updated deployment", deployment_id));
         Ok(())
     }
 
-    pub async fn update_deployment(
+    pub async fn update_deployment_state(
         &mut self,
         calling_principal: Principal,
         deployment_id: String,
@@ -331,14 +329,14 @@ impl DeploymentsEndpoints {
         }
 
         match update {
-            DeploymentUpdate::Active => self.deployments_service.update_deployment(
+            DeploymentUpdate::Active => self.deployments_service.update_deployment_state(
                 calling_principal,
                 deployment_id,
                 update,
                 false,
             ),
             DeploymentUpdate::FailedOnClient { .. } => {
-                self.deployments_service.update_deployment(
+                self.deployments_service.update_deployment_state(
                     calling_principal,
                     deployment_id,
                     update,
@@ -365,34 +363,23 @@ impl DeploymentsEndpoints {
         self.access_control_service
             .assert_principal_owns_deployment(&calling_principal, &deployment_id)?;
 
-        let deployment_state = DeploymentsService::default()
-            .get_deployment(&deployment_id)?
-            .state();
-        // if the deployment is not in the Active or LeaseCreated state, it cannot be closed
-        // either it fails while being creating deployment and lease (and thus there is no need to close it)
-        // or it eventually gets to the LeaseCreated or Active state (and from that point on it can be closed)
-        match deployment_state {
-            DeploymentUpdate::Active | DeploymentUpdate::LeaseCreated { .. } => {
-                if let Err(e) = handle_close_deployment(deployment_id).await {
-                    set_failed_deployment(
-                        deployment_id,
-                        calling_principal,
-                        format!("Error closing deployment: {:?}", e),
-                        // the failure happened while closing the deployment, so there is no need to do it again
-                        false,
-                    )
-                    .await;
-                } else {
-                    print(&format!("[{:?}]: Closed", deployment_id));
-                    // TODO: add back to the user's balance the AKT tokens remaining from the escrow
-                }
-                Ok(())
-            }
-            _ => Err(ApiError::internal(&format!(
-                "Deployment is not active. Cannot close it now. Current state: {:?}",
-                deployment_state
-            ))),
+        self.deployments_service
+            .check_deployment_state(deployment_id)?;
+
+        if let Err(e) = handle_close_deployment(calling_principal, deployment_id).await {
+            set_failed_deployment(
+                deployment_id,
+                calling_principal,
+                format!("Error closing deployment: {:?}", e),
+                // the failure happened while closing the deployment, so there is no need to do it again
+                false,
+            )
+            .await;
+        } else {
+            print(&format!("[{:?}]: Closed", deployment_id));
+            // TODO: add back to the user's balance the AKT tokens remaining from the escrow
         }
+        Ok(())
     }
 }
 
@@ -432,7 +419,7 @@ async fn handle_create_deployment(
     };
 
     deployment_service
-        .update_deployment(calling_principal, deployment_id, deployment_update, true)
+        .update_deployment_state(calling_principal, deployment_id, deployment_update, true)
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
 
     print(&format!("[{:?}]: Created deployment", deployment_id));
@@ -552,7 +539,7 @@ async fn handle_create_lease(
         provider_url: provider_url.clone(),
     };
     deployment_service
-        .update_deployment(calling_principal, deployment_id, deployment_update, true)
+        .update_deployment_state(calling_principal, deployment_id, deployment_update, true)
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
 
     print(&format!("[{:?}]: Lease created", deployment_id));
@@ -560,10 +547,13 @@ async fn handle_create_lease(
     Ok((tx_hash, provider_url))
 }
 
-async fn handle_close_deployment(deployment_id: DeploymentId) -> Result<(), ApiError> {
+async fn handle_close_deployment(
+    calling_principal: Principal,
+    deployment_id: DeploymentId,
+) -> Result<(), ApiError> {
     try_close_akash_deployment(&deployment_id).await?;
 
-    DeploymentsService::default().close_deployment(deployment_id)?;
+    DeploymentsService::default().set_close_deployment(calling_principal, deployment_id)?;
 
     Ok(())
 }
