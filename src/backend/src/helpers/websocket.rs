@@ -1,5 +1,4 @@
 use crate::api::DeploymentUpdateWsMessage;
-use ic_cdk::print;
 use ic_websocket_cdk::ClientPrincipal;
 
 pub fn send_canister_update(client_principal: ClientPrincipal, update: DeploymentUpdateWsMessage) {

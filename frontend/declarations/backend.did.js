@@ -1,6 +1,7 @@
 export const idlFactory = ({ IDL }) => {
   const ApiError = IDL.Record({ 'code' : IDL.Nat16, 'message' : IDL.Text });
   const ApiStringResult = IDL.Variant({ 'Ok' : IDL.Text, 'Err' : ApiError });
+  const ApiNatResult = IDL.Variant({ 'Ok' : IDL.Nat64, 'Err' : ApiError });
   const ApiEmptyResult = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : ApiError });
   const DeploymentId = IDL.Text;
   const CreateDeploymentResult = IDL.Variant({
@@ -9,8 +10,9 @@ export const idlFactory = ({ IDL }) => {
   });
   const UserId = IDL.Principal;
   const CreateUserResult = IDL.Variant({ 'Ok' : UserId, 'Err' : ApiError });
+  const ApiFloatResult = IDL.Variant({ 'Ok' : IDL.Float64, 'Err' : ApiError });
   const TimestampNs = IDL.Nat64;
-  const DeploymentUpdate = IDL.Variant({
+  const DeploymentState = IDL.Variant({
     'FailedOnClient' : IDL.Record({ 'reason' : IDL.Text }),
     'Initialized' : IDL.Null,
     'DeploymentCreated' : IDL.Record({
@@ -29,7 +31,7 @@ export const idlFactory = ({ IDL }) => {
   const Deployment = IDL.Record({
     'sdl' : IDL.Text,
     'user_id' : UserId,
-    'state_history' : IDL.Vec(IDL.Tuple(TimestampNs, DeploymentUpdate)),
+    'state_history' : IDL.Vec(IDL.Tuple(TimestampNs, DeploymentState)),
   });
   const GetDeploymentResult = IDL.Variant({
     'Ok' : IDL.Record({ 'id' : DeploymentId, 'deployment' : Deployment }),
@@ -42,8 +44,97 @@ export const idlFactory = ({ IDL }) => {
     'Err' : ApiError,
   });
   const UserRole = IDL.Variant({ 'Admin' : IDL.Null, 'Deployer' : IDL.Null });
-  const User = IDL.Record({ 'role' : UserRole, 'created_at' : TimestampNs });
+  const User = IDL.Record({
+    'payments' : IDL.Vec(IDL.Nat64),
+    'role' : UserRole,
+    'created_at' : TimestampNs,
+  });
   const GetUserResult = IDL.Variant({ 'Ok' : User, 'Err' : ApiError });
+  const BlockIndex = IDL.Nat64;
+  const GetBlocksArgs = IDL.Record({
+    'start' : BlockIndex,
+    'length' : IDL.Nat64,
+  });
+  const Memo = IDL.Nat64;
+  const Tokens = IDL.Record({ 'e8s' : IDL.Nat64 });
+  const AccountIdentifier = IDL.Vec(IDL.Nat8);
+  const TimeStamp = IDL.Record({ 'timestamp_nanos' : IDL.Nat64 });
+  const Operation = IDL.Variant({
+    'Approve' : IDL.Record({
+      'fee' : Tokens,
+      'from' : AccountIdentifier,
+      'allowance_e8s' : IDL.Int,
+      'allowance' : Tokens,
+      'expires_at' : IDL.Opt(TimeStamp),
+      'spender' : AccountIdentifier,
+    }),
+    'Burn' : IDL.Record({
+      'from' : AccountIdentifier,
+      'amount' : Tokens,
+      'spender' : IDL.Opt(AccountIdentifier),
+    }),
+    'Mint' : IDL.Record({ 'to' : AccountIdentifier, 'amount' : Tokens }),
+    'Transfer' : IDL.Record({
+      'to' : AccountIdentifier,
+      'fee' : Tokens,
+      'from' : AccountIdentifier,
+      'amount' : Tokens,
+    }),
+    'TransferFrom' : IDL.Record({
+      'to' : AccountIdentifier,
+      'fee' : Tokens,
+      'from' : AccountIdentifier,
+      'amount' : Tokens,
+      'spender' : AccountIdentifier,
+    }),
+  });
+  const Transaction = IDL.Record({
+    'memo' : Memo,
+    'icrc1_memo' : IDL.Opt(IDL.Vec(IDL.Nat8)),
+    'operation' : IDL.Opt(Operation),
+    'created_at_time' : TimeStamp,
+  });
+  const Block = IDL.Record({
+    'transaction' : Transaction,
+    'timestamp' : TimeStamp,
+    'parent_hash' : IDL.Opt(IDL.Vec(IDL.Nat8)),
+  });
+  const BlockRange = IDL.Record({ 'blocks' : IDL.Vec(Block) });
+  const QueryArchiveError = IDL.Variant({
+    'BadFirstBlockIndex' : IDL.Record({
+      'requested_index' : BlockIndex,
+      'first_valid_index' : BlockIndex,
+    }),
+    'Other' : IDL.Record({
+      'error_message' : IDL.Text,
+      'error_code' : IDL.Nat64,
+    }),
+  });
+  const QueryArchiveResult = IDL.Variant({
+    'Ok' : BlockRange,
+    'Err' : QueryArchiveError,
+  });
+  const QueryArchiveFn = IDL.Func(
+      [GetBlocksArgs],
+      [QueryArchiveResult],
+      ['query'],
+    );
+  const ArchivedBlocksRange = IDL.Record({
+    'callback' : QueryArchiveFn,
+    'start' : BlockIndex,
+    'length' : IDL.Nat64,
+  });
+  const QueryBlocksResponse = IDL.Record({
+    'certificate' : IDL.Opt(IDL.Vec(IDL.Nat8)),
+    'blocks' : IDL.Vec(Block),
+    'chain_length' : IDL.Nat64,
+    'first_block_index' : BlockIndex,
+    'archived_blocks' : IDL.Vec(ArchivedBlocksRange),
+  });
+  const QueryBlocksResult = IDL.Variant({
+    'Ok' : QueryBlocksResponse,
+    'Err' : ApiError,
+  });
   const ClientPrincipal = IDL.Principal;
   const ClientKey = IDL.Record({
     'client_principal' : ClientPrincipal,
@@ -80,7 +171,7 @@ export const idlFactory = ({ IDL }) => {
   const CanisterWsMessageArguments = IDL.Record({ 'msg' : WebsocketMessage });
   const DeploymentUpdateWsMessage = IDL.Record({
     'id' : IDL.Text,
-    'update' : DeploymentUpdate,
+    'update' : DeploymentState,
   });
   const CanisterWsMessageResult = IDL.Variant({
     'Ok' : IDL.Null,
@@ -97,7 +188,8 @@ export const idlFactory = ({ IDL }) => {
   });
   return IDL.Service({
     'address' : IDL.Func([], [ApiStringResult], []),
-    'balance' : IDL.Func([], [ApiStringResult], []),
+    'balance' : IDL.Func([], [ApiNatResult], []),
+    'check_tx' : IDL.Func([IDL.Text], [ApiEmptyResult], []),
     'close_deployment' : IDL.Func([IDL.Text], [ApiEmptyResult], []),
     'create_certificate' : IDL.Func(
         [IDL.Text, IDL.Text],
@@ -107,15 +199,30 @@ export const idlFactory = ({ IDL }) => {
     'create_deployment' : IDL.Func([IDL.Text], [CreateDeploymentResult], []),
     'create_test_deployment' : IDL.Func([], [CreateDeploymentResult], []),
     'create_user' : IDL.Func([], [CreateUserResult], []),
-    'get_deployment' : IDL.Func([IDL.Text], [GetDeploymentResult], ['query']),
-    'get_deployments' : IDL.Func([], [GetDeploymentsResult], ['query']),
-    'get_user' : IDL.Func([], [GetUserResult], ['query']),
-    'promote_user_to_admin' : IDL.Func([UserId], [ApiEmptyResult], []),
-    'update_deployment' : IDL.Func(
-        [IDL.Text, DeploymentUpdate],
+    'deposit_deployment' : IDL.Func(
+        [IDL.Text, IDL.Nat64],
         [ApiEmptyResult],
         [],
       ),
+    'get_5_akt_in_icp' : IDL.Func([], [ApiFloatResult], []),
+    'get_akt_price' : IDL.Func([], [ApiFloatResult], []),
+    'get_deployment' : IDL.Func([IDL.Text], [GetDeploymentResult], ['query']),
+    'get_deployments' : IDL.Func([], [GetDeploymentsResult], ['query']),
+    'get_icp_price' : IDL.Func([], [ApiFloatResult], []),
+    'get_user' : IDL.Func([], [GetUserResult], ['query']),
+    'promote_user_to_admin' : IDL.Func([UserId], [ApiEmptyResult], []),
+    'query_blocks' : IDL.Func(
+        [GetBlocksArgs],
+        [QueryBlocksResult],
+        ['composite_query'],
+      ),
+    'update_akt_balance' : IDL.Func([IDL.Nat64], [ApiFloatResult], []),
+    'update_deployment_state' : IDL.Func(
+        [IDL.Text, DeploymentState],
+        [ApiEmptyResult],
+        [],
+      ),
+    'update_test_deployment_sdl' : IDL.Func([IDL.Text], [ApiEmptyResult], []),
     'ws_close' : IDL.Func(
         [CanisterWsCloseArguments],
         [CanisterWsCloseResult],

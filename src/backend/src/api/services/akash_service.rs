@@ -5,7 +5,10 @@ use crate::{
         bank::{create_send_tx, get_balance},
         bids::fetch_bids,
         certificate::create_certificate_tx,
-        deployment::{close_deployment_tx, create_deployment_tx},
+        deployment::{
+            close_deployment_tx, create_deployment_tx, deposit_deployment_tx,
+            update_deployment_sdl_tx,
+        },
         lease::create_lease_tx,
         provider::fetch_provider,
         sdl::SdlV3,
@@ -26,9 +29,7 @@ impl AkashService {
             config_memory: init_config(),
         }
     }
-}
 
-impl AkashService {
     pub fn get_config(&self) -> Config {
         self.config_memory.get().clone()
     }
@@ -41,14 +42,18 @@ impl AkashService {
         Ok(get_account_id_from_public_key(&public_key)?.to_string())
     }
 
-    pub async fn balance(&self) -> Result<String, String> {
+    pub async fn balance(&self) -> Result<u64, String> {
         let config = self.get_config();
 
         let public_key = config.public_key().await?;
 
-        get_balance(config.tendermint_rpc_url(), &public_key)
+        let balance = get_balance(config.tendermint_rpc_url(), &public_key)
             .await
-            .and_then(|coin| Ok(coin.amount))
+            .and_then(|coin| Ok(coin.amount))?;
+
+        Ok(balance
+            .parse()
+            .map_err(|e| format!("could not parse balance: {:?}", e))?)
     }
 
     pub async fn send(&self, to_address: String, amount: u64) -> Result<String, String> {
@@ -126,6 +131,60 @@ impl AkashService {
 
         // print(&format!(
         //     "[create_deployment] tx_hash: {}, dseq: {}",
+        //     tx_hash, dseq
+        // ));
+
+        Ok((tx_hash, dseq, sdl.manifest_sorted_json()))
+    }
+
+    pub async fn deposit_deployment(&self, dseq: u64, amount_uakt: u64) -> Result<(), String> {
+        let config = self.get_config();
+        let public_key = config.public_key().await?;
+        let rpc_url = config.tendermint_rpc_url();
+
+        let account = get_account(rpc_url.clone(), &public_key).await?;
+
+        let tx_raw = deposit_deployment_tx(
+            &public_key,
+            dseq,
+            amount_uakt,
+            &account,
+            &config.ecdsa_key(),
+        )
+        .await?;
+
+        let tx_hash =
+            ic_tendermint_rpc::broadcast_tx_sync(config.is_mainnet(), rpc_url, tx_raw).await?;
+
+        // print(&format!(
+        //     "[deposit_deployment] tx_hash: {}, dseq: {}",
+        //     tx_hash, dseq
+        // ));
+
+        Ok(())
+    }
+
+    pub async fn update_deployment_sdl(
+        &self,
+        dseq: u64,
+        sdl: SdlV3,
+    ) -> Result<(String, u64, String), String> {
+        let config = self.get_config();
+
+        let public_key = config.public_key().await?;
+        let rpc_url = config.tendermint_rpc_url();
+
+        let account = get_account(rpc_url.clone(), &public_key).await?;
+
+        let tx_raw =
+            update_deployment_sdl_tx(&public_key, &sdl, dseq, &account, &config.ecdsa_key())
+                .await?;
+
+        let tx_hash =
+            ic_tendermint_rpc::broadcast_tx_sync(config.is_mainnet(), rpc_url, tx_raw).await?;
+
+        // print(&format!(
+        //     "[update_deployment_sdl] tx_hash: {}, dseq: {}",
         //     tx_hash, dseq
         // ));
 

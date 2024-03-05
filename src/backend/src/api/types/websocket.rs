@@ -1,16 +1,16 @@
 use candid::{encode_one, CandidType};
 use serde::{Deserialize, Serialize};
 
-use super::DeploymentUpdate;
+use super::DeploymentState;
 
 #[derive(Debug, CandidType, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeploymentUpdateWsMessage {
     id: String,
-    update: DeploymentUpdate,
+    update: DeploymentState,
 }
 
 impl DeploymentUpdateWsMessage {
-    pub fn new(id: String, update: DeploymentUpdate) -> Self {
+    pub fn new(id: String, update: DeploymentState) -> Self {
         Self { id, update }
     }
 
