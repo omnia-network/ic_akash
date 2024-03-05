@@ -1,6 +1,11 @@
 #!/bin/bash
 
-dfx identity new minter
+set -e
+
+dfx deps pull
+dfx deps deploy
+
+# dfx identity new minter
 dfx identity use minter
 export MINTER_ACCOUNT_ID=$(dfx ledger account-id)
 echo "minter account id: $MINTER_ACCOUNT_ID"
