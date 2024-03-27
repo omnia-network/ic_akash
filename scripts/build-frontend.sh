@@ -2,4 +2,6 @@
 
 cd frontend
 
+npm i
+
 pnpm build

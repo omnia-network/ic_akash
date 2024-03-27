@@ -9,11 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@dfinity/agent": "0.20",
-    "@dfinity/auth-client": "0.20",
-    "@dfinity/candid": "0.20",
-    "@dfinity/identity": "0.20",
-    "@dfinity/principal": "0.20",
+    "@dfinity/agent": "1.0.1",
+    "@dfinity/auth-client": "1.0.1",
+    "@dfinity/candid": "1.0.1",
+    "@dfinity/identity": "1.0.1",
+    "@dfinity/principal": "1.0.1",
     "@peculiar/x509": "^1.9.7",
     "@radix-ui/react-collapsible": "^1.0.3",
     "@radix-ui/react-dialog": "^1.0.5",
