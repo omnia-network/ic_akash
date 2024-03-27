@@ -4,45 +4,47 @@ pub fn example_sdl<'a>() -> &'a str {
     r#"
 version: "3.0"
 services:
-  ic-websocket-gateway:
-    image: omniadevs/ic-websocket-gateway:v1.3.2
+  meilisearch:
+    image: getmeili/meilisearch:v1.7
     expose:
-      - port: 8080
+      - port: 7070
         as: 80
-        accept:
-          - "akash-gateway.icws.io"
         to:
           - global: true
-    command:
-      - "/ic-ws-gateway/ic_websocket_gateway"
-      - "--gateway-address"
-      - "0.0.0.0:8080"
-      - "--ic-network-url"
-      - "https://icp-api.io"
-      - "--polling-interval"
-      - "400"
+    env:
+      - MEILI_MASTER_KEY=super-secret-master-key
+    params:
+      storage:
+        meili_data:
+          name: meili_data
+          mount: /meili_data
+          readOnly: false
 profiles:
   compute:
-    ic-websocket-gateway:
+    meilisearch:
       resources:
         cpu:
-          units: 0.5
+          units: 1
         memory:
           size: 512Mi
         storage:
-          - size: 512Mi
+          - name: meili_data
+            size: 1Gi
+            attributes:
+              persistent: true
+              class: beta2
         gpu:
           units: 0
   placement:
     dcloud:
       pricing:
-        ic-websocket-gateway:
+        meilisearch:
           denom: uakt
           amount: 1000
 deployment:
-  ic-websocket-gateway:
+  meilisearch:
     dcloud:
-      profile: ic-websocket-gateway
+      profile: meilisearch
       count: 1
   "#
 }
