@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 export BACKEND_PRINCIPAL=$(dfx canister id backend)
 export BACKEND_ACCOUNT_ID=$(dfx ledger account-id --of-principal $BACKEND_PRINCIPAL)
 
