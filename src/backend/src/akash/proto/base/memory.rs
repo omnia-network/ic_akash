@@ -4,5 +4,5 @@ pub struct Memory {
     #[prost(message, tag = "1")]
     pub quantity: ::core::option::Option<super::resourcevalue::ResourceValue>,
     #[prost(message, repeated, tag = "2")]
-    pub Attributes: ::prost::alloc::vec::Vec<super::attribute::Attribute>,
+    pub attributes: ::prost::alloc::vec::Vec<super::attribute::Attribute>,
 }

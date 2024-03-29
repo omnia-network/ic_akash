@@ -252,12 +252,12 @@ pub struct ComputeResourcesV3 {
 impl Into<Resources> for ComputeResourcesV3 {
     fn into(self) -> Resources {
         Resources {
-            ID: self.id.unwrap(),
-            CPU: Some(self.cpu.into()),
+            id: self.id.unwrap(),
+            cpu: Some(self.cpu.into()),
             memory: Some(self.memory.into()),
             storage: self.storage.into_iter().map(|s| s.into()).collect(),
-            GPU: self.gpu.map(|g| g.into()),
-            Endpoints: vec![],
+            gpu: self.gpu.map(|g| g.into()),
+            endpoints: vec![],
         }
     }
 }
@@ -277,7 +277,7 @@ impl Into<CPU> for ResourceCpuV2 {
                     .to_string()
                     .into_bytes(),
             }),
-            Attributes: self
+            attributes: self
                 .attributes
                 .unwrap_or_default()
                 .into_iter()
@@ -310,7 +310,7 @@ impl Into<Storage> for ResourceStorageV2 {
                     .to_string()
                     .into_bytes(),
             }),
-            Attributes: self
+            attributes: self
                 .attributes
                 .unwrap_or_default()
                 .into_iter()
@@ -337,7 +337,7 @@ impl Into<Memory> for ResourceMemoryV2 {
                     .to_string()
                     .into_bytes(),
             }),
-            Attributes: self
+            attributes: self
                 .attributes
                 .unwrap_or_default()
                 .into_iter()
@@ -371,7 +371,7 @@ impl Into<GPU> for ResourceGpuV3 {
             units: Some(ResourceValue {
                 val: self.units().into_bytes(),
             }),
-            Attributes: match self.attributes {
+            attributes: match self.attributes {
                 Some(attributes) => Into::<Attributes>::into(attributes)
                     .into_iter()
                     .map(|attr| attr.into())
@@ -768,7 +768,7 @@ impl SdlV3 {
                         .enumerate()
                         .map(|(s_idx, (service, _))| {
                             self.manifest_service_v3(
-                                groups[p_idx].resources[s_idx].resource.as_ref().unwrap().ID,
+                                groups[p_idx].resources[s_idx].resource.as_ref().unwrap().id,
                                 name.clone(),
                                 service.clone(),
                             )
@@ -820,7 +820,7 @@ impl Into<ProtobufResourceUnit> for DeploymentGroupResourceV3 {
     fn into(self) -> ProtobufResourceUnit {
         ProtobufResourceUnit {
             resource: Some(Resources {
-                Endpoints: self.endpoints.into_iter().map(|e| e.into()).collect(),
+                endpoints: self.endpoints.into_iter().map(|e| e.into()).collect(),
                 ..self.resource.into()
             }),
             price: Some(DecCoin {
@@ -845,9 +845,9 @@ impl Into<Endpoint> for DeploymentGroupResourceEndpointV3 {
             kind: self
                 .kind
                 .map(|k| k.into())
-                .unwrap_or(Kind::SHARED_HTTP)
+                .unwrap_or(Kind::SharedHttp)
                 .into(), // TODO: is this the right default value?
-            SequenceNumber: self.sequence_number,
+            sequence_number: self.sequence_number,
         }
     }
 }
@@ -863,9 +863,9 @@ pub enum EndpointKind {
 impl Into<Kind> for EndpointKind {
     fn into(self) -> Kind {
         match self {
-            EndpointKind::SharedHttp => Kind::SHARED_HTTP,
-            EndpointKind::RandomPort => Kind::RANDOM_PORT,
-            EndpointKind::LeasedIp => Kind::LEASED_IP,
+            EndpointKind::SharedHttp => Kind::SharedHttp,
+            EndpointKind::RandomPort => Kind::RandomPort,
+            EndpointKind::LeasedIp => Kind::LeasedIp,
         }
     }
 }

@@ -1,7 +1,6 @@
 use ic_cdk::{
     api::management_canister::http_request::{
-        http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, HttpResponse,
-        TransformArgs, TransformContext,
+        HttpHeader, HttpMethod, HttpResponse, TransformArgs, TransformContext,
     },
     print, query,
 };
@@ -16,46 +15,45 @@ mod version;
 
 use endpoints::{
     abci_info::Request as AbciInfoRequest, abci_query::Request as AbciQueryRequest,
-    block::Request as BlockRequest, tx::Request as TxRequest, tx_sync::Request as TxSyncRequest,
+    tx::Request as TxRequest, tx_sync::Request as TxSyncRequest,
 };
 use request::{Request, Wrapper};
 use response::Response;
 use tendermint::{block::Height, hash::Algorithm, Hash};
-use utils::sha256;
+use utils::{make_http_request, sha256};
 
 /// assume requests are at most 1kb
 const REQUEST_SIZE: u128 = 1_000;
 /// refuse responses that return more than 10kb
 const MAX_RESPONSE_SIZE: u64 = 10_000;
-/// assume deployment on an application subnet
-const SUBNET_SIZE: u128 = 13;
-/// cycles cost for each HTTP outcall
-const PER_CALL_COST: u128 = (3_000_000 + 60_000 * SUBNET_SIZE) * SUBNET_SIZE;
-/// cycles cost for each byte in the request
-const PER_REQUEST_BYTES_COST: u128 = 400 * SUBNET_SIZE;
-/// cycles cost for each byte in the response
-const PER_RESPONSE_BYTES_COST: u128 = 800 * SUBNET_SIZE;
-// previous calculations according to: https://internetcomputer.org/docs/current/developer-docs/gas-cost#special-features
-
-/// price calculated according to: https://internetcomputer.org/docs/current/developer-docs/integrations/https-outcalls/https-outcalls-how-it-works#pricing
-const MAX_CYCLES_PER_OUTCALL: u128 = (PER_CALL_COST
-    + PER_REQUEST_BYTES_COST * REQUEST_SIZE
-    + PER_RESPONSE_BYTES_COST * MAX_RESPONSE_SIZE as u128)
-    * (SUBNET_SIZE / 13);
 
 // TODO: fix deserialization
 // pub async fn latest_block(url: String) -> Result<<BlockRequest as Request>::Response, String> {
 //     let request = BlockRequest::default();
 //     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
-//     let response = make_rpc_request(url, HttpMethod::GET, Some(request_body), None).await?;
+//     let response = make_http_request(url, HttpMethod::GET, Some(request_body), None).await?;
 //     <BlockRequest as Request>::Response::from_string(&response.body)
 // }
 
 pub async fn abci_info(url: String) -> Result<<AbciInfoRequest as Request>::Response, String> {
     let request_body = Wrapper::new(AbciInfoRequest).await.into_json().into_bytes();
 
-    let response = make_rpc_request(url, HttpMethod::GET, Some(request_body), None).await?;
+    let request_headers = vec![HttpHeader {
+        name: "Content-Type".to_string(),
+        value: "application/json".to_string(),
+    }];
+
+    let response = make_http_request(
+        url,
+        HttpMethod::GET,
+        Some(request_body),
+        request_headers,
+        None,
+        REQUEST_SIZE,
+        MAX_RESPONSE_SIZE,
+    )
+    .await?;
     <AbciInfoRequest as Request>::Response::from_string(&response.body)
 }
 
@@ -74,14 +72,22 @@ pub async fn abci_query(
     };
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
-    let response = make_rpc_request(
+    let request_headers = vec![HttpHeader {
+        name: "Content-Type".to_string(),
+        value: "application/json".to_string(),
+    }];
+
+    let response = make_http_request(
         url,
         HttpMethod::POST,
         Some(request_body),
+        request_headers,
         Some(TransformContext::from_name(
             "abci_transform".to_string(),
             vec![],
         )),
+        REQUEST_SIZE,
+        MAX_RESPONSE_SIZE,
     )
     .await?;
     <AbciQueryRequest as Request>::Response::from_string(&response.body)
@@ -94,7 +100,21 @@ pub async fn check_tx(url: String, hash_hex: String) -> Result<(), String> {
     );
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
-    let response = make_rpc_request(url, HttpMethod::GET, Some(request_body), None).await?;
+    let request_headers = vec![HttpHeader {
+        name: "Content-Type".to_string(),
+        value: "application/json".to_string(),
+    }];
+
+    let response = make_http_request(
+        url,
+        HttpMethod::GET,
+        Some(request_body),
+        request_headers,
+        None,
+        REQUEST_SIZE,
+        MAX_RESPONSE_SIZE,
+    )
+    .await?;
     let response_body = <TxRequest as Request>::Response::from_string(&response.body);
     if let Ok(response_body) = response_body {
         print(format!(
@@ -114,14 +134,22 @@ pub async fn broadcast_tx_sync(
     let request = TxSyncRequest::new(tx_raw.clone());
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
-    let response = make_rpc_request(
+    let request_headers = vec![HttpHeader {
+        name: "Content-Type".to_string(),
+        value: "application/json".to_string(),
+    }];
+
+    let response = make_http_request(
         url.clone(),
         HttpMethod::POST,
         Some(request_body),
+        request_headers,
         Some(TransformContext::from_name(
             "broadcast_tx_sync_transform".to_string(),
             vec![],
         )),
+        REQUEST_SIZE,
+        MAX_RESPONSE_SIZE,
     )
     .await?;
 
@@ -148,34 +176,6 @@ pub async fn broadcast_tx_sync(
     } else {
         // when testing locally only one request is made and therefore the response is 'Ok' if the transaction is accepted by the Akash Network
         Ok(hex::encode(&sha256(&tx_raw)))
-    }
-}
-
-async fn make_rpc_request(
-    url: String,
-    method: HttpMethod,
-    request_body: Option<Vec<u8>>,
-    transform: Option<TransformContext>,
-) -> Result<HttpResponse, String> {
-    let request_headers = vec![HttpHeader {
-        name: "Content-Type".to_string(),
-        value: "application/json".to_string(),
-    }];
-
-    let request = CanisterHttpRequestArgument {
-        url,
-        max_response_bytes: Some(MAX_RESPONSE_SIZE),
-        method,
-        headers: request_headers,
-        body: request_body,
-        transform,
-    };
-
-    match http_request(request, MAX_CYCLES_PER_OUTCALL).await {
-        Ok((response,)) => Ok(response),
-        Err((r, m)) => Err(format!(
-            "The http_request resulted into error. RejectionCode: {r:?}, Error: {m}"
-        )),
     }
 }
 

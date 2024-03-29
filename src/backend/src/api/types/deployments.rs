@@ -11,7 +11,7 @@ pub type DeploymentId = Uuid;
 pub struct Deployment {
     sdl: String,
     user_id: UserId,
-    state_history: Vec<(TimestampNs, DeploymentUpdate)>,
+    state_history: Vec<(TimestampNs, DeploymentState)>,
 }
 
 impl Deployment {
@@ -19,7 +19,7 @@ impl Deployment {
         Self {
             sdl,
             user_id,
-            state_history: vec![(get_time_nanos(), DeploymentUpdate::Initialized)],
+            state_history: vec![(get_time_nanos(), DeploymentState::Initialized)],
         }
     }
 
@@ -31,11 +31,7 @@ impl Deployment {
         self.user_id
     }
 
-    pub fn created_at(&self) -> u64 {
-        self.state_history.first().expect("must be initialized").0
-    }
-
-    pub fn state(&self) -> DeploymentUpdate {
+    pub fn state(&self) -> DeploymentState {
         self.state_history
             .last()
             .expect("must have at least one state")
@@ -47,11 +43,11 @@ impl Deployment {
         self.user_id == *user_id
     }
 
-    pub fn update_state(&mut self, update: DeploymentUpdate) {
+    pub fn update_state(&mut self, update: DeploymentState) {
         self.state_history.push((get_time_nanos(), update));
     }
 
-    pub fn get_history(&self) -> Vec<(u64, DeploymentUpdate)> {
+    pub fn get_history(&self) -> Vec<(u64, DeploymentState)> {
         self.state_history.clone()
     }
 
@@ -79,7 +75,7 @@ impl Storable for Deployment {
 
 /// Deployment update sent to the client via IC WebSocket
 #[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
-pub enum DeploymentUpdate {
+pub enum DeploymentState {
     Initialized,
     DeploymentCreated {
         tx_hash: String,
@@ -100,16 +96,16 @@ pub enum DeploymentUpdate {
     },
 }
 
-impl DeploymentUpdate {
+impl DeploymentState {
     pub fn get_akash_info(&self) -> Option<u64> {
         match self {
-            DeploymentUpdate::DeploymentCreated { dseq, .. } => Some(*dseq),
+            DeploymentState::DeploymentCreated { dseq, .. } => Some(*dseq),
             _ => None,
         }
     }
 }
 
-impl Storable for DeploymentUpdate {
+impl Storable for DeploymentState {
     fn to_bytes(&self) -> Cow<[u8]> {
         Cow::Owned(Encode!(self).unwrap())
     }

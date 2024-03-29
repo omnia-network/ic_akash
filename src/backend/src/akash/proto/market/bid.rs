@@ -6,11 +6,11 @@ pub struct BidFilters {
     #[prost(string, tag = "1")]
     pub owner: ::prost::alloc::string::String,
     #[prost(uint64, tag = "2")]
-    pub DSeq: u64,
+    pub dseq: u64,
     #[prost(uint32, tag = "3")]
-    pub GSeq: u32,
+    pub gseq: u32,
     #[prost(uint32, tag = "4")]
-    pub OSeq: u32,
+    pub oseq: u32,
     #[prost(string, tag = "5")]
     pub provider: ::prost::alloc::string::String,
     #[prost(string, tag = "6")]
@@ -26,11 +26,11 @@ pub struct BidId {
     #[prost(string, tag = "1")]
     pub owner: ::prost::alloc::string::String,
     #[prost(uint64, tag = "2")]
-    pub DSeq: u64,
+    pub dseq: u64,
     #[prost(uint32, tag = "3")]
-    pub GSeq: u32,
+    pub gseq: u32,
     #[prost(uint32, tag = "4")]
-    pub OSeq: u32,
+    pub oseq: u32,
     #[prost(string, tag = "5")]
     pub provider: ::prost::alloc::string::String,
 }

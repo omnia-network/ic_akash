@@ -122,6 +122,7 @@ impl Display for ResponseError {
     }
 }
 
+#[allow(dead_code)]
 impl ResponseError {
     /// Create a new RPC error
     pub fn new(code: Code, data: Option<String>) -> ResponseError {

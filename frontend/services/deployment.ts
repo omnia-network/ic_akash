@@ -1,7 +1,7 @@
 import { X509CertificateData } from "@/lib/certificate";
 import { wait } from "@/helpers/timer";
 
-const PROVIDER_PROXY_URL = "https://akash-provider-proxy.icws.io/";
+const PROVIDER_PROXY_URL = "https://akash-provider-proxy.omnia-network.com/";
 
 // from https://github.com/akash-network/cloudmos/blob/main/deploy-web/src/utils/deploymentUtils.ts
 export const sendManifestToProvider = async (

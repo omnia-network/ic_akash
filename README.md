@@ -1,61 +1,75 @@
 # ic_side_services_akash
 
-Welcome to your new ic_side_services_akash project and to the internet computer development community. By default, creating a new project adds this README and some template files to your project directory. You can edit these template files to customize your project and to include your own code to speed up the development cycle.
+## Local setup:
 
-To get started, you might want to explore the project directory structure and the default configuration file. Working with this project in your development environment will not affect any production deployment or identity tokens.
+1. Start a local IC replica:
 
-To learn more before you start working with ic_side_services_akash, see the following documentation available online:
+    ```bash
+    dfx start --clean
+    ```
 
-- [Quick Start](https://internetcomputer.org/docs/current/developer-docs/setup/deploy-locally)
-- [SDK Developer Tools](https://internetcomputer.org/docs/current/developer-docs/setup/install)
-- [Rust Canister Development Guide](https://internetcomputer.org/docs/current/developer-docs/backend/rust/)
-- [ic-cdk](https://docs.rs/ic-cdk)
-- [ic-cdk-macros](https://docs.rs/ic-cdk-macros)
-- [Candid Introduction](https://internetcomputer.org/docs/current/developer-docs/backend/candid/)
+2. Modify the SDL example in the [`sdl.rs`](./src/backend/src/fixtures/sdl.rs) file. Here you can specify the fields:
 
-If you want to start working on your project right away, you might want to try the following commands:
+    - `image`: Docker image you want to deploy
+    - `command`: configuration parameters passed to the Docker image
+    - `compute`: resources needed from the Akash provider
 
-```bash
-cd ic_side_services_akash/
-dfx help
-dfx canister --help
-```
+    You can also use the [Akash SDL Builder](https://console.akash.network/sdl-builder) to generate the SDL (click on "Preview" to view and copy the raw SDL).
 
-## Running the project locally
+3. Run the following commands to deploy the backend canister and mint some test ICPs. You'll later use the ICPs to pay the backend canister for the deployment of your Docker image on Akash:
 
-If you want to test your project locally, you can use the following commands:
+    ```bash
+    # pull dependencies if you haven't already
+    dfx deps pull
+    # run the script that deploys the canisters locally and mints some ICPs for the default identity
+    ./scripts/deploy-local-backend-with-icp-ledger.sh
+    ```
 
-```bash
-# Starts the replica, running in the background
-dfx start --background
+    This script mints ICPs on the local Ledger canister for the account ID corresponding to the `default` DFX identity (`dfx identity use default`). You can change the account ID to whom the ICPs are paid by modifying the `DEFAULT_ACCOUNT_ID` variable in the [`deploy-local-backend-with-icp-ledger.sh`](./scripts/deploy-local-backend-with-icp-ledger.sh) script.
 
-# Deploys your canisters to the replica and generates your candid interface
-dfx deploy
-```
+4. Open the local backend canister Candid UI and call the `address()` method or run the following command:
 
-Once the job completes, your application will be available at `http://localhost:4943?canisterId={asset_canister_id}`.
+    ```bash
+    dfx canister call backend address
+    ```
 
-If you have made changes to your backend canister, you can generate a new candid interface with
+    This returns the Akash testnet address owned by the backend canister. Copy it.
 
-```bash
-npm run generate
-```
+5. Request AKTs for the backend canister from the [Akash faucet](https://faucet.sandbox-01.aksh.pw/) by pasting the Akash address obtained in the previous step. You can request AKTs multiple times if you need more.
 
-at any time. This is recommended before starting the frontend development server, and will be run automatically any time you run `dfx deploy`.
+6. Check that the backend canister got 25 AKTs by calling the `balance()` method from the Candid UI or by running the following command:
 
-If you are making frontend changes, you can start a development server with
+    ```bash
+    dfx canister call backend balance
+    ```
 
-```bash
-npm start
-```
+    You can also check that the returned balance matches the actual Akash testnet balance using the Akash explorer at the `https://stats.akash.network/addresses/<backend-canister-akash-address>?network=sandbox` URL.
 
-Which will start a server at `http://localhost:8080`, proxying API requests to the replica at port 4943.
+7. You are now ready to deploy the frontend and interact with our service. Deploy it using the following command:
 
-### Note on frontend environment variables
+    ```bash
+    dfx deploy frontend
+    ```
 
-If you are hosting frontend code somewhere without using DFX, you may need to make one of the following adjustments to ensure your project does not fetch the root key in production:
+    > Note: You need [pnpm](https://pnpm.io/) installed.
 
-- set`DFX_NETWORK` to `ic` if you are using Webpack
-- use your own preferred method to replace `process.env.DFX_NETWORK` in the autogenerated declarations
-  - Setting `canisters -> {asset_canister_id} -> declarations -> env_override to a string` in `dfx.json` will replace `process.env.DFX_NETWORK` with the string in the autogenerated declarations
-- Write your own `createActor` constructor
+    After deploying the frontend, make sure you open it in your browser using the `http://<frontend-canister-id>.localhost:4943` URL, otherwise the pages routing won't work.
+
+8. On the frontend, login with the local Internet Identity by clicking on _Go to Dashboard_.
+
+9. Once logged in, on the top right of the dashboard you should see a balance of 0 ICPs. In order to top up the balance, send some ICPs from the dfx `default` identity to the _Ledger Account ID_ displayed on the dashboard:
+
+    ```bash
+    dfx identity use default
+    dfx ledger transfer --memo 0 --icp 20 <dashboard-ledger-account-id>
+    ```
+
+    After the transfer is completed, you can refresh the balance on the dashboard and check that it is now 20 ICPs.
+
+10. Click on _New Deployment_. The _Configuration_ displayed is just a placeholder. The backend canister will deploy the service that you have defined at the step 2. Click on _Deploy service_ to start the deployment process.
+
+    > Note: The deployment process can take some time and may fail if the Akash testnet doesn't have enough compute capacity. If you want to know more about the details of an Akash deployment, have a look at the [Akash Deployment Lifecycle](https://akash.network/docs/getting-started/intro-to-akash/bids-and-leases/#akash-deployment-lifecycle).
+
+11. Once the deployment process is finished **successfully**, you'll be redirected to the dashboard home. Here you can see the details of the deployment.
+
+    If your service exposes any port(s), you can see the URL(s) by clicking on _Fetch status_ and looking at the `uris` field of the displayed JSON.

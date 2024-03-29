@@ -14,9 +14,9 @@ pub async fn fetch_bids(
     let query = QueryBidsRequest {
         filters: Some(BidFilters {
             owner: account_id.to_string(),
-            DSeq: dseq, // same as in the CreateDeployment transaction
-            GSeq: 0,
-            OSeq: 0,
+            dseq, // same as in the CreateDeployment transaction
+            gseq: 0,
+            oseq: 0,
             provider: "".to_string(),
             state: "".to_string(),
         }),
