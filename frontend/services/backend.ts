@@ -8,7 +8,7 @@ export const icHost = process.env.NEXT_PUBLIC_IC_HOST!;
 export const canisterId = process.env.CANISTER_ID_BACKEND!;
 export const icWsGatewayUrl = process.env.NEXT_PUBLIC_IC_WS_GATEWAY_URL!;
 
-export const createBackendActor = (identity: Identity) => {
+export const createBackendAgent = (identity: Identity) => {
   const agent = new HttpAgent({
     host: icHost,
     identity,
@@ -23,8 +23,12 @@ export const createBackendActor = (identity: Identity) => {
     });
   }
 
+  return agent;
+};
+
+export const createBackendActor = (identity: Identity) => {
   return Actor.createActor<_SERVICE>(idlFactory, {
-    agent,
+    agent: createBackendAgent(identity),
     canisterId,
   });
 };

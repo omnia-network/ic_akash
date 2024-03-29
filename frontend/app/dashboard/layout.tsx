@@ -1,10 +1,14 @@
 "use client";
 
+import { Spinner } from "@/components/spinner";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIcContext } from "@/contexts/IcContext";
+import { displayE8sAsIcp, shortAccountId, shortPrincipal } from "@/helpers/ui";
+import { AccountIdentifier } from "@dfinity/ledger-icp";
+import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export default function DashboardLayout({
   children,
@@ -12,8 +16,9 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }>) {
   const router = useRouter();
-  const { identity, logout, isLoggedIn, isLoading } = useIcContext();
-  const userPrincipal = useMemo(() => identity?.getPrincipal().toText(), [identity]);
+  const { identity, logout, isLoggedIn, isLoading, ledgerData, refreshLedgerData } = useIcContext();
+  const userPrincipal = useMemo(() => identity?.getPrincipal(), [identity]);
+  const userAccountId = useMemo(() => userPrincipal && AccountIdentifier.fromPrincipal({ principal: userPrincipal }), [userPrincipal]);
 
   const goToHome = useCallback(() => {
     router.replace("/");
@@ -21,15 +26,20 @@ export default function DashboardLayout({
 
   const handleLogout = useCallback(async () => {
     await logout();
-
     goToHome();
   }, [logout, goToHome]);
+
+  const fetchBalance = useCallback(async () => {
+    await refreshLedgerData();
+  }, [refreshLedgerData]);
 
   useEffect(() => {
     if (!isLoading && !isLoggedIn) {
       goToHome();
+    } else {
+      fetchBalance();
     }
-  }, [isLoading, isLoggedIn, goToHome]);
+  }, [isLoading, isLoggedIn, goToHome, fetchBalance]);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -48,17 +58,41 @@ export default function DashboardLayout({
               <TooltipProvider>
                 <Tooltip delayDuration={100}>
                   <TooltipTrigger className="flex flex-row items-center gap-2">
-                    Principal: <pre>{userPrincipal?.slice(0, 5)}...{userPrincipal?.slice(-3)}</pre>
+                    Principal: <pre>{shortPrincipal(userPrincipal!)}</pre>
                   </TooltipTrigger>
                   <TooltipContent
                     side="bottom"
                     sideOffset={10}
                     align="end"
                   >
-                    <pre>{userPrincipal}</pre>
+                    <pre>{userPrincipal?.toText()}</pre>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger className="flex flex-row items-center gap-2">
+                    Ledger Account ID: <pre>{shortAccountId(userAccountId!)}</pre>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    sideOffset={10}
+                    align="end"
+                  >
+                    <pre>{userAccountId?.toHex()}</pre>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+              <div className="flex flex-row items-center gap-2">
+                Ledger balance:
+                {(!ledgerData.isLoading && ledgerData.balance !== null) ? <pre>{displayE8sAsIcp(ledgerData.balance)}</pre> : null}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={fetchBalance}
+                  disabled={ledgerData.isLoading}
+                >
+                  {ledgerData.isLoading ? <Spinner /> : <RefreshCw className="h-4 w-4" />}
+                </Button>
+              </div>
               <Button variant="outline" onClick={handleLogout}>Logout</Button>
             </div>
           </div>
