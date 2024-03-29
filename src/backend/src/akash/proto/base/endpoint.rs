@@ -4,13 +4,13 @@ pub struct Endpoint {
     #[prost(enumeration = "Kind", tag = "1")]
     pub kind: i32,
     #[prost(uint32, tag = "2")]
-    pub SequenceNumber: u32,
+    pub sequence_number: u32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum Kind {
-    SHARED_HTTP = 0,
-    RANDOM_PORT = 1,
-    LEASED_IP = 2,
+    SharedHttp = 0,
+    RandomPort = 1,
+    LeasedIp = 2,
 }

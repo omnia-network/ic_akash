@@ -17,9 +17,18 @@ dependencies:
   '@dfinity/identity':
     specifier: 1.0.1
     version: 1.0.1(@dfinity/agent@1.0.1)(@dfinity/principal@1.0.1)(@peculiar/webcrypto@1.4.5)
+  '@dfinity/ledger-icp':
+    specifier: ^2.2.2
+    version: 2.2.2(@dfinity/agent@1.0.1)(@dfinity/candid@1.0.1)(@dfinity/nns-proto@1.0.2)(@dfinity/principal@1.0.1)(@dfinity/utils@2.1.3)
+  '@dfinity/nns-proto':
+    specifier: ^1.0.2
+    version: 1.0.2
   '@dfinity/principal':
     specifier: 1.0.1
     version: 1.0.1
+  '@dfinity/utils':
+    specifier: ^2.1.3
+    version: 2.1.3(@dfinity/agent@1.0.1)(@dfinity/candid@1.0.1)(@dfinity/principal@1.0.1)
   '@peculiar/x509':
     specifier: ^1.9.7
     version: 1.9.7
@@ -143,7 +152,7 @@ packages:
       '@dfinity/candid': 1.0.1(@dfinity/principal@1.0.1)
       '@dfinity/principal': 1.0.1
       '@noble/curves': 1.4.0
-      '@noble/hashes': 1.3.3
+      '@noble/hashes': 1.4.0
       base64-arraybuffer: 0.2.0
       borc: 2.1.2
       buffer: 6.0.3
@@ -176,7 +185,7 @@ packages:
     dependencies:
       '@dfinity/agent': 1.2.0(@dfinity/candid@1.0.1)(@dfinity/principal@1.0.1)
       '@noble/curves': 1.4.0
-      '@noble/hashes': 1.3.3
+      '@noble/hashes': 1.4.0
       asn1js: 3.0.5
       bip39: 3.1.0
       bs58check: 3.0.1
@@ -201,10 +210,44 @@ packages:
       borc: 2.1.2
     dev: false
 
+  /@dfinity/ledger-icp@2.2.2(@dfinity/agent@1.0.1)(@dfinity/candid@1.0.1)(@dfinity/nns-proto@1.0.2)(@dfinity/principal@1.0.1)(@dfinity/utils@2.1.3):
+    resolution: {integrity: sha512-QnXKirEACNJXs9UFUdDQX2okN6KyVxGjuUjrWg52bRrg6hGEcbVkfqATkrdka+1wR8JQpwdwUVDP7P3W9ZDyXA==}
+    peerDependencies:
+      '@dfinity/agent': ^1.0.1
+      '@dfinity/candid': ^1.0.1
+      '@dfinity/nns-proto': ^1.0.2
+      '@dfinity/principal': ^1.0.1
+      '@dfinity/utils': ^2.1.3
+    dependencies:
+      '@dfinity/agent': 1.0.1(@dfinity/candid@1.0.1)(@dfinity/principal@1.0.1)
+      '@dfinity/candid': 1.0.1(@dfinity/principal@1.0.1)
+      '@dfinity/nns-proto': 1.0.2
+      '@dfinity/principal': 1.0.1
+      '@dfinity/utils': 2.1.3(@dfinity/agent@1.0.1)(@dfinity/candid@1.0.1)(@dfinity/principal@1.0.1)
+    dev: false
+
+  /@dfinity/nns-proto@1.0.2:
+    resolution: {integrity: sha512-GszvkrGOFCFhMNGCjBLBOJJ7tqNIynqgB7ZCX5hKoK3Nd2VDI6sJ+B3kldnz59bHYeB2fTnXl+DogsL5iCRYFQ==}
+    dependencies:
+      google-protobuf: 3.21.2
+    dev: false
+
   /@dfinity/principal@1.0.1:
     resolution: {integrity: sha512-pCAuTLcvZEZ8fYgVzTVhfUfFGadxeWN4v2z8Q0rizeiqcHKhbJVfWUiXXjzPGG5lNz2DxKyUHQ/WS4UTbTaxvg==}
     dependencies:
       '@noble/hashes': 1.3.3
+    dev: false
+
+  /@dfinity/utils@2.1.3(@dfinity/agent@1.0.1)(@dfinity/candid@1.0.1)(@dfinity/principal@1.0.1):
+    resolution: {integrity: sha512-czFTjrohgDY+vNi0MidYYbYvHzU0ukgWNRXcBDxXMS5vAe0KU+PuFkkt2EQ5w1nczmHxzjZ2A6TqTUU4aILi+A==}
+    peerDependencies:
+      '@dfinity/agent': ^1.0.1
+      '@dfinity/candid': ^1.0.1
+      '@dfinity/principal': ^1.0.1
+    dependencies:
+      '@dfinity/agent': 1.0.1(@dfinity/candid@1.0.1)(@dfinity/principal@1.0.1)
+      '@dfinity/candid': 1.0.1(@dfinity/principal@1.0.1)
+      '@dfinity/principal': 1.0.1
     dev: false
 
   /@eslint-community/eslint-utils@4.4.0(eslint@8.56.0):
@@ -1441,7 +1484,7 @@ packages:
   /bip39@3.1.0:
     resolution: {integrity: sha512-c9kiwdk45Do5GL0vJMe7tS95VjCii65mYAH7DfWl3uW8AVzXKQVUm64i3hzVybBDMp9r7j9iNxR85+ul8MdN/A==}
     dependencies:
-      '@noble/hashes': 1.3.3
+      '@noble/hashes': 1.4.0
     dev: false
 
   /bn.js@4.12.0:
@@ -1517,7 +1560,7 @@ packages:
   /bs58check@3.0.1:
     resolution: {integrity: sha512-hjuuJvoWEybo7Hn/0xOrczQKKEKD63WguEjlhLExYs2wUBcebDC1jDNK17eEAD2lYfw82d5ASC1d7K3SWszjaQ==}
     dependencies:
-      '@noble/hashes': 1.3.3
+      '@noble/hashes': 1.4.0
       bs58: 5.0.0
     dev: false
 
@@ -2358,6 +2401,10 @@ packages:
       merge2: 1.4.1
       slash: 3.0.0
     dev: true
+
+  /google-protobuf@3.21.2:
+    resolution: {integrity: sha512-3MSOYFO5U9mPGikIYCzK0SaThypfGgS6bHqrUGXG3DPHCrb+txNqeEcns1W0lkGfk0rCyNXm7xB9rMxnCiZOoA==}
+    dev: false
 
   /gopd@1.0.1:
     resolution: {integrity: sha512-d65bNlIadxvpb/A2abVdlqKqV563juRnZ1Wtk6s1sIR8uNsXR70xqIzVqxVf1eTqDunwT2MkczEeaezCKTZhwA==}

@@ -6,5 +6,5 @@ pub struct Storage {
     #[prost(message, tag = "2")]
     pub quantity: ::core::option::Option<super::resourcevalue::ResourceValue>,
     #[prost(message, repeated, tag = "3")]
-    pub Attributes: ::prost::alloc::vec::Vec<super::attribute::Attribute>,
+    pub attributes: ::prost::alloc::vec::Vec<super::attribute::Attribute>,
 }

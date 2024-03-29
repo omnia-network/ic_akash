@@ -9,7 +9,7 @@ export type Deployments = OkType<GetDeploymentsResult>;
 
 type DeploymentContextType = {
   tlsCertificateData: X509CertificateData | null;
-  loadOrCreateCertificate: (actor: BackendActor) => Promise<X509CertificateData>;
+  loadOrCreateCertificate: (actor: BackendActor) => Promise<X509CertificateData | null>;
   deployments: Deployments;
   fetchDeployments: (actor: BackendActor) => Promise<void>;
 };
@@ -35,11 +35,9 @@ export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({ children
     );
   }, []);
 
-  const loadOrCreateCertificate = useCallback(async (actor: BackendActor): Promise<X509CertificateData> => {
+  const loadOrCreateCertificate = useCallback(async (actor: BackendActor): Promise<X509CertificateData | null> => {
     let certData = loadCertificate();
-    if (certData) {
-      setCertificateData(certData);
-    } else {
+    if (!certData) {
       try {
         const akashAddress = extractOk(await actor.address());
         certData = await createX509(akashAddress);
@@ -52,8 +50,11 @@ export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({ children
       } catch (e) {
         console.error(e);
         alert("Failed to create certificate, see console for details");
+        return null;
       }
     }
+
+    setCertificateData(certData);
 
     return certData!;
   }, []);

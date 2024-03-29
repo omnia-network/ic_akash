@@ -38,6 +38,7 @@ pub struct Wrapper<R> {
     error: Option<ResponseError>,
 }
 
+#[allow(dead_code)]
 impl<R> Wrapper<R> {
     /// Get JSON-RPC version
     pub fn version(&self) -> &Version {

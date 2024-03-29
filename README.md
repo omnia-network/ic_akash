@@ -16,44 +16,60 @@
 
     You can also use the [Akash SDL Builder](https://console.akash.network/sdl-builder) to generate the SDL (click on "Preview" to view and copy the raw SDL).
 
-3. Run the following script to deploy the backend canister and mint some test ICPs that you can use to pay the backend canister in order to deploy an Docker image on Akash:
+3. Run the following commands to deploy the backend canister and mint some test ICPs. You'll later use the ICPs to pay the backend canister for the deployment of your Docker image on Akash:
 
     ```bash
+    # pull dependencies if you haven't already
+    dfx deps pull
+    # run the script that deploys the canisters locally and mints some ICPs for the default identity
     ./scripts/deploy-local-backend-with-icp-ledger.sh
     ```
 
     This script mints ICPs on the local Ledger canister for the account ID corresponding to the `default` DFX identity (`dfx identity use default`). You can change the account ID to whom the ICPs are paid by modifying the `DEFAULT_ACCOUNT_ID` variable in the [`deploy-local-backend-with-icp-ledger.sh`](./scripts/deploy-local-backend-with-icp-ledger.sh) script.
 
-4. Generate the backend types which will be imported by the frontend:
+4. Open the local backend canister Candid UI and call the `address()` method or run the following command:
 
     ```bash
-    ./scripts/generate-backend-types.sh
+    dfx canister call backend address
     ```
 
-5. Deploy the frontend:
+    This returns the Akash testnet address owned by the backend canister. Copy it.
+
+5. Request AKTs for the backend canister from the [Akash faucet](https://faucet.sandbox-01.aksh.pw/) by pasting the Akash address obtained in the previous step. You can request AKTs multiple times if you need more.
+
+6. Check that the backend canister got 25 AKTs by calling the `balance()` method from the Candid UI or by running the following command:
+
+    ```bash
+    dfx canister call backend balance
+    ```
+
+    You can also check that the returned balance matches the actual Akash testnet balance using the Akash explorer at the `https://stats.akash.network/addresses/<backend-canister-akash-address>?network=sandbox` URL.
+
+7. You are now ready to deploy the frontend and interact with our service. Deploy it using the following command:
 
     ```bash
     dfx deploy frontend
     ```
 
-    > Note: You need [pnpm](https://pnpm.io/) installed to build the frontend.
+    > Note: You need [pnpm](https://pnpm.io/) installed.
 
     After deploying the frontend, make sure you open it in your browser using the `http://<frontend-canister-id>.localhost:4943` URL, otherwise the pages routing won't work.
 
-6. Open the local backend canister Candid UI and call the `address()` method. This returns the Akash address owned by the backend canister. Copy it.
+8. On the frontend, login with the local Internet Identity by clicking on _Go to Dashboard_.
 
-7. Request AKTs from the [Akash faucet](https://faucet.sandbox-01.aksh.pw/) by pasting the Akash address obtained in the previous step.
-
-8. Check that you got 25 AKTs by calling the `balance()` method from the Candid UI.
-
-    You can also check that the returned balance matches the actual Akash balance using the Akash explorer at the `https://stats.akash.network/addresses/<backend-canister-akash-address>?network=sandbox` URL.
-
-9. Request the deployment on the Akash network:
+9. Once logged in, on the top right of the dashboard you should see a balance of 0 ICPs. In order to top up the balance, send some ICPs from the dfx `default` identity to the _Ledger Account ID_ displayed on the dashboard:
 
     ```bash
-    ./scripts/pay-create-deployment.sh
+    dfx identity use default
+    dfx ledger transfer --memo 0 --icp 20 <dashboard-ledger-account-id>
     ```
 
-    If you want to know more about the details of an Akash deployment, have a look at the [Akash Deployment Lifecycle](https://akash.network/docs/getting-started/intro-to-akash/bids-and-leases/#akash-deployment-lifecycle).
+    After the transfer is completed, you can refresh the balance on the dashboard and check that it is now 20 ICPs.
 
-10. If the deployment request is successful, on the terminal where DFX is running there is the endpoint of the Akash provider that is willing to host the Docker image. If it does not show up, it means that no providers are available on the Akash testnet. Try later.
+10. Click on _New Deployment_. The _Configuration_ displayed is just a placeholder. The backend canister will deploy the service that you have defined at the step 2. Click on _Deploy service_ to start the deployment process.
+
+    > Note: The deployment process can take some time and may fail if the Akash testnet doesn't have enough compute capacity. If you want to know more about the details of an Akash deployment, have a look at the [Akash Deployment Lifecycle](https://akash.network/docs/getting-started/intro-to-akash/bids-and-leases/#akash-deployment-lifecycle).
+
+11. Once the deployment process is finished **successfully**, you'll be redirected to the dashboard home. Here you can see the details of the deployment.
+
+    If your service exposes any port(s), you can see the URL(s) by clicking on _Fetch status_ and looking at the `uris` field of the displayed JSON.

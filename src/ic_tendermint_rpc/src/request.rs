@@ -11,6 +11,7 @@ pub trait RequestMessage: DeserializeOwned + Serialize + Sized {
     /// Request method
     fn method(&self) -> Method;
 
+    #[allow(async_fn_in_trait)]
     /// Serialize this request as JSON
     async fn into_json(self) -> String {
         Wrapper::new(self).await.into_json()
@@ -46,6 +47,7 @@ pub struct Wrapper<R> {
     params: R,
 }
 
+#[allow(dead_code)]
 impl<R> Wrapper<R>
 where
     R: RequestMessage,
