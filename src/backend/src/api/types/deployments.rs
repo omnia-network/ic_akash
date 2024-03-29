@@ -31,10 +31,6 @@ impl Deployment {
         self.user_id
     }
 
-    pub fn created_at(&self) -> u64 {
-        self.state_history.first().expect("must be initialized").0
-    }
-
     pub fn state(&self) -> DeploymentState {
         self.state_history
             .last()

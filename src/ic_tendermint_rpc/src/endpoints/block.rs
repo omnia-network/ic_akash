@@ -17,15 +17,6 @@ pub struct Request {
     pub height: Option<block::Height>,
 }
 
-impl Request {
-    /// Create a new request for information about a particular block
-    pub fn new(height: block::Height) -> Self {
-        Self {
-            height: Some(height),
-        }
-    }
-}
-
 impl RequestMessage for Request {
     fn method(&self) -> Method {
         Method::Block

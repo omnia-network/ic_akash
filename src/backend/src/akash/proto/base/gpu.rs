@@ -4,5 +4,5 @@ pub struct GPU {
     #[prost(message, tag = "1")]
     pub units: ::core::option::Option<super::resourcevalue::ResourceValue>,
     #[prost(message, repeated, tag = "2")]
-    pub Attributes: ::prost::alloc::vec::Vec<super::attribute::Attribute>,
+    pub attributes: ::prost::alloc::vec::Vec<super::attribute::Attribute>,
 }

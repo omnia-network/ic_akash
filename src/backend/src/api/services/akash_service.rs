@@ -56,6 +56,7 @@ impl AkashService {
             .map_err(|e| format!("could not parse balance: {:?}", e))?)
     }
 
+    #[allow(dead_code)]
     pub async fn send(&self, to_address: String, amount: u64) -> Result<String, String> {
         let config = self.get_config();
 
@@ -153,7 +154,7 @@ impl AkashService {
         )
         .await?;
 
-        let tx_hash =
+        let _tx_hash =
             ic_tendermint_rpc::broadcast_tx_sync(config.is_mainnet(), rpc_url, tx_raw).await?;
 
         // print(&format!(
@@ -226,7 +227,7 @@ impl AkashService {
 
         let provider = fetch_provider(config.tendermint_rpc_url(), bid_id.provider).await?;
 
-        Ok((tx_hash, provider.hostURI))
+        Ok((tx_hash, provider.host_uri))
     }
 
     pub async fn close_deployment(&self, dseq: u64) -> Result<String, String> {

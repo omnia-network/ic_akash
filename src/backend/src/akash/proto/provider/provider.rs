@@ -6,7 +6,7 @@ pub struct Provider {
     #[prost(string, tag = "1")]
     pub owner: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
-    pub hostURI: ::prost::alloc::string::String,
+    pub host_uri: ::prost::alloc::string::String,
     #[prost(message, repeated, tag = "3")]
     pub attributes: ::prost::alloc::vec::Vec<super::super::base::attribute::Attribute>,
     #[prost(message, tag = "4")]

@@ -1,5 +1,6 @@
 //! Serialize/deserialize bytes (`Vec<u8>`) type
 
+#[allow(dead_code)]
 /// Serialize into hexstring, deserialize from hexstring
 pub mod hexstring {
     use serde::{Deserialize, Deserializer, Serializer};
@@ -28,6 +29,7 @@ pub mod hexstring {
     }
 }
 
+#[allow(dead_code)]
 /// Serialize into base64string, deserialize from base64string
 pub mod base64string {
     use serde::{Deserialize, Deserializer, Serializer};
@@ -66,6 +68,7 @@ pub mod base64string {
     }
 }
 
+#[allow(dead_code)]
 pub mod from_str {
     use core::fmt::Display;
     use core::str::FromStr;

@@ -15,7 +15,7 @@ mod version;
 
 use endpoints::{
     abci_info::Request as AbciInfoRequest, abci_query::Request as AbciQueryRequest,
-    block::Request as BlockRequest, tx::Request as TxRequest, tx_sync::Request as TxSyncRequest,
+    tx::Request as TxRequest, tx_sync::Request as TxSyncRequest,
 };
 use request::{Request, Wrapper};
 use response::Response;
