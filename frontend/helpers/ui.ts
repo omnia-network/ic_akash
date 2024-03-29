@@ -1,7 +1,6 @@
+import { E8S_PER_ICP } from "@/lib/constants";
 import { AccountIdentifier } from "@dfinity/ledger-icp";
 import { Principal } from "@dfinity/principal";
-
-const E8S_PER_ICP = 100_000_000;
 
 export const shortPrincipal = (principal: Principal): string => {
   const principalText = principal.toText();

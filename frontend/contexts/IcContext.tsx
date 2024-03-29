@@ -10,7 +10,7 @@ import { Principal } from "@dfinity/principal";
 import IcWebSocket, { createWsConfig } from "ic-websocket-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-// there values are hard coded in dfx.json
+// there values are hard coded in the dfx.json file
 const LEDGER_CANISTER_ID = Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai");
 const INTERNET_IDENTITY_CANISTER_ID = Principal.fromText("rdmx6-jaaaa-aaaaa-aaadq-cai");
 
@@ -29,13 +29,13 @@ type WsCallbacks = {
 
 type LedgerData = {
   accountId: AccountIdentifier | null;
-  balance: bigint | null;
+  balanceE8s: bigint | null;
   isLoading: boolean;
 };
 
 const defaultLedgerData: LedgerData = {
   accountId: null,
-  balance: null,
+  balanceE8s: null,
   isLoading: false,
 };
 
@@ -73,33 +73,33 @@ export const IcProvider: React.FC<IcProviderProps> = ({ children }) => {
 
   const refreshLedgerData = useCallback(async () => {
     if (!ledgerCanister || !identity) {
-      throw new Error("No ledger canister or identity");
+      return;
     }
 
     const accountId = AccountIdentifier.fromPrincipal({ principal: identity.getPrincipal() });
 
     setLedgerData((prev) => ({ ...prev, accountId, isLoading: true }));
-    const balance = await ledgerCanister.accountBalance({ accountIdentifier: accountId });
-    setLedgerData((prev) => ({ ...prev, accountId, balance, isLoading: false }));
+    const balanceE8s = await ledgerCanister.accountBalance({ accountIdentifier: accountId });
+    setLedgerData((prev) => ({ ...prev, accountId, balanceE8s, isLoading: false }));
   }, [ledgerCanister, identity]);
 
   const setContext = useCallback(async (authClient: AuthClient): Promise<[DelegationIdentity, BackendActor]> => {
     const id = authClient.getIdentity() as DelegationIdentity;
     setIdentity(id);
 
-    const actor = createBackendActor(id);
+    const actor = await createBackendActor(id);
     setBackendActor(actor);
 
     const ledger = LedgerCanister.create({
-      agent: createBackendAgent(id),
+      agent: await createBackendAgent(id),
       canisterId: LEDGER_CANISTER_ID,
     });
     setLedgerCanister(ledger);
 
     const accountId = AccountIdentifier.fromPrincipal({ principal: id.getPrincipal() });
     setLedgerData((prev) => ({ ...prev, accountId, isLoading: true }));
-    const balance = await ledger.accountBalance({ accountIdentifier: accountId });
-    setLedgerData((prev) => ({ ...prev, accountId, balance, isLoading: false }));
+    const balanceE8s = await ledger.accountBalance({ accountIdentifier: accountId });
+    setLedgerData((prev) => ({ ...prev, accountId, balanceE8s, isLoading: false }));
 
     return [id, actor];
   }, []);
@@ -168,14 +168,14 @@ export const IcProvider: React.FC<IcProviderProps> = ({ children }) => {
   }, []);
 
   const openWs = useCallback((inputWsCallbacks: WsCallbacks) => {
-    if (!isLoggedIn) {
-      throw new Error("Not logged in");
+    if (!isLoggedIn || !backendActor || !identity) {
+      throw new Error("Not logged in or no backend actor");
     }
 
     const wsConfig = createWsConfig({
       canisterId,
       networkUrl: icHost,
-      canisterActor: backendActor!,
+      canisterActor: backendActor,
       identity: identity as SignIdentity,
     });
 

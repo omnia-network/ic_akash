@@ -8,7 +8,7 @@ import { displayE8sAsIcp, shortAccountId, shortPrincipal } from "@/helpers/ui";
 import { AccountIdentifier } from "@dfinity/ledger-icp";
 import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 export default function DashboardLayout({
   children,
@@ -58,7 +58,7 @@ export default function DashboardLayout({
               <TooltipProvider>
                 <Tooltip delayDuration={100}>
                   <TooltipTrigger className="flex flex-row items-center gap-2">
-                    Principal: <pre>{shortPrincipal(userPrincipal!)}</pre>
+                    Principal: <pre className="text-primary">{shortPrincipal(userPrincipal!)}</pre>
                   </TooltipTrigger>
                   <TooltipContent
                     side="bottom"
@@ -70,7 +70,7 @@ export default function DashboardLayout({
                 </Tooltip>
                 <Tooltip delayDuration={100}>
                   <TooltipTrigger className="flex flex-row items-center gap-2">
-                    Ledger Account ID: <pre>{shortAccountId(userAccountId!)}</pre>
+                    Ledger Account ID: <pre className="text-primary">{shortAccountId(userAccountId!)}</pre>
                   </TooltipTrigger>
                   <TooltipContent
                     side="bottom"
@@ -83,7 +83,7 @@ export default function DashboardLayout({
               </TooltipProvider>
               <div className="flex flex-row items-center gap-2">
                 Ledger balance:
-                {(!ledgerData.isLoading && ledgerData.balance !== null) ? <pre>{displayE8sAsIcp(ledgerData.balance)}</pre> : null}
+                {(!ledgerData.isLoading && ledgerData.balanceE8s !== null) ? <pre className="text-primary">{displayE8sAsIcp(ledgerData.balanceE8s)}</pre> : null}
                 <Button
                   variant="ghost"
                   size="icon"
