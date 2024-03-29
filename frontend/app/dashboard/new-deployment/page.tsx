@@ -299,7 +299,7 @@ export default function NewDeployment() {
             isLoading={isLoading || isDeploying}
             disabled={!userHasEnoughBalance}
           >
-            Deploy IC WebSocket Gateway
+            Deploy service
           </LoadingButton>
         </div>
         <div className="flex flex-col gap-4">
