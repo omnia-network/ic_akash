@@ -30,7 +30,7 @@ impl EcdsaKeyIds {
     }
 }
 
-pub async fn get_public_key(key: EcdsaKeyIds) -> Result<PublicKey, String> {
+pub async fn get_public_key(key: &EcdsaKeyIds) -> Result<PublicKey, String> {
     let request = EcdsaPublicKeyArgument {
         canister_id: None,
         derivation_path: vec![],

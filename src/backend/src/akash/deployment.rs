@@ -20,6 +20,7 @@ pub async fn create_deployment_tx(
     sender_public_key: &PublicKey,
     sdl: &SdlV3,
     dseq: u64,
+    deposit_amount: u64,
     account: &BaseAccount,
     ecdsa_key: &EcdsaKeyIds,
 ) -> Result<Vec<u8>, String> {
@@ -35,7 +36,7 @@ pub async fn create_deployment_tx(
         version: sdl.manifest_version(),
         deposit: Some(
             Coin {
-                amount: 5_000_000u128,
+                amount: deposit_amount.into(),
                 denom: Denom::from_str("uakt").unwrap(),
             }
             .into(),

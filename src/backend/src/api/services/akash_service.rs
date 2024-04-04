@@ -123,9 +123,17 @@ impl AkashService {
 
         let abci_info_res = ic_tendermint_rpc::abci_info(rpc_url.clone()).await?;
         let dseq = abci_info_res.response.last_block_height.value();
+        let deposit = config.akash_config().min_deposit_amount;
 
-        let tx_raw =
-            create_deployment_tx(&public_key, &sdl, dseq, &account, &config.ecdsa_key()).await?;
+        let tx_raw = create_deployment_tx(
+            &public_key,
+            &sdl,
+            dseq,
+            deposit,
+            &account,
+            &config.ecdsa_key(),
+        )
+        .await?;
 
         let tx_hash =
             ic_tendermint_rpc::broadcast_tx_sync(config.is_mainnet(), rpc_url, tx_raw).await?;

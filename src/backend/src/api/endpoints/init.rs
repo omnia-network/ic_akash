@@ -1,5 +1,5 @@
 use crate::{
-    api::{ApiError, Config, ConfigService, User, UserId, UserRole, UsersService},
+    api::{AkashConfig, ApiError, Config, ConfigService, User, UserId, UserRole, UsersService},
     helpers::EcdsaKeyIds,
 };
 use candid::Principal;
@@ -13,7 +13,14 @@ fn init(is_mainnet: bool) {
     let mut init = Init::default();
 
     let config = if is_mainnet {
-        Config::new_mainnet(EcdsaKeyIds::TestKey1, "https://rpc.akashnet.net")
+        Config::new_mainnet(
+            EcdsaKeyIds::TestKey1,
+            "https://rpc.akashnet.net",
+            AkashConfig {
+                // fetched from https://api.akashnet.net/cosmos/params/v1beta1/params?subspace=deployment&key=MinDeposits
+                min_deposit_amount: 500_000,
+            },
+        )
     } else {
         Config::default()
     };
