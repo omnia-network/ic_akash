@@ -1,5 +1,5 @@
 use crate::api::{
-    init_config, ApiError, Asset, AssetClass, Config, ConfigMemory, GetExchangeRateRequest,
+    config_state, ApiError, Asset, AssetClass, Config, GetExchangeRateRequest,
     GetExchangeRateResult,
 };
 use candid::Principal;
@@ -17,7 +17,6 @@ const REQUEST_SIZE: u128 = 1_000;
 const MAX_RESPONSE_SIZE: u64 = 10_000;
 
 pub struct LedgerService {
-    config_memory: ConfigMemory,
     ledger_canister_id: Principal,
     xrc_id: Principal,
 }
@@ -25,14 +24,13 @@ pub struct LedgerService {
 impl LedgerService {
     pub fn default() -> Self {
         Self {
-            config_memory: init_config(),
             ledger_canister_id: Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap(),
             xrc_id: Principal::from_text("uf6dk-hyaaa-aaaaq-qaaaq-cai").unwrap(),
         }
     }
 
     pub fn get_config(&self) -> Config {
-        self.config_memory.get().clone()
+        config_state(|state| state.clone())
     }
 
     pub async fn query_blocks(&self, args: GetBlocksArgs) -> Result<QueryBlocksResponse, ApiError> {

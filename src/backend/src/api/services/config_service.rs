@@ -1,22 +1,15 @@
-use crate::api::{init_config, ApiError, Config, ConfigMemory};
+use crate::api::{config_state_mut, Config};
 
-pub struct ConfigService {
-    config_memory: ConfigMemory,
-}
+pub struct ConfigService {}
 
 impl Default for ConfigService {
     fn default() -> Self {
-        Self {
-            config_memory: init_config(),
-        }
+        Self {}
     }
 }
 
 impl ConfigService {
-    pub fn set_config(&mut self, config: Config) -> Result<(), ApiError> {
-        self.config_memory
-            .set(config)
-            .map(|_| ())
-            .map_err(|e| ApiError::internal(&format!("Error setting config in memory: {:?}", e)))
+    pub fn set_config(&mut self, config: Config) {
+        config_state_mut(|state| *state = config)
     }
 }

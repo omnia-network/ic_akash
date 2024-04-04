@@ -13,25 +13,23 @@ use crate::{
         provider::fetch_provider,
         sdl::SdlV3,
     },
-    api::{init_config, Config, ConfigMemory},
+    api::{config_state, Config},
 };
 use cosmrs::AccountId;
 use std::str::FromStr;
 use utils::base64_decode;
 
-pub struct AkashService {
-    config_memory: ConfigMemory,
+pub struct AkashService {}
+
+impl Default for AkashService {
+    fn default() -> Self {
+        Self {}
+    }
 }
 
 impl AkashService {
-    pub fn default() -> Self {
-        Self {
-            config_memory: init_config(),
-        }
-    }
-
     pub fn get_config(&self) -> Config {
-        self.config_memory.get().clone()
+        config_state(|state| state.clone())
     }
 
     pub async fn address(&self) -> Result<String, String> {

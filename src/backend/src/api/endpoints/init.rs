@@ -12,22 +12,7 @@ fn init(is_mainnet: bool) {
     let calling_principal = caller();
     let mut init = Init::default();
 
-    let config = if is_mainnet {
-        Config::new_mainnet(
-            EcdsaKeyIds::TestKey1,
-            "https://rpc.akashnet.net",
-            AkashConfig {
-                // fetched from https://api.akashnet.net/cosmos/params/v1beta1/params?subspace=deployment&key=MinDeposits
-                min_deposit_amount: 500_000,
-            },
-        )
-    } else {
-        Config::default()
-    };
-
-    if let Err(err) = init.init_config(config) {
-        trap(&format!("Error initializing config: {:?}", err));
-    }
+    init.init_config(is_mainnet);
 
     if let Err(err) = init.init_admin(calling_principal) {
         trap(&format!("Error initializing admin: {:?}", err));
@@ -37,7 +22,9 @@ fn init(is_mainnet: bool) {
 }
 
 #[post_upgrade]
-fn post_upgrade() {
+fn post_upgrade(is_mainnet: bool) {
+    Init::default().init_config(is_mainnet);
+
     init_ic_websocket();
 }
 
@@ -56,7 +43,20 @@ impl Default for Init {
 }
 
 impl Init {
-    pub fn init_config(&mut self, config: Config) -> Result<(), ApiError> {
+    pub fn init_config(&mut self, is_mainnet: bool) {
+        let config = if is_mainnet {
+            Config::new_mainnet(
+                EcdsaKeyIds::TestKey1,
+                "https://rpc.akashnet.net",
+                AkashConfig {
+                    // fetched from https://api.akashnet.net/cosmos/params/v1beta1/params?subspace=deployment&key=MinDeposits
+                    min_deposit_amount: 500_000,
+                },
+            )
+        } else {
+            Config::default()
+        };
+
         self.config_service.set_config(config)
     }
 
