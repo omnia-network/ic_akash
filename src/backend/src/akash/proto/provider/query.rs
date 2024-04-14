@@ -13,5 +13,5 @@ pub struct QueryProviderRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryProviderResponse {
     #[prost(message, tag = "1")]
-    pub provider: ::core::option::Option<super::provider::Provider>,
+    pub provider: ::core::option::Option<super::Provider>,
 }

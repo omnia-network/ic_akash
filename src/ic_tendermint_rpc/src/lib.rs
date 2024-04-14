@@ -208,6 +208,5 @@ fn broadcast_tx_sync_transform(raw: TransformArgs) -> HttpResponse {
         status: raw.response.status.clone(),
         body: raw.response.body.clone(),
         headers,
-        ..Default::default()
     }
 }

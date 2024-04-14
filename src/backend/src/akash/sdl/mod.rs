@@ -12,9 +12,9 @@ use super::proto::{
         attribute::{
             Attribute as ProtobufAttribute, PlacementRequirements, SignedBy as ProtobufSignedBy,
         },
-        cpu::CPU,
+        cpu::Cpu,
         endpoint::{Endpoint, Kind},
-        gpu::GPU,
+        gpu::Gpu,
         memory::Memory,
         resources::Resources,
         resourcevalue::ResourceValue,
@@ -268,16 +268,16 @@ pub struct ResourceCpuV2 {
     pub attributes: Option<CpuAttributesV2>,
 }
 
-impl Into<CPU> for ResourceCpuV2 {
-    fn into(self) -> CPU {
-        CPU {
+impl From<ResourceCpuV2> for Cpu {
+    fn from(val: ResourceCpuV2) -> Self {
+        Cpu {
             units: Some(ResourceValue {
-                val: convert_cpu_resource_string(&self.units)
+                val: convert_cpu_resource_string(&val.units)
                     .unwrap()
                     .to_string()
                     .into_bytes(),
             }),
-            attributes: self
+            attributes: val
                 .attributes
                 .unwrap_or_default()
                 .into_iter()
@@ -300,17 +300,17 @@ impl ResourceStorageV2 {
     }
 }
 
-impl Into<Storage> for ResourceStorageV2 {
-    fn into(self) -> Storage {
+impl From<ResourceStorageV2> for Storage {
+    fn from(val: ResourceStorageV2) -> Storage {
         Storage {
-            name: self.name(),
+            name: val.name(),
             quantity: Some(ResourceValue {
-                val: convert_resource_string(&self.size)
+                val: convert_resource_string(&val.size)
                     .unwrap()
                     .to_string()
                     .into_bytes(),
             }),
-            attributes: self
+            attributes: val
                 .attributes
                 .unwrap_or_default()
                 .into_iter()
@@ -328,16 +328,16 @@ pub struct ResourceMemoryV2 {
     pub attributes: Option<HashMap<String, String>>,
 }
 
-impl Into<Memory> for ResourceMemoryV2 {
-    fn into(self) -> Memory {
+impl From<ResourceMemoryV2> for Memory {
+    fn from(val: ResourceMemoryV2) -> Memory {
         Memory {
             quantity: Some(ResourceValue {
-                val: convert_resource_string(&self.size)
+                val: convert_resource_string(&val.size)
                     .unwrap()
                     .to_string()
                     .into_bytes(),
             }),
-            attributes: self
+            attributes: val
                 .attributes
                 .unwrap_or_default()
                 .into_iter()
@@ -365,13 +365,13 @@ impl ResourceGpuV3 {
     }
 }
 
-impl Into<GPU> for ResourceGpuV3 {
-    fn into(self) -> GPU {
-        GPU {
+impl From<ResourceGpuV3> for Gpu {
+    fn from(val: ResourceGpuV3) -> Gpu {
+        Gpu {
             units: Some(ResourceValue {
-                val: self.units().into_bytes(),
+                val: val.units().into_bytes(),
             }),
-            attributes: match self.attributes {
+            attributes: match val.attributes {
                 Some(attributes) => Into::<Attributes>::into(attributes)
                     .into_iter()
                     .map(|attr| attr.into())
@@ -1004,7 +1004,7 @@ fn service_resource_memory(resource: &ResourceMemoryV2) -> GenericResource {
     }
 }
 
-fn service_resource_storage(resource: &Vec<ResourceStorageV2>) -> Vec<GenericResource> {
+fn service_resource_storage(resource: &[ResourceStorageV2]) -> Vec<GenericResource> {
     resource
         .iter()
         .map(|resource| GenericResource {

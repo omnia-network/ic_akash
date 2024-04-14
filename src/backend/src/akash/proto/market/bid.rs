@@ -66,6 +66,7 @@ pub struct ResourceOffer {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
+#[allow(clippy::enum_variant_names)]
 pub enum State {
     BidStateInvalid = 0,
     BidOpen = 1,

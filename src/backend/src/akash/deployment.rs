@@ -7,10 +7,10 @@ use crate::helpers::EcdsaKeyIds;
 use super::{
     address::get_account_id_from_public_key,
     proto::deployment::{
-        deployment::DeploymentID,
         deploymentmsg::{
             MsgCloseDeployment, MsgCreateDeployment, MsgDepositDeployment, MsgUpdateDeployment,
         },
+        DeploymentID,
     },
     sdl::SdlV3,
     tx::create_tx,

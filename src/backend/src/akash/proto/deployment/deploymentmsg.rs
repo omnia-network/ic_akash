@@ -1,6 +1,6 @@
 use cosmrs::proto::traits::Name;
 
-use super::{deployment::DeploymentID, groupspec::GroupSpec};
+use super::{groupspec::GroupSpec, DeploymentID};
 
 /// MsgCreateDeployment defines an SDK message for creating deployment.
 ///
