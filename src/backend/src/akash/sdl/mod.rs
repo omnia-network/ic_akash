@@ -498,14 +498,16 @@ impl SdlV3 {
     }
 
     pub fn try_from_deployment_params(sdl_params: DeploymentParams) -> Result<SdlV3, String> {
+        let service_name = sdl_params
+            .name
+            .clone()
+            .unwrap_or(Err("Name of deployment is required")?);
         Ok(SdlV3 {
             version: "3.0".to_string(),
             services: {
                 let mut services = HashMap::new();
                 services.insert(
-                    sdl_params
-                        .name
-                        .unwrap_or(Err("Name of deployment is required".to_string())?),
+                    service_name.clone(),
                     ServiceV2 {
                         image: sdl_params.image.unwrap(),
                         command: sdl_params.command,
@@ -544,20 +546,70 @@ impl SdlV3 {
                 services
             },
             profiles: {
-                let mut profiles = ProfilesV3 {
+                ProfilesV3 {
                     compute: {
                         let mut compute = HashMap::new();
+                        compute.insert(service_name.clone(), {
+                            ProfileComputeV3 {
+                                resources: ComputeResourcesV3 {
+                                    cpu: ResourceCpuV2 {
+                                        units: "0.5".to_string(),
+                                        attributes: None,
+                                    },
+                                    memory: ResourceMemoryV2 {
+                                        size: "512Mi".to_string(),
+                                        attributes: None,
+                                    },
+                                    storage: vec![ResourceStorageV2 {
+                                        name: None,
+                                        size: "512Mi".to_string(),
+                                        attributes: None,
+                                    }],
+                                    gpu: None,
+                                    id: None,
+                                },
+                            }
+                        });
                         compute
                     },
                     placement: {
                         let mut placement = HashMap::new();
+                        placement.insert(
+                            "dcloud".to_string(),
+                            ProfilePlacementV2 {
+                                attributes: None,
+                                signed_by: None,
+                                pricing: {
+                                    let mut pricing = HashMap::new();
+                                    pricing.insert(
+                                        service_name.clone(),
+                                        CoinV2 {
+                                            denom: "uakt".to_string(),
+                                            value: None,
+                                            amount: 1000,
+                                        },
+                                    );
+                                    pricing
+                                },
+                            },
+                        );
                         placement
                     },
-                };
-                profiles
+                }
             },
             deployment: {
                 let mut deployment = HashMap::new();
+                deployment.insert(service_name.clone(), {
+                    let mut deployment = HashMap::new();
+                    deployment.insert(
+                        "dcloud".to_string(),
+                        ServiceDeploymentV2 {
+                            profile: service_name,
+                            count: 1,
+                        },
+                    );
+                    deployment
+                });
                 deployment
             },
             endpoints: None,
