@@ -53,7 +53,7 @@ pub async fn create_deployment_tx(
     let fee = Fee::from_amount_and_gas(amount, gas);
 
     let tx_raw = create_tx(
-        &sender_public_key,
+        sender_public_key,
         Any::from_msg(&msg).unwrap(),
         fee,
         account.sequence,
@@ -98,7 +98,7 @@ pub async fn deposit_deployment_tx(
     let fee = Fee::from_amount_and_gas(amount, gas);
 
     let tx_raw = create_tx(
-        &sender_public_key,
+        sender_public_key,
         Any::from_msg(&msg).unwrap(),
         fee,
         account.sequence,
@@ -137,7 +137,7 @@ pub async fn update_deployment_sdl_tx(
     let fee = Fee::from_amount_and_gas(amount, gas);
 
     let tx_raw = create_tx(
-        &sender_public_key,
+        sender_public_key,
         Any::from_msg(&msg).unwrap(),
         fee,
         account.sequence,
@@ -171,7 +171,7 @@ pub async fn close_deployment_tx(
     let fee = Fee::from_amount_and_gas(amount, gas);
 
     create_tx(
-        &sender_public_key,
+        sender_public_key,
         Any::from_msg(&msg).unwrap(),
         fee,
         account.sequence,

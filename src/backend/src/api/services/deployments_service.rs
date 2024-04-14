@@ -30,7 +30,7 @@ impl DeploymentsService {
         self.deployments_memory
             .iter()
             .filter(|(_, deployment)| deployment.user_owns_deployment(user_id))
-            .map(|(k, v)| (k.clone(), v.clone()))
+            .map(|(k, v)| (k, v.clone()))
             .collect()
     }
 

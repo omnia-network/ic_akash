@@ -151,7 +151,7 @@ impl LedgerService {
             ))
         })?;
 
-        if parsed_body.len() == 0 {
+        if parsed_body.is_empty() {
             return Err(ApiError::internal("API did not return any prices"));
         }
         // within the latest price range (index 0 of outer vec), return the lowest price (index 1 of inner vec)

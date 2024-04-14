@@ -160,15 +160,15 @@ impl Default for HttpOptionsV2 {
     }
 }
 
-impl Into<ServiceExposeHttpOptionsV3> for HttpOptionsV2 {
-    fn into(self) -> ServiceExposeHttpOptionsV3 {
+impl From<HttpOptionsV2> for ServiceExposeHttpOptionsV3 {
+    fn from(val: HttpOptionsV2) -> Self {
         ServiceExposeHttpOptionsV3 {
-            max_body_size: self.max_body_size,
-            read_timeout: self.read_timeout,
-            send_timeout: self.send_timeout,
-            next_tries: self.next_tries,
-            next_timeout: self.next_timeout,
-            next_cases: self.next_cases,
+            max_body_size: val.max_body_size,
+            read_timeout: val.read_timeout,
+            send_timeout: val.send_timeout,
+            next_tries: val.next_tries,
+            next_timeout: val.next_timeout,
+            next_cases: val.next_cases,
         }
     }
 }
@@ -190,17 +190,17 @@ pub struct ServiceParamsV2 {
     pub storage: Option<HashMap<String, ServiceStorageParamsV2>>,
 }
 
-impl Into<ManifestServiceParamsV3> for ServiceParamsV2 {
-    fn into(self) -> ManifestServiceParamsV3 {
+impl From<ServiceParamsV2> for ManifestServiceParamsV3 {
+    fn from(val: ServiceParamsV2) -> Self {
         ManifestServiceParamsV3 {
-            storage: self
+            storage: val
                 .storage
                 .clone()
                 .unwrap_or_default()
                 .keys()
                 .map(|name| ServiceStorageParamsV2 {
                     name: name.clone(),
-                    mount: self
+                    mount: val
                         .storage
                         .as_ref()
                         .expect("Storage must be defined")
@@ -208,7 +208,7 @@ impl Into<ManifestServiceParamsV3> for ServiceParamsV2 {
                         .unwrap()
                         .mount
                         .clone(),
-                    read_only: self
+                    read_only: val
                         .storage
                         .as_ref()
                         .expect("Storage must be defined")
@@ -249,14 +249,14 @@ pub struct ComputeResourcesV3 {
     pub id: Option<u32>,
 }
 
-impl Into<Resources> for ComputeResourcesV3 {
-    fn into(self) -> Resources {
+impl From<ComputeResourcesV3> for Resources {
+    fn from(val: ComputeResourcesV3) -> Self {
         Resources {
-            id: self.id.unwrap(),
-            cpu: Some(self.cpu.into()),
-            memory: Some(self.memory.into()),
-            storage: self.storage.into_iter().map(|s| s.into()).collect(),
-            gpu: self.gpu.map(|g| g.into()),
+            id: val.id.unwrap(),
+            cpu: Some(val.cpu.into()),
+            memory: Some(val.memory.into()),
+            storage: val.storage.into_iter().map(|s| s.into()).collect(),
+            gpu: val.gpu.map(|g| g.into()),
             endpoints: vec![],
         }
     }
@@ -382,22 +382,14 @@ impl Into<GPU> for ResourceGpuV3 {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
 pub struct GpuAttributesV3 {
     pub vendor: HashMap<String, Option<Vec<GpuModelV3>>>,
 }
 
-impl Default for GpuAttributesV3 {
-    fn default() -> Self {
-        Self {
-            vendor: HashMap::new(),
-        }
-    }
-}
-
-impl Into<Attributes> for GpuAttributesV3 {
-    fn into(self) -> Attributes {
-        self.vendor
+impl From<GpuAttributesV3> for Attributes {
+    fn from(val: GpuAttributesV3) -> Self {
+        val.vendor
             .into_iter()
             .flat_map(|(vendor, models)| match models {
                 Some(models) => models
@@ -435,18 +427,18 @@ pub struct Attribute {
     pub value: String,
 }
 
-impl Into<ProtobufAttribute> for Attribute {
-    fn into(self) -> ProtobufAttribute {
+impl From<Attribute> for ProtobufAttribute {
+    fn from(val: Attribute) -> Self {
         ProtobufAttribute {
-            key: self.key,
-            value: self.value,
+            key: val.key,
+            value: val.value,
         }
     }
 }
 
 pub type Attributes = Vec<Attribute>;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
 pub struct SignedBy {
     #[serde(rename = "allOf")]
     pub all_of: Vec<String>,
@@ -454,20 +446,11 @@ pub struct SignedBy {
     pub any_of: Vec<String>,
 }
 
-impl Default for SignedBy {
-    fn default() -> Self {
-        Self {
-            all_of: vec![],
-            any_of: vec![],
-        }
-    }
-}
-
-impl Into<ProtobufSignedBy> for SignedBy {
-    fn into(self) -> ProtobufSignedBy {
+impl From<SignedBy> for ProtobufSignedBy {
+    fn from(val: SignedBy) -> Self {
         ProtobufSignedBy {
-            all_of: self.all_of,
-            any_of: self.any_of,
+            all_of: val.all_of,
+            any_of: val.any_of,
         }
     }
 }
@@ -536,7 +519,7 @@ impl SdlV3 {
                 let pricing = infra.pricing.get(&svc_depl.profile).unwrap();
 
                 let group = groups.entry(placement_name.to_string()).or_insert_with(|| {
-                    let mut attributes = infra.attributes.clone().unwrap_or(vec![]);
+                    let mut attributes = infra.attributes.clone().unwrap_or_default();
 
                     attributes.sort_by(|a, b| a.key.cmp(&b.key));
 
@@ -556,7 +539,7 @@ impl SdlV3 {
                 match group
                     .bound_computes
                     .entry(placement_name.clone())
-                    .or_insert(HashMap::new())
+                    .or_default()
                     .get(&svc_depl.profile)
                 {
                     None => {
@@ -566,7 +549,7 @@ impl SdlV3 {
 
                         group.dgroup.resources.push(DeploymentGroupResourceV3 {
                             resource: res,
-                            price: pricing.amount.try_into().unwrap(),
+                            price: pricing.amount.into(),
                             count: svc_depl.count,
                             endpoints: service.service_resource_endpoints_v3(
                                 self.compute_endpoint_sequence_numbers(),
@@ -798,12 +781,12 @@ pub struct DeploymentGroupV3 {
     pub requirements: DeploymentGroupRequirementsV3,
 }
 
-impl Into<GroupSpec> for DeploymentGroupV3 {
-    fn into(self) -> GroupSpec {
+impl From<DeploymentGroupV3> for GroupSpec {
+    fn from(val: DeploymentGroupV3) -> Self {
         GroupSpec {
-            name: self.name,
-            resources: self.resources.iter().map(|r| r.clone().into()).collect(),
-            requirements: Some(self.requirements.into()),
+            name: val.name,
+            resources: val.resources.iter().map(|r| r.clone().into()).collect(),
+            requirements: Some(val.requirements.into()),
         }
     }
 }
@@ -816,18 +799,18 @@ pub struct DeploymentGroupResourceV3 {
     pub endpoints: Vec<DeploymentGroupResourceEndpointV3>,
 }
 
-impl Into<ProtobufResourceUnit> for DeploymentGroupResourceV3 {
-    fn into(self) -> ProtobufResourceUnit {
+impl From<DeploymentGroupResourceV3> for ProtobufResourceUnit {
+    fn from(val: DeploymentGroupResourceV3) -> Self {
         ProtobufResourceUnit {
             resource: Some(Resources {
-                endpoints: self.endpoints.into_iter().map(|e| e.into()).collect(),
-                ..self.resource.into()
+                endpoints: val.endpoints.into_iter().map(|e| e.into()).collect(),
+                ..val.resource.into()
             }),
             price: Some(DecCoin {
                 denom: "uakt".to_string(),
-                amount: format!("{:0<23}", self.price).to_string(),
+                amount: format!("{:0<23}", val.price).to_string(),
             }),
-            count: self.count,
+            count: val.count,
         }
     }
 }
@@ -839,15 +822,15 @@ pub struct DeploymentGroupResourceEndpointV3 {
     pub sequence_number: u32,
 }
 
-impl Into<Endpoint> for DeploymentGroupResourceEndpointV3 {
-    fn into(self) -> Endpoint {
+impl From<DeploymentGroupResourceEndpointV3> for Endpoint {
+    fn from(val: DeploymentGroupResourceEndpointV3) -> Self {
         Endpoint {
-            kind: self
+            kind: val
                 .kind
                 .map(|k| k.into())
                 .unwrap_or(Kind::SharedHttp)
                 .into(), // TODO: is this the right default value?
-            sequence_number: self.sequence_number,
+            sequence_number: val.sequence_number,
         }
     }
 }
@@ -860,9 +843,9 @@ pub enum EndpointKind {
     LeasedIp = 2,
 }
 
-impl Into<Kind> for EndpointKind {
-    fn into(self) -> Kind {
-        match self {
+impl From<EndpointKind> for Kind {
+    fn from(val: EndpointKind) -> Self {
+        match val {
             EndpointKind::SharedHttp => Kind::SharedHttp,
             EndpointKind::RandomPort => Kind::RandomPort,
             EndpointKind::LeasedIp => Kind::LeasedIp,
@@ -877,15 +860,15 @@ pub struct DeploymentGroupRequirementsV3 {
     pub signed_by: SignedBy,
 }
 
-impl Into<PlacementRequirements> for DeploymentGroupRequirementsV3 {
-    fn into(self) -> PlacementRequirements {
+impl From<DeploymentGroupRequirementsV3> for PlacementRequirements {
+    fn from(val: DeploymentGroupRequirementsV3) -> Self {
         PlacementRequirements {
-            attributes: self
+            attributes: val
                 .attributes
                 .iter()
                 .map(|attr| attr.clone().into())
                 .collect(),
-            signed_by: Some(self.signed_by.into()),
+            signed_by: Some(val.signed_by.into()),
         }
     }
 }
@@ -961,7 +944,7 @@ pub type ManifestV3 = Vec<GroupV3>;
 fn service_resource_attributes(attributes: &Option<HashMap<String, String>>) -> Option<Attributes> {
     attributes.as_ref().map(|attrs| {
         let mut attrs = attrs
-            .into_iter()
+            .iter()
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect::<Vec<_>>();
         attrs.sort_by_key(|(k, _)| k.clone());
@@ -1045,8 +1028,7 @@ fn service_resource_gpu(resource: &Option<ResourceGpuV3>) -> GenericResource {
         name: None,
         attributes: resource
             .clone()
-            .map(|r| r.attributes.map(|a| a.into()))
-            .flatten(),
+            .and_then(|r| r.attributes.map(|a| a.into())),
     }
 }
 

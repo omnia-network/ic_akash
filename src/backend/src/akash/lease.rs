@@ -29,7 +29,7 @@ pub async fn create_lease_tx(
     let fee = Fee::from_amount_and_gas(amount, gas);
 
     create_tx(
-        &sender_public_key,
+        sender_public_key,
         Any::from_msg(&msg).unwrap(),
         fee,
         account.sequence,

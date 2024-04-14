@@ -89,7 +89,7 @@ pub async fn create_certificate_tx(
     let fee = Fee::from_amount_and_gas(amount, gas);
 
     create_tx(
-        &sender_public_key,
+        sender_public_key,
         msg.to_any().unwrap(),
         fee,
         account.sequence,

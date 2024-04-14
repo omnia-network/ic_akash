@@ -26,7 +26,7 @@ impl UsersService {
     pub fn create_user(&mut self, principal: Principal, user: User) -> Result<UserId, ApiError> {
         let user_id = UserId::new(principal);
 
-        self.users_memory.insert(user_id.clone(), user);
+        self.users_memory.insert(user_id, user);
 
         Ok(user_id)
     }
@@ -94,10 +94,9 @@ impl UsersService {
         }
 
         let updated_balance = user.subtract_from_akt_balance(DEPLOYMENT_AKT_PRICE);
-        print(&format!(
+        print(format!(
             "[{}]: Updated balance after deployment: {} AKT",
-            user_id.to_string(),
-            updated_balance
+            user_id, updated_balance
         ));
         self.users_memory.insert(user_id, user);
 
@@ -123,10 +122,9 @@ impl UsersService {
         }
 
         let updated_balance = user.subtract_from_akt_balance(amount_akt);
-        print(&format!(
+        print(format!(
             "[{}]: Updated balance after deposit: {} AKT",
-            user_id.to_string(),
-            updated_balance
+            user_id, updated_balance
         ));
         self.users_memory.insert(user_id, user);
 

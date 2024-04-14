@@ -28,18 +28,10 @@ fn post_upgrade(is_mainnet: bool) {
     init_ic_websocket();
 }
 
+#[derive(Default)]
 struct Init {
     users_service: UsersService,
     config_service: ConfigService,
-}
-
-impl Default for Init {
-    fn default() -> Self {
-        Self {
-            users_service: UsersService::default(),
-            config_service: ConfigService::default(),
-        }
-    }
 }
 
 impl Init {

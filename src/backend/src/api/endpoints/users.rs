@@ -109,9 +109,9 @@ impl UsersEndpoints {
         self.users_service
             .add_payment_to_user_once(user_id, payment_block_height, paid_akt)?;
 
-        print(&format!(
+        print(format!(
             "[{}]: Received payment of {} AKT. Current balance: {} AKT",
-            calling_principal.to_string(),
+            calling_principal,
             paid_akt,
             self.users_service.get_user_akt_balance(&user_id)?
         ));
