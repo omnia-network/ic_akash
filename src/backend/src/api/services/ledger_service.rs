@@ -34,15 +34,16 @@ impl Default for LedgerService {
 
 impl LedgerService {
     pub async fn query_blocks(&self, args: GetBlocksArgs) -> Result<QueryBlocksResponse, ApiError> {
-        call(self.ledger_canister_id, "query_blocks", (args,))
+        let (res,) = call(self.ledger_canister_id, "query_blocks", (args,))
             .await
-            .map(|(res,)| res)
             .map_err(|(code, e)| {
                 ApiError::internal(&format!(
                     "failed to query blocks. Rejection code: {:?}, error: {}",
                     code, e
                 ))
-            })?
+            })?;
+
+        Ok(res)
     }
 
     pub async fn check_payment(

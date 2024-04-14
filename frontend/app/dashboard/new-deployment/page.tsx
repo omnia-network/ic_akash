@@ -24,6 +24,8 @@ import { displayE8sAsIcp, icpToE8s } from "@/helpers/ui";
 import { transferE8sToBackend } from "@/services/backend";
 import { Spinner } from "@/components/spinner";
 
+const FETCH_DEPLOYMENT_PRICE_INTERVAL_MS = 30_000; // 30 seconds
+
 export default function NewDeployment() {
   const router = useRouter();
   const { backendActor, openWs, closeWs, setWsCallbacks, ledgerCanister, ledgerData, refreshLedgerData } = useIcContext();
@@ -35,6 +37,7 @@ export default function NewDeployment() {
     Array<DeploymentState>
   >([]);
   const [deploymentE8sPrice, setDeploymentE8sPrice] = useState<bigint | null>(null);
+  const [fetchDeploymentPriceInterval, setFetchDeploymentPriceInterval] = useState<NodeJS.Timeout | null>(null);
   const userHasEnoughBalance = useMemo(() =>
     ledgerData.balanceE8s !== null && deploymentE8sPrice !== null && ledgerData.balanceE8s > deploymentE8sPrice,
     [ledgerData.balanceE8s, deploymentE8sPrice]
@@ -207,14 +210,27 @@ export default function NewDeployment() {
 
     setIsLoading(true);
 
+
     try {
-      setPaymentStatus("Sending ICP to backend canister...");
-      await transferE8sToBackend(ledgerCanister, deploymentE8sPrice, backendActor);
+      setPaymentStatus(`Sending ~${displayE8sAsIcp(deploymentE8sPrice)} to backend canister...`);
+
+      await transferE8sToBackend(
+        ledgerCanister,
+        deploymentE8sPrice,
+        backendActor
+      );
       await refreshLedgerData();
-      setPaymentStatus("Sending ICP to backend canister... DONE");
+
+      if (fetchDeploymentPriceInterval !== null) {
+        clearInterval(fetchDeploymentPriceInterval);
+        setFetchDeploymentPriceInterval(null);
+      }
+
+      setPaymentStatus(prev => prev + " DONE");
     } catch (e) {
       console.error(e);
       toastError("Failed to transfer funds, see console for details");
+      setPaymentStatus(prev => prev + " FAILED");
       setIsLoading(false);
       return;
     }
@@ -238,6 +254,7 @@ export default function NewDeployment() {
     ledgerCanister,
     refreshLedgerData,
     deploymentE8sPrice,
+    fetchDeploymentPriceInterval,
   ]);
 
   const fetchDeploymentPrice = useCallback(async () => {
@@ -247,8 +264,14 @@ export default function NewDeployment() {
 
     try {
       const res = await backendActor.get_deployment_icp_price();
-      const price = extractOk(res);
-      setDeploymentE8sPrice(icpToE8s(price));
+      const icpPrice = extractOk(res);
+
+      // add 1 ICP to cover price fluctuation
+      //
+      // TODO: backend canister should first create the deployment
+      // and store the price, so that the frontend can fetch it
+      // and transfer the correct ICP amount accordingly
+      setDeploymentE8sPrice(icpToE8s(icpPrice + 1));
     } catch (e) {
       console.error("Failed to fetch deployment price", e);
       toastError("Failed to fetch deployment price, see console for details");
@@ -268,6 +291,14 @@ export default function NewDeployment() {
 
   useEffect(() => {
     fetchDeploymentPrice();
+
+    const interval = setInterval(() => {
+      fetchDeploymentPrice();
+    }, FETCH_DEPLOYMENT_PRICE_INTERVAL_MS);
+
+    setFetchDeploymentPriceInterval(interval);
+
+    return () => clearInterval(interval);
   }, [fetchDeploymentPrice]);
 
   return (
@@ -300,10 +331,10 @@ export default function NewDeployment() {
           </div>
           <div className="flex flex-col gap-2">
             <h5 className="font-bold">
-              Price:
+              Price (est.):
             </h5>
             {deploymentE8sPrice !== null ? (
-              <pre>{displayE8sAsIcp(deploymentE8sPrice, { maximumFractionDigits: 6 })}</pre>
+              <pre>~{displayE8sAsIcp(deploymentE8sPrice, { maximumFractionDigits: 6 })}</pre>
             ) : (
               <Spinner />
             )}

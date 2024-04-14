@@ -69,6 +69,7 @@ export type CreateUserResult = { 'Ok' : UserId } |
 export interface Deployment {
   'sdl' : string,
   'user_id' : UserId,
+  'icp_price' : number,
   'state_history' : Array<[TimestampNs, DeploymentState]>,
 }
 export type DeploymentId = string;
