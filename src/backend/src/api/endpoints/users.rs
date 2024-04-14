@@ -34,7 +34,7 @@ fn promote_user_to_admin(admin_principal: Principal) -> ApiResult {
 }
 
 #[update]
-pub async fn update_akt_balance(payment_block_height: u64) -> ApiResult<f64> {
+async fn update_akt_balance(payment_block_height: u64) -> ApiResult<f64> {
     let calling_principal = caller();
 
     UsersEndpoints::default()
@@ -51,14 +51,14 @@ struct UsersEndpoints {
 }
 
 impl UsersEndpoints {
-    pub fn get_user_by_principal(&self, calling_principal: Principal) -> Result<User, ApiError> {
+    fn get_user_by_principal(&self, calling_principal: Principal) -> Result<User, ApiError> {
         self.access_control_service
             .assert_principal_not_anonymous(&calling_principal)?;
 
         self.users_service.get_user(&calling_principal.into())
     }
 
-    pub fn create_user(&mut self, calling_principal: Principal) -> Result<UserId, ApiError> {
+    fn create_user(&mut self, calling_principal: Principal) -> Result<UserId, ApiError> {
         self.access_control_service
             .assert_principal_not_anonymous(&calling_principal)?;
 
@@ -67,7 +67,7 @@ impl UsersEndpoints {
         self.users_service.create_user(calling_principal, user)
     }
 
-    pub fn make_user_admin(
+    fn make_user_admin(
         &mut self,
         calling_principal: Principal,
         admin_principal: Principal,
@@ -81,7 +81,7 @@ impl UsersEndpoints {
             .change_user_role(admin_id, UserRole::Admin)
     }
 
-    pub async fn update_akt_balance(
+    async fn update_akt_balance(
         &mut self,
         calling_principal: Principal,
         payment_block_height: u64,

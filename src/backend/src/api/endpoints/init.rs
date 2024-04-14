@@ -35,7 +35,7 @@ struct Init {
 }
 
 impl Init {
-    pub fn init_config(&mut self, is_mainnet: bool) {
+    fn init_config(&mut self, is_mainnet: bool) {
         let config = if is_mainnet {
             Config::new_mainnet(
                 EcdsaKeyIds::TestKey1,
@@ -52,7 +52,7 @@ impl Init {
         self.config_service.set_config(config)
     }
 
-    pub fn init_admin(&mut self, principal: Principal) -> Result<UserId, ApiError> {
+    fn init_admin(&mut self, principal: Principal) -> Result<UserId, ApiError> {
         let user = User::new(UserRole::Admin);
 
         self.users_service.create_user(principal, user)

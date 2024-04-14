@@ -53,15 +53,15 @@ struct LedgerEndpoints {
 }
 
 impl LedgerEndpoints {
-    pub async fn query_blocks(&self, args: GetBlocksArgs) -> Result<QueryBlocksResponse, ApiError> {
+    async fn query_blocks(&self, args: GetBlocksArgs) -> Result<QueryBlocksResponse, ApiError> {
         self.ledger_service.query_blocks(args).await
     }
 
-    pub async fn get_usd_exchange(&self, ticker: &str) -> Result<f64, ApiError> {
+    async fn get_usd_exchange(&self, ticker: &str) -> Result<f64, ApiError> {
         self.ledger_service.get_usd_exchange(ticker).await
     }
 
-    pub async fn get_5_akt_in_icp(&self) -> Result<f64, ApiError> {
+    async fn get_5_akt_in_icp(&self) -> Result<f64, ApiError> {
         let icp_2_akt_conversion_rate = self.ledger_service.get_icp_2_akt_conversion_rate().await?;
         Ok(5.0 / icp_2_akt_conversion_rate)
     }

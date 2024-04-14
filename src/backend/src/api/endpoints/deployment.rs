@@ -131,7 +131,7 @@ struct DeploymentsEndpoints {
 }
 
 impl DeploymentsEndpoints {
-    pub fn get_deployment(
+    fn get_deployment(
         &self,
         calling_principal: &Principal,
         deployment_id: &str,
@@ -145,7 +145,7 @@ impl DeploymentsEndpoints {
         self.deployments_service.get_deployment(&deployment_id)
     }
 
-    pub fn get_deployments(
+    fn get_deployments(
         &self,
         calling_principal: &Principal,
     ) -> Result<Vec<(DeploymentId, Deployment)>, ApiError> {
@@ -160,7 +160,7 @@ impl DeploymentsEndpoints {
         Ok(deployments)
     }
 
-    pub async fn create_certificate(
+    async fn create_certificate(
         &self,
         calling_principal: Principal,
         cert_pem_base64: String,
@@ -175,7 +175,7 @@ impl DeploymentsEndpoints {
             .map_err(|e| ApiError::internal(&format!("Error creating certificate: {}", e)))
     }
 
-    pub async fn create_deployment(
+    async fn create_deployment(
         &mut self,
         calling_principal: Principal,
         sdl: String,
@@ -237,7 +237,7 @@ impl DeploymentsEndpoints {
         Ok(deployment_id)
     }
 
-    pub async fn deposit_deployment(
+    async fn deposit_deployment(
         &mut self,
         calling_principal: Principal,
         deployment_id: String,
@@ -276,7 +276,7 @@ impl DeploymentsEndpoints {
         Ok(())
     }
 
-    pub async fn update_deployment_sdl(
+    async fn update_deployment_sdl(
         &self,
         calling_principal: Principal,
         deployment_id: String,
@@ -313,7 +313,7 @@ impl DeploymentsEndpoints {
         Ok(())
     }
 
-    pub async fn update_deployment_state(
+    async fn update_deployment_state(
         &mut self,
         calling_principal: Principal,
         deployment_id: String,
@@ -363,7 +363,7 @@ impl DeploymentsEndpoints {
         }
     }
 
-    pub async fn close_deployment(
+    async fn close_deployment(
         &mut self,
         calling_principal: Principal,
         deployment_id: String,
