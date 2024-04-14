@@ -3,15 +3,16 @@ use crate::{
     api::{
         map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult,
         Deployment, DeploymentId, DeploymentState, DeploymentsService, GetDeploymentResponse,
-        UserId, UsersService,
+        LedgerService, UserId, UsersService,
     },
     fixtures::{example_sdl, updated_example_sdl},
+    helpers::uakt_to_akt,
 };
 use candid::Principal;
 use ic_cdk::{caller, print, query, update};
 use std::time::Duration;
 
-const POLLING_BIDS_INTERVAL: u64 = 3;
+const POLLING_BIDS_INTERVAL_SECS: u64 = 3;
 const MAX_FETCH_BIDS_RETRIES: u64 = 5;
 
 #[query]
@@ -103,11 +104,19 @@ async fn update_test_deployment_sdl(deployment_id: String) -> ApiResult<()> {
 }
 
 #[update]
-async fn close_deployment(deployment_id: String) -> ApiResult {
+async fn close_deployment(deployment_id: String) -> ApiResult<()> {
     let calling_principal = caller();
 
     DeploymentsEndpoints::default()
         .close_deployment(calling_principal, deployment_id)
+        .await
+        .into()
+}
+
+#[update]
+async fn get_deployment_icp_price() -> ApiResult<f64> {
+    DeploymentsEndpoints::default()
+        .get_deployment_icp_price()
         .await
         .into()
 }
@@ -118,6 +127,7 @@ struct DeploymentsEndpoints {
     access_control_service: AccessControlService,
     users_service: UsersService,
     akash_service: AkashService,
+    ledger_service: LedgerService,
 }
 
 impl DeploymentsEndpoints {
@@ -173,35 +183,40 @@ impl DeploymentsEndpoints {
         self.access_control_service
             .assert_principal_is_user(&calling_principal)?;
 
-        let balance = self
+        let deployment_akt_price = self.deployments_service.get_deployment_akt_price();
+
+        let canister_balance = self
             .akash_service
-            .balance()
+            .uakt_balance()
             .await
             .map_err(|e| ApiError::internal(&format!("could not get balance: {}", e)))?;
-        if balance < 5_000_000 {
+        let akt_canister_balance = uakt_to_akt(canister_balance);
+        if akt_canister_balance < deployment_akt_price {
             return Err(ApiError::internal(&format!(
-                "Insufficient AKT balance. Remaining balance: {}",
-                balance
+                "Insufficient AKT balance on canister. Remaining balance: {} AKT",
+                akt_canister_balance
             )));
         }
+
         let parsed_sdl = SdlV3::try_from_str(&sdl)
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid SDL: {}", e)))?;
 
         let user_id = UserId::new(calling_principal);
         // deduct AKT from user's balance for deployment escrow
-        self.users_service.charge_user_for_deployment(user_id)?;
+        self.users_service
+            .charge_user(user_id, deployment_akt_price)?;
 
         let deployment_id = self
             .deployments_service
             .init_deployment(user_id, sdl)
             .await?;
 
-        print(format!("[{:?}]: Initialized", deployment_id));
+        print(format!("[Deployment {}]: Initialized", deployment_id));
 
         ic_cdk_timers::set_timer(Duration::from_secs(0), move || {
             ic_cdk::spawn(async move {
                 print(format!(
-                    "[{:?}]: Starting to handle deployment creation",
+                    "[Deployment {}]: Starting to handle deployment creation",
                     deployment_id
                 ));
 
@@ -240,7 +255,7 @@ impl DeploymentsEndpoints {
             .deployments_service
             .get_akash_deployment_info(&deployment_id)?
             .ok_or(ApiError::not_found(&format!(
-                "Deployment {:?} is initialized but has not been created",
+                "Deployment {} is initialized but has not been created",
                 deployment_id
             )))?;
 
@@ -252,9 +267,12 @@ impl DeploymentsEndpoints {
         let user_id = UserId::new(calling_principal);
         // deduct AKT from user's balance for deposit to deployment escrow
         self.users_service
-            .charge_user_for_deposit(user_id, amount_uakt as f64 / 1_000_000.0)?;
+            .charge_user(user_id, uakt_to_akt(amount_uakt))?;
 
-        print(format!("[{:?}]: Deposit deployment", deployment_id));
+        print(format!(
+            "[Deployment {}]: Deposit deployment",
+            deployment_id
+        ));
         Ok(())
     }
 
@@ -279,7 +297,7 @@ impl DeploymentsEndpoints {
             .deployments_service
             .get_akash_deployment_info(&deployment_id)?
             .ok_or(ApiError::not_found(&format!(
-                "Deployment {:?} is initialized but has not been created",
+                "Deployment with id {} is initialized but has not been created",
                 deployment_id
             )))?;
 
@@ -288,7 +306,10 @@ impl DeploymentsEndpoints {
             .await
             .map_err(|e| ApiError::internal(&format!("Error updating deployment: {}", e)))?;
 
-        print(format!("[{:?}]: Updated deployment", deployment_id));
+        print(format!(
+            "[Deployment {}]: Updated deployment",
+            deployment_id
+        ));
         Ok(())
     }
 
@@ -366,10 +387,17 @@ impl DeploymentsEndpoints {
             )
             .await;
         } else {
-            print(format!("[{:?}]: Closed", deployment_id));
+            print(format!("[Deployment {}]: Closed", deployment_id));
             // TODO: add back to the user's balance the AKT tokens remaining from the escrow
         }
         Ok(())
+    }
+
+    async fn get_deployment_icp_price(&self) -> Result<f64, ApiError> {
+        let icp_2_akt = self.ledger_service.get_icp_2_akt_conversion_rate().await?;
+        let deployment_akt_price = self.deployments_service.get_deployment_akt_price();
+
+        Ok(icp_2_akt * deployment_akt_price)
     }
 }
 
@@ -381,7 +409,7 @@ async fn handle_deployment(
     let dseq = handle_create_deployment(calling_principal, parsed_sdl, deployment_id).await?;
 
     print(format!(
-        "[{:?}]: Starting to handle lease creation",
+        "[Deployment {}]: Starting to handle lease creation",
         deployment_id
     ));
     handle_lease(calling_principal, dseq, deployment_id, 0);
@@ -412,25 +440,28 @@ async fn handle_create_deployment(
         .update_deployment_state(calling_principal, deployment_id, deployment_update, true)
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
 
-    print(format!("[{:?}]: Created deployment", deployment_id));
+    print(format!(
+        "[Deployment {}]: Created deployment",
+        deployment_id
+    ));
 
     Ok(dseq)
 }
 
 fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: DeploymentId, retry: u64) {
-    ic_cdk_timers::set_timer(Duration::from_secs(POLLING_BIDS_INTERVAL), move || {
+    ic_cdk_timers::set_timer(Duration::from_secs(POLLING_BIDS_INTERVAL_SECS), move || {
         ic_cdk::spawn(async move {
             match try_fetch_bids_and_create_lease(calling_principal, dseq, deployment_id).await {
                 Ok(Some((_tx_hash, deployment_url))) => {
                     print(format!(
-                        "[{:?}]: Deployment URL: {}",
+                        "[Deployment {}]: Deployment URL: {}",
                         deployment_id, deployment_url
                     ));
                 }
                 Ok(None) => {
                     if retry > MAX_FETCH_BIDS_RETRIES {
                         print(format!(
-                            "[{:?}]: Too many retries fetching bids",
+                            "[Deployment {}]: Too many retries fetching bids",
                             deployment_id
                         ));
                         set_failed_deployment(
@@ -494,7 +525,7 @@ async fn try_fetch_bids_and_create_lease(
     let rpc_url = config.tendermint_rpc_url();
 
     print(format!(
-        "[{:?}]: Fetching bids for dseq: {}",
+        "[Deployment {}]: Fetching bids for dseq: {}",
         deployment_id, dseq
     ));
 
@@ -503,7 +534,7 @@ async fn try_fetch_bids_and_create_lease(
         .map_err(|e| ApiError::internal(e.as_str()))?;
 
     if !bids.is_empty() {
-        print(format!("[{:?}]: Bids found", deployment_id));
+        print(format!("[Deployment {}]: Bids found", deployment_id));
         let (tx_hash, deployment_url) =
             handle_create_lease(calling_principal, dseq, deployment_id).await?;
         return Ok(Some((tx_hash, deployment_url)));
@@ -532,7 +563,7 @@ async fn handle_create_lease(
         .update_deployment_state(calling_principal, deployment_id, deployment_update, true)
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
 
-    print(format!("[{:?}]: Lease created", deployment_id));
+    print(format!("[Deployment {}]: Lease created", deployment_id));
 
     Ok((tx_hash, provider_url))
 }
@@ -565,12 +596,12 @@ async fn set_failed_deployment(
         reason.clone(),
     ) {
         print(format!(
-            "[{:?}]: Failed to set deployment as failed: {:?}",
+            "[Deployment {}]: Failed to set deployment as failed: {:?}",
             deployment_id, e
         ));
     } else {
         print(format!(
-            "[{:?}]: Set deployment as failed: {}",
+            "[Deployment {}]: Set deployment as failed: {}",
             deployment_id, reason
         ));
     }
@@ -578,14 +609,14 @@ async fn set_failed_deployment(
 
 async fn try_close_akash_deployment(deployment_id: &DeploymentId) -> Result<(), ApiError> {
     print(format!(
-        "[{:?}]: Starting to close Akash deployment",
+        "[Deployment {}]: Starting to close Akash deployment",
         deployment_id
     ));
 
     let dseq = DeploymentsService::default()
         .get_akash_deployment_info(deployment_id)?
         .ok_or(ApiError::not_found(&format!(
-            "Deployment {:?} is initialized but has not been created",
+            "Deployment with id {} is initialized but has not been created",
             deployment_id
         )))?;
 
@@ -594,7 +625,10 @@ async fn try_close_akash_deployment(deployment_id: &DeploymentId) -> Result<(), 
         .await
         .map_err(|e| ApiError::internal(&format!("Error closing Akash deployment: {}", e)))?;
 
-    print(format!("[{:?}]: Closed Akash deployment", deployment_id));
+    print(format!(
+        "[Deployment {}]: Closed Akash deployment",
+        deployment_id
+    ));
 
     Ok(())
 }

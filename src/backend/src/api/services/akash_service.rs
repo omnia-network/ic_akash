@@ -35,7 +35,7 @@ impl AkashService {
         Ok(get_account_id_from_public_key(&public_key)?.to_string())
     }
 
-    pub async fn balance(&self) -> Result<u64, String> {
+    pub async fn uakt_balance(&self) -> Result<u64, String> {
         let config = self.get_config();
 
         let public_key = config.public_key().await?;
@@ -116,7 +116,7 @@ impl AkashService {
 
         let abci_info_res = ic_tendermint_rpc::abci_info(rpc_url.clone()).await?;
         let dseq = abci_info_res.response.last_block_height.value();
-        let deposit = config.akash_config().min_deposit_amount;
+        let deposit = config.akash_config().min_deposit_uakt_amount;
 
         let tx_raw = create_deployment_tx(
             &public_key,

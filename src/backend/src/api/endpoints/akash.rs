@@ -36,7 +36,7 @@ impl AkashEndpoints {
 
     pub async fn balance(&self) -> Result<u64, ApiError> {
         self.akash_service
-            .balance()
+            .uakt_balance()
             .await
             .map_err(|e| ApiError::internal(&format!("could not get balance: {}", e)))
     }

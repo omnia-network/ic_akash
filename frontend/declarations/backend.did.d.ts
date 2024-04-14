@@ -213,6 +213,7 @@ export interface _SERVICE {
   'get_5_akt_in_icp' : ActorMethod<[], ApiFloatResult>,
   'get_akt_price' : ActorMethod<[], ApiFloatResult>,
   'get_deployment' : ActorMethod<[string], GetDeploymentResult>,
+  'get_deployment_icp_price' : ActorMethod<[], ApiFloatResult>,
   'get_deployments' : ActorMethod<[], GetDeploymentsResult>,
   'get_icp_price' : ActorMethod<[], ApiFloatResult>,
   'get_user' : ActorMethod<[], GetUserResult>,

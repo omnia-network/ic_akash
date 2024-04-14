@@ -43,20 +43,11 @@ pub async fn update_akt_balance(payment_block_height: u64) -> ApiResult<f64> {
         .into()
 }
 
+#[derive(Default)]
 struct UsersEndpoints {
     users_service: UsersService,
     ledger_service: LedgerService,
     access_control_service: AccessControlService,
-}
-
-impl Default for UsersEndpoints {
-    fn default() -> Self {
-        Self {
-            users_service: UsersService::default(),
-            ledger_service: LedgerService::default(),
-            access_control_service: AccessControlService::default(),
-        }
-    }
 }
 
 impl UsersEndpoints {
@@ -110,7 +101,7 @@ impl UsersEndpoints {
             .add_payment_to_user_once(user_id, payment_block_height, paid_akt)?;
 
         print(format!(
-            "[{}]: Received payment of {} AKT. Current balance: {} AKT",
+            "[User {}]: Received payment of {} AKT. Current balance: {} AKT",
             calling_principal,
             paid_akt,
             self.users_service.get_user_akt_balance(&user_id)?

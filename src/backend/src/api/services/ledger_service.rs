@@ -22,14 +22,16 @@ pub struct LedgerService {
     xrc_id: Principal,
 }
 
-impl LedgerService {
-    pub fn default() -> Self {
+impl Default for LedgerService {
+    fn default() -> Self {
         Self {
             ledger_canister_id: Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap(),
             xrc_id: Principal::from_text("uf6dk-hyaaa-aaaaq-qaaaq-cai").unwrap(),
         }
     }
+}
 
+impl LedgerService {
     pub fn get_config(&self) -> Config {
         config_state(|state| state.clone())
     }
@@ -141,13 +143,8 @@ impl LedgerService {
         //     ],
         //     ...
         //  ]
-        let parsed_body: Vec<Vec<f64>> = serde_json::from_slice(&response.body).map_err(|e| {
-            ApiError::internal(&format!(
-                "failed to parse {} price: {}",
-                ticker,
-                e.to_string()
-            ))
-        })?;
+        let parsed_body: Vec<Vec<f64>> = serde_json::from_slice(&response.body)
+            .map_err(|e| ApiError::internal(&format!("failed to parse {} price: {}", ticker, e)))?;
 
         if parsed_body.is_empty() {
             return Err(ApiError::internal("API did not return any prices"));

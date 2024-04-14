@@ -13,7 +13,7 @@ pub struct AkashConfig {
     /// Current values are:
     /// - sandbox: **5_000_000 uakt** (5 AKT)
     /// - mainnet: **500_000 uakt** (0.5 AKT)
-    pub min_deposit_amount: u64,
+    pub min_deposit_uakt_amount: u64,
 }
 
 #[derive(CandidType, Clone, Deserialize)]
@@ -66,7 +66,7 @@ impl Default for Config {
             ecdsa_key: EcdsaKeyIds::TestKeyLocalDevelopment,
             tendermint_rpc_url: "https://rpc.sandbox-01.aksh.pw".to_string(),
             akash_config: AkashConfig {
-                min_deposit_amount: 5_000_000,
+                min_deposit_uakt_amount: 5_000_000,
             },
         }
     }

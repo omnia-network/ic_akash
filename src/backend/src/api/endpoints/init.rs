@@ -42,7 +42,7 @@ impl Init {
                 "https://rpc.akashnet.net",
                 AkashConfig {
                     // fetched from https://api.akashnet.net/cosmos/params/v1beta1/params?subspace=deployment&key=MinDeposits
-                    min_deposit_amount: 500_000,
+                    min_deposit_uakt_amount: 500_000,
                 },
             )
         } else {

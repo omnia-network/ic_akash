@@ -47,16 +47,9 @@ fn price_transform(raw: TransformArgs) -> HttpResponse {
     res
 }
 
+#[derive(Default)]
 struct LedgerEndpoints {
     ledger_service: LedgerService,
-}
-
-impl Default for LedgerEndpoints {
-    fn default() -> Self {
-        Self {
-            ledger_service: LedgerService::default(),
-        }
-    }
 }
 
 impl LedgerEndpoints {

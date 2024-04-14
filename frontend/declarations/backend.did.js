@@ -207,6 +207,7 @@ export const idlFactory = ({ IDL }) => {
     'get_5_akt_in_icp' : IDL.Func([], [ApiFloatResult], []),
     'get_akt_price' : IDL.Func([], [ApiFloatResult], []),
     'get_deployment' : IDL.Func([IDL.Text], [GetDeploymentResult], ['query']),
+    'get_deployment_icp_price' : IDL.Func([], [ApiFloatResult], []),
     'get_deployments' : IDL.Func([], [GetDeploymentsResult], ['query']),
     'get_icp_price' : IDL.Func([], [ApiFloatResult], []),
     'get_user' : IDL.Func([], [GetUserResult], ['query']),
