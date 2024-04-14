@@ -1,9 +1,9 @@
 use crate::{
     akash::{address::get_account_id_from_public_key, bids::fetch_bids, sdl::SdlV3},
     api::{
-        map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult,
+        map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult, CpuSize,
         Deployment, DeploymentId, DeploymentParams, DeploymentState, DeploymentsService,
-        GetDeploymentResponse, LedgerService, ResourceSize, UserId, UsersService,
+        GetDeploymentResponse, LedgerService, MemoryStorageSize, UserId, UsersService,
     },
     fixtures::updated_example_sdl,
     helpers::uakt_to_akt,
@@ -76,9 +76,19 @@ async fn create_test_deployment() -> ApiResult<String> {
     let sdl_params = DeploymentParams::builder()
         .name("IC WebSocket Gateway".to_string())
         .image("omniadevs/ic-websocket-gateway:v1.3.2".to_string())
-        .cpu(ResourceSize::Small)
-        .memory(ResourceSize::Medium)
-        .storage(ResourceSize::Large)
+        .cpu(CpuSize::Small)
+        .memory(MemoryStorageSize::Small)
+        .storage(MemoryStorageSize::Small)
+        .port((8080, Some(80), "akash-gateway.icws.io".to_string()))
+        .command(vec![
+            "/ic-ws-gateway/ic_websocket_gateway".to_string(),
+            "--gateway-address".to_string(),
+            "0.0.0.0:8080".to_string(),
+            "--ic-network-url".to_string(),
+            "https://icp-api.io".to_string(),
+            "--polling-interval".to_string(),
+            "400".to_string(),
+        ])
         .build();
 
     DeploymentsEndpoints::default()

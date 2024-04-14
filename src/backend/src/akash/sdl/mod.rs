@@ -508,7 +508,9 @@ impl SdlV3 {
                 services.insert(
                     service_name.clone(),
                     ServiceV2 {
-                        image: sdl_params.image.unwrap(),
+                        image: sdl_params
+                            .image
+                            .ok_or(String::from("Deployment image is required"))?,
                         command: sdl_params.command,
                         args: None,
                         env: {
@@ -528,12 +530,17 @@ impl SdlV3 {
                             sdl_params
                                 .ports
                                 .iter()
-                                .map(|(port, r#as)| ExposeV2 {
+                                .map(|(port, r#as, accept)| ExposeV2 {
                                     port: port.clone(),
                                     r#as: r#as.clone(),
                                     proto: None,
-                                    to: None,
-                                    accept: None,
+                                    to: Some(vec![ExposeToV2 {
+                                        service: None,
+                                        global: Some(true),
+                                        ip: None,
+                                        http_options: None,
+                                    }]),
+                                    accept: Some(vec![accept.clone()]),
                                     http_options: None,
                                 })
                                 .collect()
@@ -552,16 +559,16 @@ impl SdlV3 {
                             ProfileComputeV3 {
                                 resources: ComputeResourcesV3 {
                                     cpu: ResourceCpuV2 {
-                                        units: "0.5".to_string(),
+                                        units: sdl_params.cpu.to_unit(),
                                         attributes: None,
                                     },
                                     memory: ResourceMemoryV2 {
-                                        size: "512Mi".to_string(),
+                                        size: sdl_params.memory.to_size(),
                                         attributes: None,
                                     },
                                     storage: vec![ResourceStorageV2 {
                                         name: None,
-                                        size: "512Mi".to_string(),
+                                        size: sdl_params.storage.to_size(),
                                         attributes: None,
                                     }],
                                     gpu: None,
