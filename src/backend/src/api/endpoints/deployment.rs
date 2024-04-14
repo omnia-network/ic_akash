@@ -215,7 +215,7 @@ impl DeploymentsEndpoints {
             )));
         }
 
-        let parsed_sdl = SdlV3::try_from_deployment_params(sdl_params)
+        let parsed_sdl = SdlV3::try_from_deployment_params(sdl_params.clone())
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid SDL: {}", e)))?;
 
         let user_id = UserId::new(calling_principal);
@@ -225,10 +225,9 @@ impl DeploymentsEndpoints {
 
         let deployment_id = self
             .deployments_service
-            // TODO: store DeploymentParams
             .init_deployment(
                 user_id,
-                "sdl".to_string(),
+                sdl_params,
                 deployment_akt_price,
                 deployment_icp_price,
             )

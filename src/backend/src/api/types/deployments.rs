@@ -9,7 +9,7 @@ pub type DeploymentId = Uuid;
 
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub struct Deployment {
-    sdl: String,
+    sdl: DeploymentParams,
     user_id: UserId,
     state_history: Vec<(TimestampNs, DeploymentState)>,
     akt_price: f64,
@@ -17,7 +17,7 @@ pub struct Deployment {
 }
 
 impl Deployment {
-    pub fn new(sdl: String, user_id: UserId, akt_price: f64, icp_price: f64) -> Self {
+    pub fn new(sdl: DeploymentParams, user_id: UserId, akt_price: f64, icp_price: f64) -> Self {
         Self {
             sdl,
             user_id,
@@ -27,7 +27,7 @@ impl Deployment {
         }
     }
 
-    pub fn sdl(&self) -> String {
+    pub fn sdl(&self) -> DeploymentParams {
         self.sdl.clone()
     }
 
