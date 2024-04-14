@@ -500,8 +500,7 @@ impl SdlV3 {
     pub fn try_from_deployment_params(sdl_params: DeploymentParams) -> Result<SdlV3, String> {
         let service_name = sdl_params
             .name
-            .clone()
-            .unwrap_or(Err("Name of deployment is required")?);
+            .ok_or(String::from("Name of deployment is required"))?;
         Ok(SdlV3 {
             version: "3.0".to_string(),
             services: {
