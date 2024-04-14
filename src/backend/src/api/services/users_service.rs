@@ -86,8 +86,8 @@ impl UsersService {
         let user_balance = user.akt_balance();
         if user_balance < amount_akt {
             return Err(ApiError::permission_denied(&format!(
-                "Not enough AKT balance. Current balance: {} AKT",
-                user_balance,
+                "Not enough AKT balance. Current balance: {} AKT, required: {} AKT",
+                user_balance, amount_akt,
             )));
         }
 

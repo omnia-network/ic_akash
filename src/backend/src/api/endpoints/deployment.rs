@@ -184,6 +184,7 @@ impl DeploymentsEndpoints {
             .assert_principal_is_user(&calling_principal)?;
 
         let deployment_akt_price = self.deployments_service.get_deployment_akt_price();
+        let deployment_icp_price = self.get_deployment_icp_price().await?;
 
         let canister_balance = self
             .akash_service
@@ -208,12 +209,12 @@ impl DeploymentsEndpoints {
 
         let deployment_id = self
             .deployments_service
-            .init_deployment(user_id, sdl)
+            .init_deployment(user_id, sdl, deployment_akt_price, deployment_icp_price)
             .await?;
 
         print(format!("[Deployment {}]: Initialized", deployment_id));
 
-        ic_cdk_timers::set_timer(Duration::from_secs(0), move || {
+        ic_cdk_timers::set_timer(Duration::ZERO, move || {
             ic_cdk::spawn(async move {
                 print(format!(
                     "[Deployment {}]: Starting to handle deployment creation",

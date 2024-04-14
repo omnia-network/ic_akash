@@ -31,6 +31,7 @@ export const idlFactory = ({ IDL }) => {
   const Deployment = IDL.Record({
     'sdl' : IDL.Text,
     'user_id' : UserId,
+    'icp_price' : IDL.Float64,
     'state_history' : IDL.Vec(IDL.Tuple(TimestampNs, DeploymentState)),
   });
   const GetDeploymentResult = IDL.Variant({

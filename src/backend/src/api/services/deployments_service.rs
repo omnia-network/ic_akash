@@ -42,12 +42,14 @@ impl DeploymentsService {
         &mut self,
         user_id: UserId,
         sdl: String,
+        akt_price: f64,
+        icp_price: f64,
     ) -> Result<DeploymentId, ApiError> {
         let deployment_id = DeploymentId::new()
             .await
             .map_err(|e| ApiError::internal(&format!("Failed to create deployment id: {}", e)))?;
 
-        let deployment = Deployment::new(sdl, user_id);
+        let deployment = Deployment::new(sdl, user_id, akt_price, icp_price);
 
         self.deployments_memory.insert(deployment_id, deployment);
 
