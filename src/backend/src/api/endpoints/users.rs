@@ -87,7 +87,7 @@ impl UsersEndpoints {
         let admin_id = UserId::new(admin_principal);
 
         self.users_service
-            .change_user_role(&admin_id, UserRole::Admin)
+            .change_user_role(admin_id, UserRole::Admin)
     }
 
     pub async fn update_akt_balance(
@@ -114,7 +114,7 @@ impl UsersEndpoints {
         // check if the payment has not been used for a previous deployment by the same user
         let user_id = UserId::new(calling_principal);
         self.users_service
-            .add_payment_to_user_once(&user_id, payment_block_height, paid_akt)?;
+            .add_payment_to_user_once(user_id, payment_block_height, paid_akt)?;
 
         print(&format!(
             "[{:?}]: Received payment of {} AKT. Current balance: {:?} AKT",

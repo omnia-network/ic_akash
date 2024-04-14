@@ -199,7 +199,7 @@ impl DeploymentsEndpoints {
 
         let user_id = UserId::new(calling_principal);
         // deduct AKT from user's balance for deployment escrow
-        self.users_service.charge_user_for_deployment(&user_id)?;
+        self.users_service.charge_user_for_deployment(user_id)?;
 
         let deployment_id = self
             .deployments_service
@@ -262,7 +262,7 @@ impl DeploymentsEndpoints {
         let user_id = UserId::new(calling_principal);
         // deduct AKT from user's balance for deposit to deployment escrow
         self.users_service
-            .charge_user_for_deposit(&user_id, amount_uakt as f64 / 1_000_000.0)?;
+            .charge_user_for_deposit(user_id, amount_uakt as f64 / 1_000_000.0)?;
 
         print(&format!("[{:?}]: Deposit deployment", deployment_id));
         Ok(())
