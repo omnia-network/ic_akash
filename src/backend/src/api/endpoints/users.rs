@@ -99,17 +99,10 @@ impl UsersEndpoints {
             .assert_principal_not_anonymous(&calling_principal)?;
 
         // check if the payment has been sent from the caller to the orchestrator
-        let Some(paid_akt) = self
+        let paid_akt = self
             .ledger_service
             .check_payment(calling_principal, payment_block_height)
-            .await?
-        else {
-            print(&format!(
-                "[{:?}]: Did not send payment",
-                calling_principal.to_string()
-            ));
-            return Err(ApiError::permission_denied("Did not send payment"));
-        };
+            .await?;
 
         // check if the payment has not been used for a previous deployment by the same user
         let user_id = UserId::new(calling_principal);
@@ -117,7 +110,7 @@ impl UsersEndpoints {
             .add_payment_to_user_once(user_id, payment_block_height, paid_akt)?;
 
         print(&format!(
-            "[{:?}]: Received payment of {} AKT. Current balance: {:?} AKT",
+            "[{}]: Received payment of {} AKT. Current balance: {} AKT",
             calling_principal.to_string(),
             paid_akt,
             self.users_service.get_user_akt_balance(&user_id)?

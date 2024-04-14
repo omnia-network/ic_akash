@@ -3,9 +3,10 @@ use crate::api::{
     GetExchangeRateResult,
 };
 use candid::Principal;
-use ic_cdk::api::call::call_with_payment;
-use ic_cdk::api::management_canister::http_request::{HttpMethod, TransformContext};
-use ic_cdk::{api::call::call, print};
+use ic_cdk::api::{
+    call::{call, call_with_payment},
+    management_canister::http_request::{HttpMethod, TransformContext},
+};
 use ic_ledger_types::{
     AccountIdentifier, GetBlocksArgs, Operation, QueryBlocksResponse, Subaccount,
 };
@@ -34,67 +35,68 @@ impl LedgerService {
     }
 
     pub async fn query_blocks(&self, args: GetBlocksArgs) -> Result<QueryBlocksResponse, ApiError> {
-        let (res,) = call(self.ledger_canister_id, "query_blocks", (args,))
+        call(self.ledger_canister_id, "query_blocks", (args,))
             .await
+            .map(|(res,)| res)
             .map_err(|(code, e)| {
                 ApiError::internal(&format!(
                     "failed to query blocks. Rejection code: {:?}, error: {}",
                     code, e
                 ))
-            })?;
-        Ok(res)
+            })?
     }
 
     pub async fn check_payment(
         &self,
         calling_principal: Principal,
-        payment_block_heihgt: u64,
-    ) -> Result<Option<f64>, ApiError> {
+        payment_block_height: u64,
+    ) -> Result<f64, ApiError> {
         let args = GetBlocksArgs {
-            start: payment_block_heihgt,
+            start: payment_block_height,
             length: 1,
         };
 
         let query_blocks_response = self.query_blocks(args).await?;
 
         if query_blocks_response.blocks.is_empty() {
-            print(&format!("no blocks found"));
-            return Ok(None);
+            return Err(ApiError::internal(&format!(
+                "No blocks found at height: {}",
+                payment_block_height,
+            )));
         }
-        if let Some(Operation::Transfer {
-            from,
-            to,
-            amount,
-            fee: _fee,
+
+        let Some(Operation::Transfer {
+            from, to, amount, ..
         }) = query_blocks_response.blocks[0].transaction.operation
-        {
-            let caller_account_id =
-                AccountIdentifier::new(&calling_principal, &Subaccount([0; 32]));
-            let orchestrator_account_id =
-                AccountIdentifier::new(&ic_cdk::api::id(), &Subaccount([0; 32]));
+        else {
+            return Err(ApiError::internal(&format!(
+                "No Transfer operation found in block at height: {}",
+                payment_block_height,
+            )));
+        };
 
-            if from != caller_account_id {
-                return Err(ApiError::not_found(
-                    "caller is not the sender of the payment",
-                ));
-            }
-            if to != orchestrator_account_id {
-                return Err(ApiError::not_found(
-                    "orchestrator is not the recipient of the payment",
-                ));
-            }
-            let paid_akt =
-                (amount.e8s() / 100_000_000) as f64 * self.get_icp_2_akt_conversion_rate().await?;
+        let caller_account_id = AccountIdentifier::new(&calling_principal, &Subaccount([0; 32]));
+        let orchestrator_account_id =
+            AccountIdentifier::new(&ic_cdk::api::id(), &Subaccount([0; 32]));
 
-            // the payment might still be a double spend,
-            // therefore it is important to check that this 'payment_block_heihgt'
-            // has not been used for a previous deployment
-            // this is taken care of by the `users_service`
-            return Ok(Some(paid_akt));
+        if from != caller_account_id {
+            return Err(ApiError::not_found(
+                "caller is not the sender of the payment",
+            ));
         }
+        if to != orchestrator_account_id {
+            return Err(ApiError::not_found(
+                "orchestrator is not the recipient of the payment",
+            ));
+        }
+        let paid_akt =
+            (amount.e8s() / 100_000_000) as f64 * self.get_icp_2_akt_conversion_rate().await?;
 
-        print(&format!("no transfer found"));
-        Ok(None)
+        // the payment might still be a double spend,
+        // therefore it is important to check that this 'payment_block_heihgt'
+        // has not been used for a previous deployment
+        // this is taken care of by the `users_service`
+        Ok(paid_akt)
     }
 
     pub async fn get_usd_exchange(&self, ticker: &str) -> Result<f64, ApiError> {
@@ -157,7 +159,7 @@ impl LedgerService {
     }
 
     pub async fn get_icp_2_akt_conversion_rate(&self) -> Result<f64, ApiError> {
-        if self.get_config().is_mainnet() {
+        let conversion_rate = if self.get_config().is_mainnet() {
             let args = GetExchangeRateRequest {
                 base_asset: Asset {
                     symbol: "AKT".to_string(),
@@ -183,17 +185,17 @@ impl LedgerService {
             let exchange_rate =
                 res.map_err(|e| ApiError::internal(&format!("exchange rate error: {:?}", e)))?;
 
-            return Ok(
-                exchange_rate.rate as f64 * 10_f64.powi(exchange_rate.metadata.decimals as i32)
-            );
-        }
+            exchange_rate.rate as f64 * 10_f64.powi(exchange_rate.metadata.decimals as i32)
+        } else {
+            // used only when testing locally
+            let icp_price = self.get_usd_exchange("ICP").await?;
+            // as the AKT price is not available on the coinbase API, use a hardcoded value
+            // let akt_price = self.get_usd_exchange("AKT").await;
+            let akt_price = 5.0;
 
-        // used only when testing locally
-        let icp_price = self.get_usd_exchange("ICP").await?;
-        // as the AKT price is not available on the coinbase API, use a hardcoded value
-        // let akt_price = self.get_usd_exchange("AKT").await;
-        let akt_price = 5.0;
+            icp_price / akt_price
+        };
 
-        Ok(icp_price / akt_price)
+        Ok(conversion_rate)
     }
 }
