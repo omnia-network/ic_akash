@@ -34,7 +34,7 @@ impl TryFrom<&str> for Uuid {
 
 impl Display for Uuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", self.0.to_string())
     }
 }
 
