@@ -56,8 +56,14 @@ async fn create_certificate(
 }
 
 #[update]
-async fn create_deployment(params: DeploymentParams) -> ApiResult<String> {
-    Err(ApiError::permission_denied("Not implemented")).into()
+async fn create_deployment(sdl_params: DeploymentParams) -> ApiResult<String> {
+    let calling_principal = caller();
+
+    DeploymentsEndpoints::default()
+        .create_deployment(calling_principal, sdl_params)
+        .await
+        .map(|id| id.to_string())
+        .into()
 }
 
 #[update]

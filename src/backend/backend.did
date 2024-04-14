@@ -99,6 +99,30 @@ type CreateDeploymentResult = variant {
   Err : ApiError;
 };
 
+type DeploymentParams = record {
+  name : opt text;
+  image : opt text;
+  env_vars : opt vec record { text; text };
+  ports : vec record { nat32; opt nat32; text };
+  cpu : CpuSize;
+  memory : MemoryStorageSize;
+  storage : MemoryStorageSize;
+  volume_mount : opt text;
+  command : opt vec text;
+};
+
+type CpuSize = variant {
+  Small;
+  Medium;
+  Large;
+};
+
+type MemoryStorageSize = variant {
+  Small;
+  Medium;
+  Large;
+};
+
 //// IC WebSocket types ////
 import "./ws_types.did";
 
@@ -127,7 +151,7 @@ service : (bool) -> {
   "get_deployment" : (text) -> (GetDeploymentResult) query;
   "get_deployments" : () -> (GetDeploymentsResult) query;
   "create_certificate" : (text, text) -> (ApiStringResult);
-  "create_deployment" : (text) -> (CreateDeploymentResult);
+  "create_deployment" : (DeploymentParams) -> (CreateDeploymentResult);
   "deposit_deployment" : (text, nat64) -> (ApiEmptyResult);
   "update_test_deployment_sdl" : (text) -> (ApiEmptyResult);
   "create_test_deployment" : () -> (CreateDeploymentResult);
