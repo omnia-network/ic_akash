@@ -10,7 +10,7 @@ use ic_cdk::api::{
 use ic_ledger_types::{
     AccountIdentifier, GetBlocksArgs, Operation, QueryBlocksResponse, Subaccount,
 };
-use utils::{get_time_nanos, make_http_request};
+use utils::{get_time_seconds, make_http_request};
 
 /// assume requests are at most 1kb
 const REQUEST_SIZE: u128 = 1_000;
@@ -100,7 +100,7 @@ impl LedgerService {
     }
 
     pub async fn get_usd_exchange(&self, ticker: &str) -> Result<f64, ApiError> {
-        let current_timestamp_s = get_time_nanos() / 1_000_000_000;
+        let current_timestamp_s = get_time_seconds();
         let host = "api.pro.coinbase.com";
         let url = format!(
             "https://{}/products/{}-USD/candles?start={}&end={}",
@@ -141,11 +141,9 @@ impl LedgerService {
         //     ],
         //     ...
         //  ]
-        let string_body =
-            String::from_utf8(response.body).expect("Transformed response is not UTF-8 encoded.");
-        let parsed_body: Vec<Vec<f64>> = serde_json::from_str(&string_body).map_err(|e| {
+        let parsed_body: Vec<Vec<f64>> = serde_json::from_slice(&response.body).map_err(|e| {
             ApiError::internal(&format!(
-                "failed to parse {} price: {:?}",
+                "failed to parse {} price: {}",
                 ticker,
                 e.to_string()
             ))
@@ -190,7 +188,6 @@ impl LedgerService {
             // used only when testing locally
             let icp_price = self.get_usd_exchange("ICP").await?;
             // as the AKT price is not available on the coinbase API, use a hardcoded value
-            // let akt_price = self.get_usd_exchange("AKT").await;
             let akt_price = 5.0;
 
             icp_price / akt_price
