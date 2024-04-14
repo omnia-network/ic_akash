@@ -204,7 +204,6 @@ export const idlFactory = ({ IDL }) => {
         [ApiEmptyResult],
         [],
       ),
-    'get_5_akt_in_icp' : IDL.Func([], [ApiFloatResult], []),
     'get_akt_price' : IDL.Func([], [ApiFloatResult], []),
     'get_deployment' : IDL.Func([IDL.Text], [GetDeploymentResult], ['query']),
     'get_deployment_icp_price' : IDL.Func([], [ApiFloatResult], []),

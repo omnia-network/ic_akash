@@ -210,7 +210,6 @@ export interface _SERVICE {
   'create_test_deployment' : ActorMethod<[], CreateDeploymentResult>,
   'create_user' : ActorMethod<[], CreateUserResult>,
   'deposit_deployment' : ActorMethod<[string, bigint], ApiEmptyResult>,
-  'get_5_akt_in_icp' : ActorMethod<[], ApiFloatResult>,
   'get_akt_price' : ActorMethod<[], ApiFloatResult>,
   'get_deployment' : ActorMethod<[string], GetDeploymentResult>,
   'get_deployment_icp_price' : ActorMethod<[], ApiFloatResult>,

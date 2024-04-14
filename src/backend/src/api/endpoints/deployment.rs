@@ -397,7 +397,7 @@ impl DeploymentsEndpoints {
         let icp_2_akt = self.ledger_service.get_icp_2_akt_conversion_rate().await?;
         let deployment_akt_price = self.deployments_service.get_deployment_akt_price();
 
-        Ok(icp_2_akt * deployment_akt_price)
+        Ok(deployment_akt_price / icp_2_akt)
     }
 }
 

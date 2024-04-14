@@ -26,11 +26,6 @@ async fn get_akt_price() -> ApiResult<f64> {
         .into()
 }
 
-#[update]
-async fn get_5_akt_in_icp() -> ApiResult<f64> {
-    LedgerEndpoints::default().get_5_akt_in_icp().await.into()
-}
-
 #[query]
 fn price_transform(raw: TransformArgs) -> HttpResponse {
     let mut res = HttpResponse {
@@ -59,10 +54,5 @@ impl LedgerEndpoints {
 
     async fn get_usd_exchange(&self, ticker: &str) -> Result<f64, ApiError> {
         self.ledger_service.get_usd_exchange(ticker).await
-    }
-
-    async fn get_5_akt_in_icp(&self) -> Result<f64, ApiError> {
-        let icp_2_akt_conversion_rate = self.ledger_service.get_icp_2_akt_conversion_rate().await?;
-        Ok(5.0 / icp_2_akt_conversion_rate)
     }
 }
