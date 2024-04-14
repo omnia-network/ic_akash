@@ -2,10 +2,10 @@ use crate::{
     akash::{address::get_account_id_from_public_key, bids::fetch_bids, sdl::SdlV3},
     api::{
         map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult,
-        Deployment, DeploymentId, DeploymentState, DeploymentsService, GetDeploymentResponse,
-        LedgerService, UserId, UsersService,
+        Deployment, DeploymentId, DeploymentParams, DeploymentState, DeploymentsService,
+        GetDeploymentResponse, LedgerService, ResourceSize, UserId, UsersService,
     },
-    fixtures::{example_sdl, updated_example_sdl},
+    fixtures::updated_example_sdl,
     helpers::uakt_to_akt,
 };
 use candid::Principal;
@@ -56,7 +56,7 @@ async fn create_certificate(
 }
 
 #[update]
-async fn create_deployment(_sdl: String) -> ApiResult<String> {
+async fn create_deployment(params: DeploymentParams) -> ApiResult<String> {
     Err(ApiError::permission_denied("Not implemented")).into()
 }
 
@@ -73,10 +73,16 @@ async fn update_deployment_state(deployment_id: String, update: DeploymentState)
 #[update]
 async fn create_test_deployment() -> ApiResult<String> {
     let calling_principal = caller();
-    let sdl = example_sdl().to_string();
+    let sdl_params = DeploymentParams::builder()
+        .name("IC WebSocket Gateway".to_string())
+        .image("omniadevs/ic-websocket-gateway:v1.3.2".to_string())
+        .cpu(ResourceSize::Small)
+        .memory(ResourceSize::Medium)
+        .storage(ResourceSize::Large)
+        .build();
 
     DeploymentsEndpoints::default()
-        .create_deployment(calling_principal, sdl)
+        .create_deployment(calling_principal, sdl_params)
         .await
         .map(|id| id.to_string())
         .into()
@@ -178,7 +184,7 @@ impl DeploymentsEndpoints {
     async fn create_deployment(
         &mut self,
         calling_principal: Principal,
-        sdl: String,
+        sdl_params: DeploymentParams,
     ) -> Result<DeploymentId, ApiError> {
         self.access_control_service
             .assert_principal_is_user(&calling_principal)?;
@@ -198,7 +204,7 @@ impl DeploymentsEndpoints {
             )));
         }
 
-        let parsed_sdl = SdlV3::try_from_str(&sdl)
+        let parsed_sdl = SdlV3::try_from_deployment_params(sdl_params)
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid SDL: {}", e)))?;
 
         let user_id = UserId::new(calling_principal);
@@ -208,7 +214,8 @@ impl DeploymentsEndpoints {
 
         let deployment_id = self
             .deployments_service
-            .init_deployment(user_id, sdl)
+            // TODO: store DeploymentParams
+            .init_deployment(user_id, "sdl".to_string())
             .await?;
 
         print(format!("[Deployment {}]: Initialized", deployment_id));

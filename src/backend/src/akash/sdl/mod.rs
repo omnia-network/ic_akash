@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use utils::sha256;
 
+use crate::api::DeploymentParams;
+
 use super::proto::{
     base::{
         attribute::{
@@ -493,6 +495,73 @@ impl SdlV3 {
         parsed_sdl.validate()?;
 
         Ok(parsed_sdl)
+    }
+
+    pub fn try_from_deployment_params(sdl_params: DeploymentParams) -> Result<SdlV3, String> {
+        Ok(SdlV3 {
+            version: "3.0".to_string(),
+            services: {
+                let mut services = HashMap::new();
+                services.insert(
+                    sdl_params
+                        .name
+                        .unwrap_or(Err("Name of deployment is required".to_string())?),
+                    ServiceV2 {
+                        image: sdl_params.image.unwrap(),
+                        command: sdl_params.command,
+                        args: None,
+                        env: {
+                            if let Some(env_vars) = sdl_params.env_vars {
+                                Some(
+                                    env_vars
+                                        .iter()
+                                        .map(|(k, v)| vec![k.clone(), v.clone()])
+                                        .flatten()
+                                        .collect(),
+                                )
+                            } else {
+                                None
+                            }
+                        },
+                        expose: {
+                            sdl_params
+                                .ports
+                                .iter()
+                                .map(|(port, r#as)| ExposeV2 {
+                                    port: port.clone(),
+                                    r#as: r#as.clone(),
+                                    proto: None,
+                                    to: None,
+                                    accept: None,
+                                    http_options: None,
+                                })
+                                .collect()
+                        },
+                        dependencies: None,
+                        params: None,
+                    },
+                );
+                services
+            },
+            profiles: {
+                let mut profiles = ProfilesV3 {
+                    compute: {
+                        let mut compute = HashMap::new();
+                        compute
+                    },
+                    placement: {
+                        let mut placement = HashMap::new();
+                        placement
+                    },
+                };
+                profiles
+            },
+            deployment: {
+                let mut deployment = HashMap::new();
+                deployment
+            },
+            endpoints: None,
+        })
     }
 
     fn validate(&self) -> Result<(), String> {

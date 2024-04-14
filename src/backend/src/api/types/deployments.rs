@@ -116,3 +116,102 @@ impl Storable for DeploymentState {
 
     const BOUND: Bound = Bound::Unbounded;
 }
+
+#[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub struct DeploymentParams {
+    pub name: Option<String>,
+    pub image: Option<String>,
+    pub env_vars: Option<Vec<(String, String)>>,
+    pub ports: Vec<(u32, Option<u32>)>,
+    pub cpu: ResourceSize,
+    pub memory: ResourceSize,
+    pub storage: ResourceSize,
+    pub volume_mount: Option<String>,
+    pub command: Option<Vec<String>>,
+}
+
+impl DeploymentParams {
+    /// Create a new deployment based on a Docker image
+    pub fn builder() -> DeploymentParamsBuilder {
+        DeploymentParamsBuilder {
+            inner: DeploymentParams {
+                name: None,
+                image: None,
+                env_vars: None,
+                ports: Vec::new(),
+                cpu: ResourceSize::Small,
+                memory: ResourceSize::Small,
+                storage: ResourceSize::Small,
+                volume_mount: None,
+                command: None,
+            },
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct DeploymentParamsBuilder {
+    inner: DeploymentParams,
+}
+
+impl DeploymentParamsBuilder {
+    pub fn name(mut self, name: String) -> Self {
+        self.inner.name = Some(name);
+        self
+    }
+
+    pub fn image(mut self, image: String) -> Self {
+        self.inner.image = Some(image);
+        self
+    }
+
+    pub fn env_var(mut self, env_var: (String, String)) -> Self {
+        if let Some(ref mut env_vars) = self.inner.env_vars {
+            env_vars.push(env_var);
+        } else {
+            self.inner.env_vars = Some(vec![env_var]);
+        }
+        self
+    }
+
+    pub fn port(mut self, port: (u32, Option<u32>)) -> Self {
+        self.inner.ports.push(port);
+        self
+    }
+
+    pub fn cpu(mut self, cpu: ResourceSize) -> Self {
+        self.inner.cpu = cpu;
+        self
+    }
+
+    pub fn memory(mut self, memory: ResourceSize) -> Self {
+        self.inner.memory = memory;
+        self
+    }
+
+    pub fn storage(mut self, storage: ResourceSize) -> Self {
+        self.inner.storage = storage;
+        self
+    }
+
+    pub fn volume_mount(mut self, volume_mount: String) -> Self {
+        self.inner.volume_mount = Some(volume_mount);
+        self
+    }
+
+    pub fn command(mut self, command: Vec<String>) -> Self {
+        self.inner.command = Some(command);
+        self
+    }
+
+    pub fn build(self) -> DeploymentParams {
+        self.inner
+    }
+}
+
+#[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub enum ResourceSize {
+    Small,
+    Medium,
+    Large,
+}
