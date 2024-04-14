@@ -18,7 +18,7 @@ impl crate::crypto::signature::Verifier for Verifier {
                 pubkey
                     .verify(&sig, msg)
                     .map_err(|_| Error::VerificationFailed)
-            },
+            }
             #[cfg(feature = "secp256k1")]
             PublicKey::Secp256k1(pk) => {
                 use signature::Verifier as _;
@@ -26,7 +26,7 @@ impl crate::crypto::signature::Verifier for Verifier {
                 let sig = k256::ecdsa::Signature::try_from(signature.as_bytes())
                     .map_err(|_| Error::MalformedSignature)?;
                 pk.verify(msg, &sig).map_err(|_| Error::VerificationFailed)
-            },
+            }
             _ => Err(Error::UnsupportedKeyType),
         }
     }
@@ -191,7 +191,7 @@ mod tests {
 
             let public_key = PublicKey::from_raw_ed25519(public_key).unwrap();
             match public_key {
-                PublicKey::Ed25519(_) => {},
+                PublicKey::Ed25519(_) => {}
                 #[cfg(feature = "secp256k1")]
                 _ => panic!("expected public key to be Ed25519: {:?}", public_key),
             }
@@ -279,7 +279,7 @@ mod tests {
 
             let public_key = PublicKey::from_raw_secp256k1(public_key).unwrap();
             match public_key {
-                PublicKey::Secp256k1(_) => {},
+                PublicKey::Secp256k1(_) => {}
                 _ => panic!("expected public key to be secp256k1: {:?}", public_key),
             }
             let der_sig = k256::ecdsa::Signature::from_der(sig).unwrap();

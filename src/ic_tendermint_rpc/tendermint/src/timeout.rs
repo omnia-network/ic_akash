@@ -101,7 +101,7 @@ mod tests {
     #[test]
     fn reject_no_units() {
         match "123".parse::<Timeout>().unwrap_err().detail() {
-            error::ErrorDetail::Parse(_) => {},
+            error::ErrorDetail::Parse(_) => {}
             _ => panic!("expected parse error to be returned"),
         }
     }

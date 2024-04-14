@@ -58,7 +58,7 @@ pub trait MerkleHash {
                 let left = self.hash_byte_vectors(&byte_vecs[..split]);
                 let right = self.hash_byte_vectors(&byte_vecs[split..]);
                 self.inner_hash(left, right)
-            },
+            }
         }
     }
 }

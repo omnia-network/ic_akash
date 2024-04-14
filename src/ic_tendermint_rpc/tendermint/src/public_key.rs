@@ -211,13 +211,13 @@ impl PublicKey {
                 let mut key_bytes = vec![0x16, 0x24, 0xDE, 0x64, 0x20];
                 key_bytes.extend(pk.as_bytes());
                 key_bytes
-            },
+            }
             #[cfg(feature = "secp256k1")]
             PublicKey::Secp256k1(ref pk) => {
                 let mut key_bytes = vec![0xEB, 0x5A, 0xE9, 0x87, 0x21];
                 key_bytes.extend(pk.to_sec1_bytes().as_ref());
                 key_bytes
-            },
+            }
         };
         bech32::encode(hrp, backward_compatible_amino_prefixed_pubkey)
     }

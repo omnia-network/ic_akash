@@ -94,7 +94,7 @@ impl Hash {
                 } else {
                     Err(Error::invalid_hash_size())
                 }
-            },
+            }
         }
     }
 
@@ -110,7 +110,7 @@ impl Hash {
                     .decode_to_slice(s.as_bytes(), &mut h)
                     .map_err(Error::subtle_encoding)?;
                 Ok(Hash::Sha256(h))
-            },
+            }
         }
     }
 

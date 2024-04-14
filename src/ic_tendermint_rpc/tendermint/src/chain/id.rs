@@ -155,7 +155,7 @@ mod tests {
     #[test]
     fn rejects_empty_chain_ids() {
         match "".parse::<Id>().unwrap_err().detail() {
-            ErrorDetail::Length(_) => {},
+            ErrorDetail::Length(_) => {}
             _ => panic!("expected length error"),
         }
     }
@@ -164,7 +164,7 @@ mod tests {
     fn rejects_overlength_chain_ids() {
         let overlong_id = String::from_utf8(vec![b'x'; MAX_LENGTH + 1]).unwrap();
         match overlong_id.parse::<Id>().unwrap_err().detail() {
-            ErrorDetail::Length(_) => {},
+            ErrorDetail::Length(_) => {}
             _ => panic!("expected length error"),
         }
     }
