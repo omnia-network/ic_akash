@@ -1,3 +1,4 @@
+use candid::Nat;
 use ic_cdk::{
     api::management_canister::http_request::{
         HttpHeader, HttpMethod, HttpResponse, TransformArgs, TransformContext,
@@ -131,6 +132,8 @@ pub async fn broadcast_tx_sync(
     url: String,
     tx_raw: Vec<u8>,
 ) -> Result<String, String> {
+    let status_ok = Nat::from(200u16);
+
     let request = TxSyncRequest::new(tx_raw.clone());
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
@@ -153,7 +156,7 @@ pub async fn broadcast_tx_sync(
     )
     .await?;
 
-    if response.status != 200 {
+    if response.status != status_ok {
         return Err(format!(
             "incorrect status. Expected 200, received: {:?}",
             response.status

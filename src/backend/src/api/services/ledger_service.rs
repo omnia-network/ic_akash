@@ -1,7 +1,4 @@
-use crate::api::{
-    config_state, ApiError, Asset, AssetClass, Config, GetExchangeRateRequest,
-    GetExchangeRateResult,
-};
+use crate::api::{config_state, ApiError, Config};
 use candid::Principal;
 use ic_cdk::api::{
     call::{call, call_with_payment},
@@ -10,6 +7,7 @@ use ic_cdk::api::{
 use ic_ledger_types::{
     AccountIdentifier, GetBlocksArgs, Operation, QueryBlocksResponse, Subaccount,
 };
+use ic_xrc_types::{Asset, AssetClass, GetExchangeRateRequest, GetExchangeRateResult};
 use utils::{get_time_seconds, make_http_request};
 
 /// assume requests are at most 1kb

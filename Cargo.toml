@@ -3,8 +3,8 @@ members = ["src/backend", "src/ic_tendermint_rpc", "src/utils"]
 resolver = "2"
 
 [workspace.dependencies]
-candid = "0.9.11"
-ic-cdk = "0.10.0"
+candid = "0.10"
+ic-cdk = "0.13"
 ic-stable-structures = "0.6"
 
 serde = "1.0.195"

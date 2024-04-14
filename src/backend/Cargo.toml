@@ -12,22 +12,23 @@ crate-type = ["cdylib"]
 candid.workspace = true
 ic-cdk.workspace = true
 ic-stable-structures.workspace = true
+ic-websocket-cdk = "0.3"
+ic-cdk-timers = "0.6"
+ic-ledger-types = "0.10"
+ic-xrc-types = "1.2"
 
 serde.workspace = true
 serde_json.workspace = true
-hex.workspace = true
+serde_yaml = "0.9.30"
+serde_repr = "0.1.18"
 
 bech32 = "0.9.1"
 cosmrs = "0.15.0"
 getrandom = { version = "0.2", features = ["custom"] }
 prost = "0.12.3"
 prost-types = "0.12.3"
-serde_yaml = "0.9.30"
 regex = "1.10.3"
-serde_repr = "0.1.18"
-ic-websocket-cdk = "0.3.3"
-ic-cdk-timers = "0.4.0"
-ic-ledger-types = "0.8.0"
+hex.workspace = true
 
 ic_tendermint_rpc = { path = "../ic_tendermint_rpc" }
 utils.workspace = true

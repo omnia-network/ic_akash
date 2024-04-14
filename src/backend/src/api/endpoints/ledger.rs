@@ -1,4 +1,5 @@
 use crate::api::{ApiError, ApiResult, LedgerService};
+use candid::Nat;
 use ic_cdk::{
     api::management_canister::http_request::{HttpResponse, TransformArgs},
     query, update,
@@ -28,13 +29,15 @@ async fn get_akt_price() -> ApiResult<f64> {
 
 #[query]
 fn price_transform(raw: TransformArgs) -> HttpResponse {
+    let status_ok = Nat::from(200u16);
+
     let mut res = HttpResponse {
         status: raw.response.status.clone(),
         body: raw.response.body.clone(),
         ..Default::default()
     };
 
-    if res.status == 200 {
+    if res.status == status_ok {
         res.body = raw.response.body;
     } else {
         ic_cdk::api::print(format!("Received an error from coinbase: err = {:?}", raw));
