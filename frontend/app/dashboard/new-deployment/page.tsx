@@ -1,7 +1,6 @@
 "use client";
 
 import { BackButton } from "@/components/back-button";
-import { LoadingButton } from "@/components/loading-button";
 import { useToast } from "@/components/ui/use-toast";
 import { useDeploymentContext } from "@/contexts/DeploymentContext";
 import {
@@ -16,13 +15,12 @@ import { extractOk } from "@/helpers/result";
 import { sendManifestToProvider } from "@/services/deployment";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Textarea } from "@/components/ui/textarea";
-import { TEST_DEPLOYMENT_CONFIG } from "@/fixtures/deployment";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Milestone } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { displayE8sAsIcp, icpToE8s } from "@/helpers/ui";
 import { transferE8sToBackend } from "@/services/backend";
 import { Spinner } from "@/components/spinner";
+import { NewDeploymentForm } from "@/components/new-deployment-form";
 
 const FETCH_DEPLOYMENT_PRICE_INTERVAL_MS = 30_000; // 30 seconds
 
@@ -31,7 +29,7 @@ export default function NewDeployment() {
   const { backendActor, openWs, closeWs, setWsCallbacks, ledgerCanister, ledgerData, refreshLedgerData } = useIcContext();
   const { tlsCertificateData, loadOrCreateCertificate, fetchDeployments } =
     useDeploymentContext();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [deploymentSteps, setDeploymentSteps] = useState<
     Array<DeploymentState>
@@ -47,7 +45,7 @@ export default function NewDeployment() {
 
   const toastError = useCallback(
     (message: string) => {
-      setIsLoading(false);
+      setIsSubmitting(false);
 
       toast({
         variant: "destructive",
@@ -76,7 +74,7 @@ export default function NewDeployment() {
       toastError("Failed to create deployment, see console for details");
     }
 
-    setIsLoading(false);
+    setIsSubmitting(false);
   }, [backendActor, loadOrCreateCertificate, toastError]);
 
   const onWsMessage: OnWsMessageCallback = useCallback(
@@ -192,7 +190,7 @@ export default function NewDeployment() {
     [toastError]
   );
 
-  const handleDeploy = useCallback(async () => {
+  const handleDeploy = useCallback(async (values: any) => {
     if (!backendActor || !ledgerCanister) {
       toastError("Backend actor or ledger canister not found");
       return;
@@ -312,56 +310,40 @@ export default function NewDeployment() {
       <div className="grid gap-4 md:grid-cols-2">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <h5 className="font-bold">
-              Configuration:
-            </h5>
-            <Textarea
-              value={TEST_DEPLOYMENT_CONFIG}
-              rows={TEST_DEPLOYMENT_CONFIG.split("\n").length}
-              disabled
+            <NewDeploymentForm
+              isLoading={isSubmitting || isDeploying}
+              isSubmitDisabled={!userHasEnoughBalance}
+              onSubmit={handleDeploy}
+              priceComponent={(
+                <div className="flex flex-col gap-2">
+                  <h5 className="font-bold">
+                    Price (est.):
+                  </h5>
+                  {deploymentE8sPrice !== null ? (
+                    <pre>~{displayE8sAsIcp(deploymentE8sPrice, { maximumFractionDigits: 6 })}</pre>
+                  ) : (
+                    <Spinner />
+                  )}
+                  {(!(isSubmitting || isDeploying) && (deploymentE8sPrice !== null) && !userHasEnoughBalance) && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Insufficient balance</AlertTitle>
+                      <AlertDescription>
+                        <p>Please top up your account.</p>
+                        <p className="mt-2">Your Ledger Account ID is:</p>
+                        <pre
+                          className="w-fit px-2 py-1 rounded bg-secondary"
+                        >
+                          {ledgerData.accountId?.toHex()}
+                        </pre>
+                        <p className="mt-2">If you&apos;ve already topped up your account, please refresh the balance on the top bar.</p>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
             />
-            <Alert>
-              <Milestone className="h-4 w-4" />
-              <AlertTitle>Coming soon</AlertTitle>
-              <AlertDescription>
-                In the next versions, you will be able to deploy your own
-                services.
-              </AlertDescription>
-            </Alert>
           </div>
-          <div className="flex flex-col gap-2">
-            <h5 className="font-bold">
-              Price (est.):
-            </h5>
-            {deploymentE8sPrice !== null ? (
-              <pre>~{displayE8sAsIcp(deploymentE8sPrice, { maximumFractionDigits: 6 })}</pre>
-            ) : (
-              <Spinner />
-            )}
-            {(!(isLoading || isDeploying) && (deploymentE8sPrice !== null) && !userHasEnoughBalance) && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Insufficient balance</AlertTitle>
-                <AlertDescription>
-                  <p>Please top up your account.</p>
-                  <p className="mt-2">Your Ledger Account ID is:</p>
-                  <pre
-                    className="w-fit px-2 py-1 rounded bg-secondary"
-                  >
-                    {ledgerData.accountId?.toHex()}
-                  </pre>
-                  <p className="mt-2">If you&apos;ve already topped up your account, please refresh the balance on the top bar.</p>
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
-          <LoadingButton
-            onClick={handleDeploy}
-            isLoading={isLoading || isDeploying}
-            disabled={!userHasEnoughBalance}
-          >
-            Deploy service
-          </LoadingButton>
         </div>
         <div className="flex flex-col gap-4">
           {paymentStatus && (
