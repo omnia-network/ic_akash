@@ -3,6 +3,38 @@ export const idlFactory = ({ IDL }) => {
   const ApiStringResult = IDL.Variant({ 'Ok' : IDL.Text, 'Err' : ApiError });
   const ApiNatResult = IDL.Variant({ 'Ok' : IDL.Nat64, 'Err' : ApiError });
   const ApiEmptyResult = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : ApiError });
+  const CpuSize = IDL.Variant({
+    'Large' : IDL.Null,
+    'Small' : IDL.Null,
+    'Medium' : IDL.Null,
+  });
+  const MemorySize = IDL.Variant({
+    'Large' : IDL.Null,
+    'Small' : IDL.Null,
+    'Medium' : IDL.Null,
+  });
+  const StorageSize = IDL.Variant({
+    'Large' : IDL.Null,
+    'Small' : IDL.Null,
+    'Medium' : IDL.Null,
+  });
+  const DeploymentParams = IDL.Record({
+    'cpu' : CpuSize,
+    'memory' : MemorySize,
+    'storage' : StorageSize,
+    'name' : IDL.Text,
+    'volume_mount' : IDL.Opt(IDL.Text),
+    'command' : IDL.Vec(IDL.Text),
+    'env_vars' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text)),
+    'image' : IDL.Text,
+    'ports' : IDL.Vec(
+      IDL.Record({
+        'as' : IDL.Opt(IDL.Nat32),
+        'accept' : IDL.Opt(IDL.Text),
+        'port' : IDL.Nat32,
+      })
+    ),
+  });
   const DeploymentId = IDL.Text;
   const CreateDeploymentResult = IDL.Variant({
     'Ok' : DeploymentId,
@@ -197,7 +229,11 @@ export const idlFactory = ({ IDL }) => {
         [ApiStringResult],
         [],
       ),
-    'create_deployment' : IDL.Func([IDL.Text], [CreateDeploymentResult], []),
+    'create_deployment' : IDL.Func(
+        [DeploymentParams],
+        [CreateDeploymentResult],
+        [],
+      ),
     'create_test_deployment' : IDL.Func([], [CreateDeploymentResult], []),
     'create_user' : IDL.Func([], [CreateUserResult], []),
     'deposit_deployment' : IDL.Func(

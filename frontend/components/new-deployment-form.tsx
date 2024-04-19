@@ -1,7 +1,7 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useFieldArray, useForm } from "react-hook-form";
+import { SubmitHandler, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { ChevronDown, Plus, X } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { LoadingButton } from "@/components/loading-button";
+import type { CpuSize, DeploymentParams, MemorySize, StorageSize } from "@/declarations/backend.did";
 
 enum DeploymentTier {
   SMALL = "small",
@@ -33,32 +34,32 @@ enum DeploymentTier {
 };
 
 type TierParams = {
-  cpuSize: "small" | "medium" | "large";
-  memorySize: "small" | "medium" | "large";
-  storageSize: "small" | "medium" | "large";
+  cpuSize: CpuSize;
+  memorySize: MemorySize;
+  storageSize: StorageSize;
   titleText: string;
   subtitleText: string;
 };
 
 const TIERS: Record<string, TierParams> = {
   [DeploymentTier.SMALL]: {
-    cpuSize: "small",
-    memorySize: "small",
-    storageSize: "small",
+    cpuSize: { Small: null },
+    memorySize: { Small: null },
+    storageSize: { Small: null },
     titleText: "Small",
     subtitleText: "0.5 vCPU | 0.5 GB RAM | 500 MB Storage",
   },
   [DeploymentTier.MEDIUM]: {
-    cpuSize: "medium",
-    memorySize: "medium",
-    storageSize: "medium",
+    cpuSize: { Medium: null },
+    memorySize: { Medium: null },
+    storageSize: { Medium: null },
     titleText: "Medium",
     subtitleText: "1 vCPU | 1 GB RAM | 5 GB Storage",
   },
   [DeploymentTier.LARGE]: {
-    cpuSize: "large",
-    memorySize: "large",
-    storageSize: "large",
+    cpuSize: { Large: null },
+    memorySize: { Large: null },
+    storageSize: { Large: null },
     titleText: "Large",
     subtitleText: "2 vCPU | 2 GB RAM | 10 GB Storage",
   },
@@ -86,7 +87,7 @@ export interface NewDeploymentFormProps {
   isLoading?: boolean;
   isSubmitDisabled?: boolean;
   priceComponent?: React.ReactNode;
-  onSubmit: (values: z.infer<typeof formSchema>) => Promise<void> | void;
+  onSubmit: (values: DeploymentParams) => Promise<void> | void;
 };
 
 export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading, isSubmitDisabled, priceComponent, onSubmit }) => {
@@ -129,10 +130,42 @@ export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading,
     ...watchPorts[index]
   }));
 
-  const onFormSubmit = async (values: z.infer<typeof formSchema>) => {
-    // TODO: map the form values to the backend Candid types
-    // and pass them to the callback
-    await onSubmit(values);
+  const onFormSubmit: SubmitHandler<z.infer<typeof formSchema>> = async (values) => {
+    const tierParams = TIERS[values.tier];
+
+    const deploymentParams: DeploymentParams = {
+      name: values.deploymentName,
+      image: values.dockerImage,
+      env_vars: [],
+      ports: [],
+      cpu: tierParams.cpuSize,
+      memory: tierParams.memorySize,
+      storage: tierParams.storageSize,
+      volume_mount: [],
+      command: values.command,
+    };
+
+    for (const { name, value } of values.envVariables) {
+      if (name && value) {
+        deploymentParams.env_vars.push([name, value]);
+      }
+    }
+
+    for (const { containerPort, hostPort } of values.ports) {
+      if (containerPort && hostPort) {
+        deploymentParams.ports.push({
+          port: containerPort,
+          as: [hostPort],
+          accept: [],
+        });
+      }
+    }
+
+    if (values.volumeMount) {
+      deploymentParams.volume_mount = [values.volumeMount];
+    }
+
+    await onSubmit(deploymentParams);
   };
 
   return (

@@ -9,7 +9,7 @@ import {
   useIcContext,
   type OnWsErrorCallback,
 } from "@/contexts/IcContext";
-import { type DeploymentState } from "@/declarations/backend.did";
+import type { DeploymentParams, DeploymentState } from "@/declarations/backend.did";
 import { extractDeploymentCreated } from "@/helpers/deployment";
 import { extractOk } from "@/helpers/result";
 import { sendManifestToProvider } from "@/services/deployment";
@@ -41,6 +41,7 @@ export default function NewDeployment() {
     [ledgerData.balanceE8s, deploymentE8sPrice]
   );
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const [deploymentParams, setDeploymentParams] = useState<DeploymentParams | null>(null);
   const { toast } = useToast();
 
   const toastError = useCallback(
@@ -61,9 +62,17 @@ export default function NewDeployment() {
 
     setIsDeploying(true);
     try {
+      if (!backendActor) {
+        throw new Error("No backend actor");
+      }
+
+      if (!deploymentParams) {
+        throw new Error("No deployment params");
+      }
+
       await loadOrCreateCertificate(backendActor!);
 
-      const res = await backendActor!.create_test_deployment();
+      const res = await backendActor.create_deployment(deploymentParams);
       const deploymentId = extractOk(res);
 
       console.log("deployment id", deploymentId);
@@ -75,7 +84,7 @@ export default function NewDeployment() {
     }
 
     setIsSubmitting(false);
-  }, [backendActor, loadOrCreateCertificate, toastError]);
+  }, [backendActor, loadOrCreateCertificate, toastError, deploymentParams]);
 
   const onWsMessage: OnWsMessageCallback = useCallback(
     async (ev) => {
@@ -190,7 +199,7 @@ export default function NewDeployment() {
     [toastError]
   );
 
-  const handleDeploy = useCallback(async (values: any) => {
+  const handleDeploy = useCallback(async (values: DeploymentParams) => {
     if (!backendActor || !ledgerCanister) {
       toastError("Backend actor or ledger canister not found");
       return;
@@ -206,8 +215,8 @@ export default function NewDeployment() {
       return;
     }
 
-    setIsLoading(true);
-
+    setDeploymentParams(values);
+    setIsSubmitting(true);
 
     try {
       setPaymentStatus(`Sending ~${displayE8sAsIcp(deploymentE8sPrice)} to backend canister...`);
@@ -229,7 +238,8 @@ export default function NewDeployment() {
       console.error(e);
       toastError("Failed to transfer funds, see console for details");
       setPaymentStatus(prev => prev + " FAILED");
-      setIsLoading(false);
+      setDeploymentParams(null);
+      setIsSubmitting(false);
       return;
     }
 
