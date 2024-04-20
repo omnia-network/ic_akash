@@ -29,9 +29,9 @@ export const idlFactory = ({ IDL }) => {
     'image' : IDL.Text,
     'ports' : IDL.Vec(
       IDL.Record({
-        'as' : IDL.Opt(IDL.Nat32),
-        'accept' : IDL.Opt(IDL.Text),
-        'port' : IDL.Nat32,
+        'container_port' : IDL.Nat32,
+        'domain' : IDL.Opt(IDL.Text),
+        'host_port' : IDL.Nat32,
       })
     ),
   });

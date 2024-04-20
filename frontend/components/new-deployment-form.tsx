@@ -154,9 +154,9 @@ export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading,
     for (const { containerPort, hostPort } of values.ports) {
       if (containerPort && hostPort) {
         deploymentParams.ports.push({
-          port: containerPort,
-          as: [hostPort],
-          accept: [],
+          container_port: containerPort,
+          host_port: hostPort,
+          domain: [],
         });
       }
     }

@@ -9,7 +9,7 @@ pub type DeploymentId = Uuid;
 
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub struct Deployment {
-    sdl: String,
+    params: DeploymentParams,
     user_id: UserId,
     state_history: Vec<(TimestampNs, DeploymentState)>,
     akt_price: f64,
@@ -17,9 +17,9 @@ pub struct Deployment {
 }
 
 impl Deployment {
-    pub fn new(sdl: String, user_id: UserId, akt_price: f64, icp_price: f64) -> Self {
+    pub fn new(params: DeploymentParams, user_id: UserId, akt_price: f64, icp_price: f64) -> Self {
         Self {
-            sdl,
+            params,
             user_id,
             state_history: vec![(get_time_nanos(), DeploymentState::Initialized)],
             akt_price,
@@ -27,8 +27,8 @@ impl Deployment {
         }
     }
 
-    pub fn sdl(&self) -> String {
-        self.sdl.clone()
+    pub fn params(&self) -> DeploymentParams {
+        self.params.clone()
     }
 
     pub fn user_id(&self) -> UserId {
@@ -123,4 +123,169 @@ impl Storable for DeploymentState {
     }
 
     const BOUND: Bound = Bound::Unbounded;
+}
+
+#[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub struct DeploymentParams {
+    /// name of the service
+    pub name: String,
+    /// name of the Docker image to deploy
+    pub image: String,
+    /// environment variables to pass to the container
+    /// in the form of key-value pairs
+    pub env_vars: Vec<(String, String)>,
+    /// container ports mapping
+    pub ports: Vec<DeploymentParamsPort>,
+    /// CPU resource requirements
+    pub cpu: CpuSize,
+    /// memory resource requirements
+    pub memory: MemorySize,
+    /// storage resource requirements
+    pub storage: StorageSize,
+    /// volume mount for the container
+    pub volume_mount: Option<String>,
+    /// command to run in the container
+    pub command: Vec<String>,
+}
+
+impl DeploymentParams {
+    /// Create a new deployment based on a Docker image
+    pub fn builder(name: String, image: String) -> DeploymentParamsBuilder {
+        DeploymentParamsBuilder {
+            inner: DeploymentParams {
+                name,
+                image,
+                env_vars: vec![],
+                ports: vec![],
+                cpu: CpuSize::Small,
+                memory: MemorySize::Small,
+                storage: StorageSize::Small,
+                volume_mount: None,
+                command: vec![],
+            },
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct DeploymentParamsBuilder {
+    inner: DeploymentParams,
+}
+
+#[allow(dead_code)]
+impl DeploymentParamsBuilder {
+    pub fn env_var(mut self, env_var: (String, String)) -> Self {
+        self.inner.env_vars.push(env_var);
+        self
+    }
+
+    pub fn port(mut self, port: DeploymentParamsPort) -> Self {
+        self.inner.ports.push(port);
+        self
+    }
+
+    pub fn cpu(mut self, cpu: CpuSize) -> Self {
+        self.inner.cpu = cpu;
+        self
+    }
+
+    pub fn memory(mut self, memory: MemorySize) -> Self {
+        self.inner.memory = memory;
+        self
+    }
+
+    pub fn storage(mut self, storage: StorageSize) -> Self {
+        self.inner.storage = storage;
+        self
+    }
+
+    pub fn volume_mount(mut self, volume_mount: String) -> Self {
+        self.inner.volume_mount = Some(volume_mount);
+        self
+    }
+
+    pub fn command(mut self, command: Vec<String>) -> Self {
+        self.inner.command = command;
+        self
+    }
+
+    pub fn build(self) -> DeploymentParams {
+        self.inner
+    }
+}
+
+#[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub struct DeploymentParamsPort {
+    pub container_port: u32,
+    pub host_port: u32,
+    pub domain: Option<String>,
+}
+
+impl DeploymentParamsPort {
+    pub fn new(container_port: u32, host_port: u32) -> Self {
+        Self {
+            container_port,
+            host_port,
+            domain: None,
+        }
+    }
+
+    pub fn with_domain(mut self, domain: String) -> Self {
+        self.domain = Some(domain);
+        self
+    }
+}
+
+#[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub enum CpuSize {
+    Small,
+    Medium,
+    Large,
+}
+
+impl CpuSize {
+    pub fn to_unit(&self) -> String {
+        match self {
+            // TODO: configure the tiers
+            CpuSize::Small => "0.5".to_string(),
+            CpuSize::Medium => "0.5".to_string(),
+            CpuSize::Large => "0.5".to_string(),
+        }
+    }
+}
+
+#[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub enum MemorySize {
+    Small,
+    Medium,
+    Large,
+}
+
+impl MemorySize {
+    pub fn to_size(&self) -> String {
+        match self {
+            // TODO: configure the tiers
+            MemorySize::Small => "512Mi".to_string(),
+            MemorySize::Medium => "512Mi".to_string(),
+            MemorySize::Large => "512Mi".to_string(),
+        }
+    }
+}
+
+#[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub enum StorageSize {
+    Small,
+    Medium,
+    Large,
+}
+
+impl StorageSize {
+    pub fn to_size(&self) -> String {
+        match self {
+            // TODO: configure the tiers
+            StorageSize::Small => "512Mi".to_string(),
+            StorageSize::Medium => "512Mi".to_string(),
+            StorageSize::Large => "512Mi".to_string(),
+        }
+    }
 }

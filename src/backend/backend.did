@@ -104,9 +104,9 @@ type DeploymentParams = record {
   image : text;
   env_vars : vec record { text; text };
   ports : vec record {
-    port : nat32;
-    as : opt nat32;
-    accept : opt text;
+    container_port : nat32;
+    host_port : nat32;
+    domain : opt text;
   };
   cpu : CpuSize;
   memory : MemorySize;

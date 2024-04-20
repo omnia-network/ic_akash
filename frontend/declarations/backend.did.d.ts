@@ -86,7 +86,11 @@ export interface DeploymentParams {
   'env_vars' : Array<[string, string]>,
   'image' : string,
   'ports' : Array<
-    { 'as' : [] | [number], 'accept' : [] | [string], 'port' : number }
+    {
+      'container_port' : number,
+      'domain' : [] | [string],
+      'host_port' : number,
+    }
   >,
 }
 export type DeploymentState = { 'FailedOnClient' : { 'reason' : string } } |

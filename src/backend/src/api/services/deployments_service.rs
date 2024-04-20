@@ -1,7 +1,7 @@
 use crate::{
     api::{
         config_state, init_deployments, ApiError, Config, Deployment, DeploymentId,
-        DeploymentState, DeploymentUpdateWsMessage, DeploymentsMemory, UserId,
+        DeploymentParams, DeploymentState, DeploymentUpdateWsMessage, DeploymentsMemory, UserId,
     },
     helpers::{send_canister_update, uakt_to_akt},
 };
@@ -41,7 +41,7 @@ impl DeploymentsService {
     pub async fn init_deployment(
         &mut self,
         user_id: UserId,
-        sdl: String,
+        sdl_params: DeploymentParams,
         akt_price: f64,
         icp_price: f64,
     ) -> Result<DeploymentId, ApiError> {
@@ -49,7 +49,7 @@ impl DeploymentsService {
             .await
             .map_err(|e| ApiError::internal(&format!("Failed to create deployment id: {}", e)))?;
 
-        let deployment = Deployment::new(sdl, user_id, akt_price, icp_price);
+        let deployment = Deployment::new(sdl_params, user_id, akt_price, icp_price);
 
         self.deployments_memory.insert(deployment_id, deployment);
 
