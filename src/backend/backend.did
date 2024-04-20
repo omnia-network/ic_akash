@@ -103,10 +103,14 @@ type DeploymentParams = record {
   name : text;
   image : text;
   env_vars : vec record { text; text };
-  ports : vec record { nat32; opt nat32; text };
+  ports : vec record {
+    container_port : nat32;
+    host_port : nat32;
+    domain : opt text;
+  };
   cpu : CpuSize;
-  memory : MemoryStorageSize;
-  storage : MemoryStorageSize;
+  memory : MemorySize;
+  storage : StorageSize;
   volume_mount : opt text;
   command : vec text;
 };
@@ -117,7 +121,13 @@ type CpuSize = variant {
   Large;
 };
 
-type MemoryStorageSize = variant {
+type MemorySize = variant {
+  Small;
+  Medium;
+  Large;
+};
+
+type StorageSize = variant {
   Small;
   Medium;
   Large;

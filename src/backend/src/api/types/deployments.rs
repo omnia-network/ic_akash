@@ -133,20 +133,19 @@ pub struct DeploymentParams {
     pub image: String,
     /// environment variables to pass to the container
     /// in the form of key-value pairs
-    pub env_vars: Option<Vec<(String, String)>>,
-    /// ports exposed by the container
-    /// in the form of (internal_port, external_port, url)
-    pub ports: Vec<(u32, Option<u32>, String)>,
+    pub env_vars: Vec<(String, String)>,
+    /// container ports mapping
+    pub ports: Vec<DeploymentParamsPort>,
     /// CPU resource requirements
     pub cpu: CpuSize,
     /// memory resource requirements
-    pub memory: MemoryStorageSize,
+    pub memory: MemorySize,
     /// storage resource requirements
-    pub storage: MemoryStorageSize,
+    pub storage: StorageSize,
     /// volume mount for the container
     pub volume_mount: Option<String>,
     /// command to run in the container
-    pub command: Option<Vec<String>>,
+    pub command: Vec<String>,
 }
 
 impl DeploymentParams {
@@ -156,13 +155,13 @@ impl DeploymentParams {
             inner: DeploymentParams {
                 name,
                 image,
-                env_vars: None,
-                ports: Vec::new(),
+                env_vars: vec![],
+                ports: vec![],
                 cpu: CpuSize::Small,
-                memory: MemoryStorageSize::Small,
-                storage: MemoryStorageSize::Small,
+                memory: MemorySize::Small,
+                storage: StorageSize::Small,
                 volume_mount: None,
-                command: None,
+                command: vec![],
             },
         }
     }
@@ -173,17 +172,14 @@ pub struct DeploymentParamsBuilder {
     inner: DeploymentParams,
 }
 
+#[allow(dead_code)]
 impl DeploymentParamsBuilder {
     pub fn env_var(mut self, env_var: (String, String)) -> Self {
-        if let Some(ref mut env_vars) = self.inner.env_vars {
-            env_vars.push(env_var);
-        } else {
-            self.inner.env_vars = Some(vec![env_var]);
-        }
+        self.inner.env_vars.push(env_var);
         self
     }
 
-    pub fn port(mut self, port: (u32, Option<u32>, String)) -> Self {
+    pub fn port(mut self, port: DeploymentParamsPort) -> Self {
         self.inner.ports.push(port);
         self
     }
@@ -193,12 +189,12 @@ impl DeploymentParamsBuilder {
         self
     }
 
-    pub fn memory(mut self, memory: MemoryStorageSize) -> Self {
+    pub fn memory(mut self, memory: MemorySize) -> Self {
         self.inner.memory = memory;
         self
     }
 
-    pub fn storage(mut self, storage: MemoryStorageSize) -> Self {
+    pub fn storage(mut self, storage: StorageSize) -> Self {
         self.inner.storage = storage;
         self
     }
@@ -209,12 +205,34 @@ impl DeploymentParamsBuilder {
     }
 
     pub fn command(mut self, command: Vec<String>) -> Self {
-        self.inner.command = Some(command);
+        self.inner.command = command;
         self
     }
 
     pub fn build(self) -> DeploymentParams {
         self.inner
+    }
+}
+
+#[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub struct DeploymentParamsPort {
+    pub container_port: u32,
+    pub host_port: u32,
+    pub domain: Option<String>,
+}
+
+impl DeploymentParamsPort {
+    pub fn new(container_port: u32, host_port: u32) -> Self {
+        Self {
+            container_port,
+            host_port,
+            domain: None,
+        }
+    }
+
+    pub fn with_domain(mut self, domain: String) -> Self {
+        self.domain = Some(domain);
+        self
     }
 }
 
@@ -228,6 +246,7 @@ pub enum CpuSize {
 impl CpuSize {
     pub fn to_unit(&self) -> String {
         match self {
+            // TODO: configure the tiers
             CpuSize::Small => "0.5".to_string(),
             CpuSize::Medium => "0.5".to_string(),
             CpuSize::Large => "0.5".to_string(),
@@ -236,18 +255,37 @@ impl CpuSize {
 }
 
 #[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
-pub enum MemoryStorageSize {
+pub enum MemorySize {
     Small,
     Medium,
     Large,
 }
 
-impl MemoryStorageSize {
+impl MemorySize {
     pub fn to_size(&self) -> String {
         match self {
-            MemoryStorageSize::Small => "512Mi".to_string(),
-            MemoryStorageSize::Medium => "512Mi".to_string(),
-            MemoryStorageSize::Large => "512Mi".to_string(),
+            // TODO: configure the tiers
+            MemorySize::Small => "512Mi".to_string(),
+            MemorySize::Medium => "512Mi".to_string(),
+            MemorySize::Large => "512Mi".to_string(),
+        }
+    }
+}
+
+#[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub enum StorageSize {
+    Small,
+    Medium,
+    Large,
+}
+
+impl StorageSize {
+    pub fn to_size(&self) -> String {
+        match self {
+            // TODO: configure the tiers
+            StorageSize::Small => "512Mi".to_string(),
+            StorageSize::Medium => "512Mi".to_string(),
+            StorageSize::Large => "512Mi".to_string(),
         }
     }
 }

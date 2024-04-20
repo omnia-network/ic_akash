@@ -2,8 +2,9 @@ use crate::{
     akash::{address::get_account_id_from_public_key, bids::fetch_bids, sdl::SdlV3},
     api::{
         map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult, CpuSize,
-        Deployment, DeploymentId, DeploymentParams, DeploymentState, DeploymentsService,
-        GetDeploymentResponse, LedgerService, MemoryStorageSize, UserId, UsersService,
+        Deployment, DeploymentId, DeploymentParams, DeploymentParamsPort, DeploymentState,
+        DeploymentsService, GetDeploymentResponse, LedgerService, MemorySize, StorageSize, UserId,
+        UsersService,
     },
     fixtures::updated_example_sdl,
     helpers::uakt_to_akt,
@@ -84,9 +85,9 @@ async fn create_test_deployment() -> ApiResult<String> {
         "omniadevs/ic-websocket-gateway:v1.3.2".to_string(),
     )
     .cpu(CpuSize::Small)
-    .memory(MemoryStorageSize::Small)
-    .storage(MemoryStorageSize::Small)
-    .port((8080, Some(80), "akash-gateway.icws.io".to_string()))
+    .memory(MemorySize::Small)
+    .storage(StorageSize::Small)
+    .port(DeploymentParamsPort::new(8080, 80).with_domain("akash-gateway.icws.io".to_string()))
     .command(vec![
         "/ic-ws-gateway/ic_websocket_gateway".to_string(),
         "--gateway-address".to_string(),

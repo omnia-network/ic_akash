@@ -507,30 +507,30 @@ impl SdlV3 {
                     service_name.clone(),
                     ServiceV2 {
                         image: sdl_params.image,
-                        command: sdl_params.command,
+                        command: Some(sdl_params.command),
                         args: None,
-                        env: {
-                            if let Some(env_vars) = sdl_params.env_vars {
-                                Some(env_vars.into_iter().flat_map(|(k, v)| vec![k, v]).collect())
-                            } else {
-                                None
-                            }
-                        },
+                        env: Some(
+                            sdl_params
+                                .env_vars
+                                .into_iter()
+                                .map(|(k, v)| format!("{k}={v}"))
+                                .collect(),
+                        ),
                         expose: {
                             sdl_params
                                 .ports
                                 .into_iter()
-                                .map(|(port, r#as, accept)| ExposeV2 {
-                                    port: port,
-                                    r#as: r#as,
-                                    proto: None,
+                                .map(|port_params| ExposeV2 {
+                                    port: port_params.container_port,
+                                    r#as: Some(port_params.host_port),
+                                    proto: Some("TCP".to_string()),
                                     to: Some(vec![ExposeToV2 {
                                         service: None,
-                                        global: Some(true),
+                                        global: Some(port_params.domain.is_some()),
                                         ip: None,
                                         http_options: None,
                                     }]),
-                                    accept: Some(vec![accept]),
+                                    accept: port_params.domain.map(|domain| vec![domain]),
                                     http_options: None,
                                 })
                                 .collect()
