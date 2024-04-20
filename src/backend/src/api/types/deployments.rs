@@ -9,7 +9,7 @@ pub type DeploymentId = Uuid;
 
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub struct Deployment {
-    sdl: DeploymentParams,
+    params: DeploymentParams,
     user_id: UserId,
     state_history: Vec<(TimestampNs, DeploymentState)>,
     akt_price: f64,
@@ -17,9 +17,9 @@ pub struct Deployment {
 }
 
 impl Deployment {
-    pub fn new(sdl: DeploymentParams, user_id: UserId, akt_price: f64, icp_price: f64) -> Self {
+    pub fn new(params: DeploymentParams, user_id: UserId, akt_price: f64, icp_price: f64) -> Self {
         Self {
-            sdl,
+            params,
             user_id,
             state_history: vec![(get_time_nanos(), DeploymentState::Initialized)],
             akt_price,
@@ -27,8 +27,8 @@ impl Deployment {
         }
     }
 
-    pub fn sdl(&self) -> DeploymentParams {
-        self.sdl.clone()
+    pub fn params(&self) -> DeploymentParams {
+        self.params.clone()
     }
 
     pub fn user_id(&self) -> UserId {
@@ -128,9 +128,9 @@ impl Storable for DeploymentState {
 #[derive(CandidType, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub struct DeploymentParams {
     /// name of the service
-    pub name: Option<String>,
+    pub name: String,
     /// name of the Docker image to deploy
-    pub image: Option<String>,
+    pub image: String,
     /// environment variables to pass to the container
     /// in the form of key-value pairs
     pub env_vars: Option<Vec<(String, String)>>,
@@ -154,8 +154,8 @@ impl DeploymentParams {
     pub fn builder() -> DeploymentParamsBuilder {
         DeploymentParamsBuilder {
             inner: DeploymentParams {
-                name: None,
-                image: None,
+                name: String::new(),
+                image: String::new(),
                 env_vars: None,
                 ports: Vec::new(),
                 cpu: CpuSize::Small,
@@ -175,12 +175,12 @@ pub struct DeploymentParamsBuilder {
 
 impl DeploymentParamsBuilder {
     pub fn name(mut self, name: String) -> Self {
-        self.inner.name = Some(name);
+        self.inner.name = name;
         self
     }
 
     pub fn image(mut self, image: String) -> Self {
-        self.inner.image = Some(image);
+        self.inner.image = image;
         self
     }
 

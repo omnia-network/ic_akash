@@ -13,7 +13,7 @@ pub struct MappedDeployment {
 impl From<Deployment> for MappedDeployment {
     fn from(deployment: Deployment) -> Self {
         Self {
-            sdl: deployment.sdl(),
+            sdl: deployment.params(),
             user_id: deployment.user_id().principal(),
             state_history: deployment.get_history(),
             icp_price: deployment.icp_price(),

@@ -498,9 +498,7 @@ impl SdlV3 {
     }
 
     pub fn try_from_deployment_params(sdl_params: DeploymentParams) -> Result<SdlV3, String> {
-        let service_name = sdl_params
-            .name
-            .ok_or(String::from("Name of deployment is required"))?;
+        let service_name = sdl_params.name;
         Ok(SdlV3 {
             version: "3.0".to_string(),
             services: {
@@ -508,20 +506,12 @@ impl SdlV3 {
                 services.insert(
                     service_name.clone(),
                     ServiceV2 {
-                        image: sdl_params
-                            .image
-                            .ok_or(String::from("Deployment image is required"))?,
+                        image: sdl_params.image,
                         command: sdl_params.command,
                         args: None,
                         env: {
                             if let Some(env_vars) = sdl_params.env_vars {
-                                Some(
-                                    env_vars
-                                        .iter()
-                                        .map(|(k, v)| vec![k.clone(), v.clone()])
-                                        .flatten()
-                                        .collect(),
-                                )
+                                Some(env_vars.into_iter().flat_map(|(k, v)| vec![k, v]).collect())
                             } else {
                                 None
                             }
@@ -529,10 +519,10 @@ impl SdlV3 {
                         expose: {
                             sdl_params
                                 .ports
-                                .iter()
+                                .into_iter()
                                 .map(|(port, r#as, accept)| ExposeV2 {
-                                    port: port.clone(),
-                                    r#as: r#as.clone(),
+                                    port: port,
+                                    r#as: r#as,
                                     proto: None,
                                     to: Some(vec![ExposeToV2 {
                                         service: None,
@@ -540,7 +530,7 @@ impl SdlV3 {
                                         ip: None,
                                         http_options: None,
                                     }]),
-                                    accept: Some(vec![accept.clone()]),
+                                    accept: Some(vec![accept]),
                                     http_options: None,
                                 })
                                 .collect()
