@@ -463,7 +463,7 @@ async fn handle_create_deployment(
     let deployment_update = DeploymentState::DeploymentCreated {
         tx_hash: tx_hash.clone(),
         dseq,
-        manifest_sorted_json: manifest,
+        manifest_sorted_json: manifest.clone(),
     };
 
     deployment_service
@@ -471,8 +471,8 @@ async fn handle_create_deployment(
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
 
     print(format!(
-        "[Deployment {}]: Created deployment",
-        deployment_id
+        "[Deployment {}]: Created deployment with manifest: {}",
+        deployment_id, manifest,
     ));
 
     Ok(dseq)
