@@ -507,15 +507,27 @@ impl SdlV3 {
                     service_name.clone(),
                     ServiceV2 {
                         image: sdl_params.image,
-                        command: Some(sdl_params.command),
+                        command: {
+                            if sdl_params.command.is_empty() {
+                                None
+                            } else {
+                                Some(sdl_params.command)
+                            }
+                        },
                         args: None,
-                        env: Some(
-                            sdl_params
-                                .env_vars
-                                .into_iter()
-                                .map(|(k, v)| format!("{k}={v}"))
-                                .collect(),
-                        ),
+                        env: {
+                            if sdl_params.env_vars.is_empty() {
+                                None
+                            } else {
+                                Some(
+                                    sdl_params
+                                        .env_vars
+                                        .into_iter()
+                                        .map(|(k, v)| format!("{k}={v}"))
+                                        .collect(),
+                                )
+                            }
+                        },
                         expose: {
                             sdl_params
                                 .ports
