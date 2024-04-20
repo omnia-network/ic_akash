@@ -79,23 +79,24 @@ async fn update_deployment_state(deployment_id: String, update: DeploymentState)
 #[update]
 async fn create_test_deployment() -> ApiResult<String> {
     let calling_principal = caller();
-    let sdl_params = DeploymentParams::builder()
-        .name("IC WebSocket Gateway".to_string())
-        .image("omniadevs/ic-websocket-gateway:v1.3.2".to_string())
-        .cpu(CpuSize::Small)
-        .memory(MemoryStorageSize::Small)
-        .storage(MemoryStorageSize::Small)
-        .port((8080, Some(80), "akash-gateway.icws.io".to_string()))
-        .command(vec![
-            "/ic-ws-gateway/ic_websocket_gateway".to_string(),
-            "--gateway-address".to_string(),
-            "0.0.0.0:8080".to_string(),
-            "--ic-network-url".to_string(),
-            "https://icp-api.io".to_string(),
-            "--polling-interval".to_string(),
-            "400".to_string(),
-        ])
-        .build();
+    let sdl_params = DeploymentParams::builder(
+        "IC WebSocket Gateway".to_string(),
+        "omniadevs/ic-websocket-gateway:v1.3.2".to_string(),
+    )
+    .cpu(CpuSize::Small)
+    .memory(MemoryStorageSize::Small)
+    .storage(MemoryStorageSize::Small)
+    .port((8080, Some(80), "akash-gateway.icws.io".to_string()))
+    .command(vec![
+        "/ic-ws-gateway/ic_websocket_gateway".to_string(),
+        "--gateway-address".to_string(),
+        "0.0.0.0:8080".to_string(),
+        "--ic-network-url".to_string(),
+        "https://icp-api.io".to_string(),
+        "--polling-interval".to_string(),
+        "400".to_string(),
+    ])
+    .build();
 
     DeploymentsEndpoints::default()
         .create_deployment(calling_principal, sdl_params)

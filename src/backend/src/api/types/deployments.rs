@@ -151,11 +151,11 @@ pub struct DeploymentParams {
 
 impl DeploymentParams {
     /// Create a new deployment based on a Docker image
-    pub fn builder() -> DeploymentParamsBuilder {
+    pub fn builder(name: String, image: String) -> DeploymentParamsBuilder {
         DeploymentParamsBuilder {
             inner: DeploymentParams {
-                name: String::new(),
-                image: String::new(),
+                name,
+                image,
                 env_vars: None,
                 ports: Vec::new(),
                 cpu: CpuSize::Small,
@@ -174,16 +174,6 @@ pub struct DeploymentParamsBuilder {
 }
 
 impl DeploymentParamsBuilder {
-    pub fn name(mut self, name: String) -> Self {
-        self.inner.name = name;
-        self
-    }
-
-    pub fn image(mut self, image: String) -> Self {
-        self.inner.image = image;
-        self
-    }
-
     pub fn env_var(mut self, env_var: (String, String)) -> Self {
         if let Some(ref mut env_vars) = self.inner.env_vars {
             env_vars.push(env_var);
