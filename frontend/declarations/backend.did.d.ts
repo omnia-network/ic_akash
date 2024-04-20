@@ -62,6 +62,9 @@ export interface ClientKey {
   'client_nonce' : bigint,
 }
 export type ClientPrincipal = Principal;
+export type CpuSize = { 'Large' : null } |
+  { 'Small' : null } |
+  { 'Medium' : null };
 export type CreateDeploymentResult = { 'Ok' : DeploymentId } |
   { 'Err' : ApiError };
 export type CreateUserResult = { 'Ok' : UserId } |
@@ -73,6 +76,23 @@ export interface Deployment {
   'state_history' : Array<[TimestampNs, DeploymentState]>,
 }
 export type DeploymentId = string;
+export interface DeploymentParams {
+  'cpu' : CpuSize,
+  'memory' : MemorySize,
+  'storage' : StorageSize,
+  'name' : string,
+  'volume_mount' : [] | [string],
+  'command' : Array<string>,
+  'env_vars' : Array<[string, string]>,
+  'image' : string,
+  'ports' : Array<
+    {
+      'container_port' : number,
+      'domain' : [] | [string],
+      'host_port' : number,
+    }
+  >,
+}
 export type DeploymentState = { 'FailedOnClient' : { 'reason' : string } } |
   { 'Initialized' : null } |
   {
@@ -103,6 +123,9 @@ export type GetDeploymentsResult = {
 export type GetUserResult = { 'Ok' : User } |
   { 'Err' : ApiError };
 export type Memo = bigint;
+export type MemorySize = { 'Large' : null } |
+  { 'Small' : null } |
+  { 'Medium' : null };
 export type Operation = {
     'Approve' : {
       'fee' : Tokens,
@@ -157,6 +180,9 @@ export interface QueryBlocksResponse {
 }
 export type QueryBlocksResult = { 'Ok' : QueryBlocksResponse } |
   { 'Err' : ApiError };
+export type StorageSize = { 'Large' : null } |
+  { 'Small' : null } |
+  { 'Medium' : null };
 export type SubAccount = Uint8Array | number[];
 export interface TimeStamp { 'timestamp_nanos' : bigint }
 export type TimestampNs = bigint;
@@ -207,7 +233,7 @@ export interface _SERVICE {
   'check_tx' : ActorMethod<[string], ApiEmptyResult>,
   'close_deployment' : ActorMethod<[string], ApiEmptyResult>,
   'create_certificate' : ActorMethod<[string, string], ApiStringResult>,
-  'create_deployment' : ActorMethod<[string], CreateDeploymentResult>,
+  'create_deployment' : ActorMethod<[DeploymentParams], CreateDeploymentResult>,
   'create_test_deployment' : ActorMethod<[], CreateDeploymentResult>,
   'create_user' : ActorMethod<[], CreateUserResult>,
   'deposit_deployment' : ActorMethod<[string, bigint], ApiEmptyResult>,

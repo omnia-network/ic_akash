@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use utils::sha256;
 
+use crate::api::DeploymentParams;
+
 use super::proto::{
     base::{
         attribute::{
@@ -493,6 +495,121 @@ impl SdlV3 {
         parsed_sdl.validate()?;
 
         Ok(parsed_sdl)
+    }
+
+    pub fn try_from_deployment_params(sdl_params: DeploymentParams) -> Result<SdlV3, String> {
+        let service_name = sdl_params.name;
+        Ok(SdlV3 {
+            version: "3.0".to_string(),
+            services: {
+                let mut services = HashMap::new();
+                services.insert(
+                    service_name.clone(),
+                    ServiceV2 {
+                        image: sdl_params.image,
+                        command: Some(sdl_params.command),
+                        args: None,
+                        env: Some(
+                            sdl_params
+                                .env_vars
+                                .into_iter()
+                                .map(|(k, v)| format!("{k}={v}"))
+                                .collect(),
+                        ),
+                        expose: {
+                            sdl_params
+                                .ports
+                                .into_iter()
+                                .map(|port_params| ExposeV2 {
+                                    port: port_params.container_port,
+                                    r#as: Some(port_params.host_port),
+                                    proto: Some("TCP".to_string()),
+                                    to: Some(vec![ExposeToV2 {
+                                        service: None,
+                                        global: Some(port_params.domain.is_some()),
+                                        ip: None,
+                                        http_options: None,
+                                    }]),
+                                    accept: port_params.domain.map(|domain| vec![domain]),
+                                    http_options: None,
+                                })
+                                .collect()
+                        },
+                        dependencies: None,
+                        params: None,
+                    },
+                );
+                services
+            },
+            profiles: {
+                ProfilesV3 {
+                    compute: {
+                        let mut compute = HashMap::new();
+                        compute.insert(service_name.clone(), {
+                            ProfileComputeV3 {
+                                resources: ComputeResourcesV3 {
+                                    cpu: ResourceCpuV2 {
+                                        units: sdl_params.cpu.to_unit(),
+                                        attributes: None,
+                                    },
+                                    memory: ResourceMemoryV2 {
+                                        size: sdl_params.memory.to_size(),
+                                        attributes: None,
+                                    },
+                                    storage: vec![ResourceStorageV2 {
+                                        name: None,
+                                        size: sdl_params.storage.to_size(),
+                                        attributes: None,
+                                    }],
+                                    gpu: None,
+                                    id: None,
+                                },
+                            }
+                        });
+                        compute
+                    },
+                    placement: {
+                        let mut placement = HashMap::new();
+                        placement.insert(
+                            "dcloud".to_string(),
+                            ProfilePlacementV2 {
+                                attributes: None,
+                                signed_by: None,
+                                pricing: {
+                                    let mut pricing = HashMap::new();
+                                    pricing.insert(
+                                        service_name.clone(),
+                                        CoinV2 {
+                                            denom: "uakt".to_string(),
+                                            value: None,
+                                            amount: 1000,
+                                        },
+                                    );
+                                    pricing
+                                },
+                            },
+                        );
+                        placement
+                    },
+                }
+            },
+            deployment: {
+                let mut deployment = HashMap::new();
+                deployment.insert(service_name.clone(), {
+                    let mut deployment = HashMap::new();
+                    deployment.insert(
+                        "dcloud".to_string(),
+                        ServiceDeploymentV2 {
+                            profile: service_name,
+                            count: 1,
+                        },
+                    );
+                    deployment
+                });
+                deployment
+            },
+            endpoints: None,
+        })
     }
 
     fn validate(&self) -> Result<(), String> {

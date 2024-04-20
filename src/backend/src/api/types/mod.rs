@@ -6,7 +6,7 @@ mod users;
 mod websocket;
 
 pub(super) use config::*;
-pub(super) use deployments::*;
+pub use deployments::*;
 pub(super) use result::*;
 pub(super) use time::*;
 pub(super) use users::*;

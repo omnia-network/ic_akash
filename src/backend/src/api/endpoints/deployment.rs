@@ -1,11 +1,12 @@
 use crate::{
     akash::{address::get_account_id_from_public_key, bids::fetch_bids, sdl::SdlV3},
     api::{
-        map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult,
-        Deployment, DeploymentId, DeploymentState, DeploymentsService, GetDeploymentResponse,
-        LedgerService, UserId, UsersService,
+        map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult, CpuSize,
+        Deployment, DeploymentId, DeploymentParams, DeploymentParamsPort, DeploymentState,
+        DeploymentsService, GetDeploymentResponse, LedgerService, MemorySize, StorageSize, UserId,
+        UsersService,
     },
-    fixtures::{example_sdl, updated_example_sdl},
+    fixtures::updated_example_sdl,
     helpers::uakt_to_akt,
 };
 use candid::Principal;
@@ -56,8 +57,14 @@ async fn create_certificate(
 }
 
 #[update]
-async fn create_deployment(_sdl: String) -> ApiResult<String> {
-    Err(ApiError::permission_denied("Not implemented")).into()
+async fn create_deployment(sdl_params: DeploymentParams) -> ApiResult<String> {
+    let calling_principal = caller();
+
+    DeploymentsEndpoints::default()
+        .create_deployment(calling_principal, sdl_params)
+        .await
+        .map(|id| id.to_string())
+        .into()
 }
 
 #[update]
@@ -73,10 +80,27 @@ async fn update_deployment_state(deployment_id: String, update: DeploymentState)
 #[update]
 async fn create_test_deployment() -> ApiResult<String> {
     let calling_principal = caller();
-    let sdl = example_sdl().to_string();
+    let sdl_params = DeploymentParams::builder(
+        "IC WebSocket Gateway".to_string(),
+        "omniadevs/ic-websocket-gateway:v1.3.2".to_string(),
+    )
+    .cpu(CpuSize::Small)
+    .memory(MemorySize::Small)
+    .storage(StorageSize::Small)
+    .port(DeploymentParamsPort::new(8080, 80).with_domain("akash-gateway.icws.io".to_string()))
+    .command(vec![
+        "/ic-ws-gateway/ic_websocket_gateway".to_string(),
+        "--gateway-address".to_string(),
+        "0.0.0.0:8080".to_string(),
+        "--ic-network-url".to_string(),
+        "https://icp-api.io".to_string(),
+        "--polling-interval".to_string(),
+        "400".to_string(),
+    ])
+    .build();
 
     DeploymentsEndpoints::default()
-        .create_deployment(calling_principal, sdl)
+        .create_deployment(calling_principal, sdl_params)
         .await
         .map(|id| id.to_string())
         .into()
@@ -178,7 +202,7 @@ impl DeploymentsEndpoints {
     async fn create_deployment(
         &mut self,
         calling_principal: Principal,
-        sdl: String,
+        sdl_params: DeploymentParams,
     ) -> Result<DeploymentId, ApiError> {
         self.access_control_service
             .assert_principal_is_user(&calling_principal)?;
@@ -199,7 +223,7 @@ impl DeploymentsEndpoints {
             )));
         }
 
-        let parsed_sdl = SdlV3::try_from_str(&sdl)
+        let parsed_sdl = SdlV3::try_from_deployment_params(sdl_params.clone())
             .map_err(|e| ApiError::invalid_argument(&format!("Invalid SDL: {}", e)))?;
 
         let user_id = UserId::new(calling_principal);
@@ -209,7 +233,12 @@ impl DeploymentsEndpoints {
 
         let deployment_id = self
             .deployments_service
-            .init_deployment(user_id, sdl, deployment_akt_price, deployment_icp_price)
+            .init_deployment(
+                user_id,
+                sdl_params,
+                deployment_akt_price,
+                deployment_icp_price,
+            )
             .await?;
 
         print(format!("[Deployment {}]: Initialized", deployment_id));
