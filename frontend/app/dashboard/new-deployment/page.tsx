@@ -98,6 +98,7 @@ export default function NewDeployment() {
         const err = deploymentUpdate.update.FailedOnCanister.reason;
         console.error("Failed to deploy", err);
         toastError("Failed to deploy, see console for details");
+        setIsDeploying(false);
         return;
       }
 
