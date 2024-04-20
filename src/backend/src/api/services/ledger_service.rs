@@ -1,15 +1,17 @@
-use crate::api::{
-    config_state, ApiError, Asset, AssetClass, Config, GetExchangeRateRequest,
-    GetExchangeRateResult,
-};
+use crate::api::ApiError;
 use candid::Principal;
-use ic_cdk::api::call::call_with_payment;
-use ic_cdk::api::management_canister::http_request::{HttpMethod, TransformContext};
-use ic_cdk::{api::call::call, print};
+use ic_cdk::{
+    api::{
+        call::{call, call_with_payment},
+        management_canister::http_request::{HttpMethod, TransformContext},
+    },
+    print,
+};
 use ic_ledger_types::{
     AccountIdentifier, GetBlocksArgs, Operation, QueryBlocksResponse, Subaccount,
 };
-use utils::{get_time_nanos, make_http_request};
+use ic_xrc_types::{Asset, AssetClass, GetExchangeRateRequest, GetExchangeRateResult};
+use utils::{get_time_seconds, make_http_request};
 
 /// assume requests are at most 1kb
 const REQUEST_SIZE: u128 = 1_000;
@@ -21,18 +23,16 @@ pub struct LedgerService {
     xrc_id: Principal,
 }
 
-impl LedgerService {
-    pub fn default() -> Self {
+impl Default for LedgerService {
+    fn default() -> Self {
         Self {
             ledger_canister_id: Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap(),
             xrc_id: Principal::from_text("uf6dk-hyaaa-aaaaq-qaaaq-cai").unwrap(),
         }
     }
+}
 
-    pub fn get_config(&self) -> Config {
-        config_state(|state| state.clone())
-    }
-
+impl LedgerService {
     pub async fn query_blocks(&self, args: GetBlocksArgs) -> Result<QueryBlocksResponse, ApiError> {
         let (res,) = call(self.ledger_canister_id, "query_blocks", (args,))
             .await
@@ -42,63 +42,65 @@ impl LedgerService {
                     code, e
                 ))
             })?;
+
         Ok(res)
     }
 
     pub async fn check_payment(
         &self,
         calling_principal: Principal,
-        payment_block_heihgt: u64,
-    ) -> Result<Option<f64>, ApiError> {
+        payment_block_height: u64,
+    ) -> Result<f64, ApiError> {
         let args = GetBlocksArgs {
-            start: payment_block_heihgt,
+            start: payment_block_height,
             length: 1,
         };
 
         let query_blocks_response = self.query_blocks(args).await?;
 
         if query_blocks_response.blocks.is_empty() {
-            print(&format!("no blocks found"));
-            return Ok(None);
+            return Err(ApiError::internal(&format!(
+                "No blocks found at height: {}",
+                payment_block_height,
+            )));
         }
-        if let Some(Operation::Transfer {
-            from,
-            to,
-            amount,
-            fee: _fee,
+
+        let Some(Operation::Transfer {
+            from, to, amount, ..
         }) = query_blocks_response.blocks[0].transaction.operation
-        {
-            let caller_account_id =
-                AccountIdentifier::new(&calling_principal, &Subaccount([0; 32]));
-            let orchestrator_account_id =
-                AccountIdentifier::new(&ic_cdk::api::id(), &Subaccount([0; 32]));
+        else {
+            return Err(ApiError::internal(&format!(
+                "No Transfer operation found in block at height: {}",
+                payment_block_height,
+            )));
+        };
 
-            if from != caller_account_id {
-                return Err(ApiError::not_found(
-                    "caller is not the sender of the payment",
-                ));
-            }
-            if to != orchestrator_account_id {
-                return Err(ApiError::not_found(
-                    "orchestrator is not the recipient of the payment",
-                ));
-            }
-            let paid_akt =
-                (amount.e8s() / 100_000_000) as f64 * self.get_icp_2_akt_conversion_rate().await?;
+        let caller_account_id = AccountIdentifier::new(&calling_principal, &Subaccount([0; 32]));
+        let orchestrator_account_id =
+            AccountIdentifier::new(&ic_cdk::api::id(), &Subaccount([0; 32]));
 
-            // the payment might still be a double spend,
-            // therefore it is important to check that this 'payment_block_heihgt'
-            // has not been used for a previous deployment
-            // this is taken care of by the `users_service`
-            return Ok(Some(paid_akt));
+        if from != caller_account_id {
+            return Err(ApiError::not_found(
+                "caller is not the sender of the payment",
+            ));
         }
+        if to != orchestrator_account_id {
+            return Err(ApiError::not_found(
+                "orchestrator is not the recipient of the payment",
+            ));
+        }
+        let paid_akt =
+            (amount.e8s() / 100_000_000) as f64 * self.get_icp_2_akt_conversion_rate().await?;
 
-        print(&format!("no transfer found"));
-        Ok(None)
+        // the payment might still be a double spend,
+        // therefore it is important to check that this 'payment_block_heihgt'
+        // has not been used for a previous deployment
+        // this is taken care of by the `users_service`
+        Ok(paid_akt)
     }
 
     pub async fn get_usd_exchange(&self, ticker: &str) -> Result<f64, ApiError> {
-        let current_timestamp_s = get_time_nanos() / 1_000_000_000;
+        let current_timestamp_s = get_time_seconds();
         let host = "api.pro.coinbase.com";
         let url = format!(
             "https://{}/products/{}-USD/candles?start={}&end={}",
@@ -139,17 +141,10 @@ impl LedgerService {
         //     ],
         //     ...
         //  ]
-        let string_body =
-            String::from_utf8(response.body).expect("Transformed response is not UTF-8 encoded.");
-        let parsed_body: Vec<Vec<f64>> = serde_json::from_str(&string_body).map_err(|e| {
-            ApiError::internal(&format!(
-                "failed to parse {} price: {:?}",
-                ticker,
-                e.to_string()
-            ))
-        })?;
+        let parsed_body: Vec<Vec<f64>> = serde_json::from_slice(&response.body)
+            .map_err(|e| ApiError::internal(&format!("failed to parse {} price: {}", ticker, e)))?;
 
-        if parsed_body.len() == 0 {
+        if parsed_body.is_empty() {
             return Err(ApiError::internal("API did not return any prices"));
         }
         // within the latest price range (index 0 of outer vec), return the lowest price (index 1 of inner vec)
@@ -157,43 +152,33 @@ impl LedgerService {
     }
 
     pub async fn get_icp_2_akt_conversion_rate(&self) -> Result<f64, ApiError> {
-        if self.get_config().is_mainnet() {
-            let args = GetExchangeRateRequest {
-                base_asset: Asset {
-                    symbol: "AKT".to_string(),
-                    class: AssetClass::Cryptocurrency,
-                },
-                quote_asset: Asset {
-                    symbol: "ICP".to_string(),
-                    class: AssetClass::Cryptocurrency,
-                },
-                timestamp: None,
-            };
+        let args = GetExchangeRateRequest {
+            base_asset: Asset {
+                symbol: "ICP".to_string(),
+                class: AssetClass::Cryptocurrency,
+            },
+            quote_asset: Asset {
+                symbol: "AKT".to_string(),
+                class: AssetClass::Cryptocurrency,
+            },
+            timestamp: None,
+        };
 
-            let (res,): (GetExchangeRateResult,) =
-                call_with_payment(self.xrc_id, "get_exchange_rate", (args,), 10_000_000_000)
-                    .await
-                    .map_err(|(code, e)| {
-                        ApiError::internal(&format!(
-                            "failed to get exchange rate. Rejection code: {:?}, error: {}",
-                            code, e
-                        ))
-                    })?;
+        let (res,): (GetExchangeRateResult,) =
+            call_with_payment(self.xrc_id, "get_exchange_rate", (args,), 10_000_000_000)
+                .await
+                .map_err(|(code, e)| {
+                    ApiError::internal(&format!(
+                        "failed to get exchange rate. Rejection code: {:?}, error: {}",
+                        code, e
+                    ))
+                })?;
 
-            let exchange_rate =
-                res.map_err(|e| ApiError::internal(&format!("exchange rate error: {:?}", e)))?;
+        let exchange_rate =
+            res.map_err(|e| ApiError::internal(&format!("exchange rate error: {:?}", e)))?;
 
-            return Ok(
-                exchange_rate.rate as f64 * 10_f64.powi(exchange_rate.metadata.decimals as i32)
-            );
-        }
+        print(format!("exchange rate result: {:?}", exchange_rate));
 
-        // used only when testing locally
-        let icp_price = self.get_usd_exchange("ICP").await?;
-        // as the AKT price is not available on the coinbase API, use a hardcoded value
-        // let akt_price = self.get_usd_exchange("AKT").await;
-        let akt_price = 5.0;
-
-        Ok(icp_price / akt_price)
+        Ok(exchange_rate.rate as f64 / 10_f64.powi(exchange_rate.metadata.decimals as i32))
     }
 }

@@ -1,8 +1,8 @@
 use prost::Message;
 
 use super::proto::provider::{
-    provider::Provider,
     query::{QueryProviderRequest, QueryProviderResponse},
+    Provider,
 };
 
 pub async fn fetch_provider(rpc_url: String, provider_address: String) -> Result<Provider, String> {

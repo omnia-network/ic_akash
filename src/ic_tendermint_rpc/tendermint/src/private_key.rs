@@ -55,7 +55,7 @@ impl PrivateKey {
             #[cfg(feature = "secp256k1")]
             PrivateKey::Secp256k1(signing_key) => {
                 PublicKey::Secp256k1(*signing_key.verifying_key())
-            },
+            }
         }
     }
 

@@ -39,6 +39,7 @@ import {
   isDeploymentClosed,
   isDeploymentFailed,
 } from "@/helpers/deployment";
+import { displayIcp } from "@/helpers/ui";
 import { queryLeaseStatus } from "@/services/deployment";
 import { ChevronsUpDown } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -153,6 +154,10 @@ export default function Dashboard() {
                       getLastDeploymentState(el.deployment)
                     )}
                   </span>
+                </div>
+                <div className="flex flex-row gap-1">
+                  Price:
+                  <pre>{displayIcp(el.deployment.icp_price, { maximumFractionDigits: 6 })}</pre>
                 </div>
                 <Collapsible>
                   <CollapsibleTrigger className="flex items-center gap-4 w-full mt-4">

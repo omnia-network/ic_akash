@@ -1,26 +1,26 @@
 type ApiError = record {
-    code : nat16;
-    message : text;
+  code : nat16;
+  message : text;
 };
 
 type ApiStringResult = variant {
-    Ok : text;
-    Err : ApiError;
+  Ok : text;
+  Err : ApiError;
 };
 
 type ApiNatResult = variant {
-    Ok : nat64;
-    Err : ApiError;
+  Ok : nat64;
+  Err : ApiError;
 };
 
 type ApiFloatResult = variant {
-    Ok : float64;
-    Err : ApiError;
+  Ok : float64;
+  Err : ApiError;
 };
 
 type ApiEmptyResult = variant {
-    Ok;
-    Err : ApiError;
+  Ok;
+  Err : ApiError;
 };
 
 type TimestampNs = nat64;
@@ -28,82 +28,83 @@ type TimestampNs = nat64;
 type UserId = principal;
 
 type UserRole = variant {
-    Admin;
-    Deployer;
+  Admin;
+  Deployer;
 };
 
 type User = record {
-    role : UserRole;
-    created_at : TimestampNs;
-    payments : vec nat64;
+  role : UserRole;
+  created_at : TimestampNs;
+  payments : vec nat64;
 };
 
 type GetUserResult = variant {
-    Ok : User;
-    Err : ApiError;
+  Ok : User;
+  Err : ApiError;
 };
 
 type CreateUserResult = variant {
-    Ok : UserId;
-    Err : ApiError;
+  Ok : UserId;
+  Err : ApiError;
 };
 
 type DeploymentId = text;
 
 type DeploymentState = variant {
-    Initialized;
-    DeploymentCreated : record {
-        tx_hash : text;
-        dseq : nat64;
-        manifest_sorted_json : text;
-    };
-    LeaseCreated : record {
-        tx_hash : text;
-        provider_url : text;
-    };
-    Active;
-    Closed;
-    FailedOnClient : record {
-        reason : text;
-    };
-    FailedOnCanister : record {
-        reason : text;
-    };
+  Initialized;
+  DeploymentCreated : record {
+    tx_hash : text;
+    dseq : nat64;
+    manifest_sorted_json : text;
+  };
+  LeaseCreated : record {
+    tx_hash : text;
+    provider_url : text;
+  };
+  Active;
+  Closed;
+  FailedOnClient : record {
+    reason : text;
+  };
+  FailedOnCanister : record {
+    reason : text;
+  };
 };
 
 type Deployment = record {
-    sdl : text;
-    user_id : UserId;
-    state_history : vec record { TimestampNs; DeploymentState };
+  sdl : text;
+  user_id : UserId;
+  state_history : vec record { TimestampNs; DeploymentState };
+  icp_price : float64;
 };
 
 type GetDeploymentResult = variant {
-    Ok : record {
-        id : DeploymentId;
-        deployment : Deployment;
-    };
-    Err : ApiError;
+  Ok : record {
+    id : DeploymentId;
+    deployment : Deployment;
+  };
+  Err : ApiError;
 };
 
 type GetDeploymentsResult = variant {
-    Ok : vec record {
-        id : DeploymentId;
-        deployment : Deployment;
-    };
-    Err : ApiError;
+  Ok : vec record {
+    id : DeploymentId;
+    deployment : Deployment;
+  };
+  Err : ApiError;
 };
 
 type CreateDeploymentResult = variant {
-    Ok : DeploymentId;
-    Err : ApiError;
+  Ok : DeploymentId;
+  Err : ApiError;
 };
 
 //// IC WebSocket types ////
 import "./ws_types.did";
 
 type DeploymentUpdateWsMessage = record {
-    id : text;
-    update : DeploymentState;
+  id : text;
+  update : DeploymentState;
 };
 //// End IC WebSocket types ////
 
@@ -111,40 +112,40 @@ type DeploymentUpdateWsMessage = record {
 import "./ledger_types.did";
 
 type QueryBlocksResult = variant {
-    Ok : QueryBlocksResponse;
-    Err : ApiError;
+  Ok : QueryBlocksResponse;
+  Err : ApiError;
 };
 //// End Ledger types ////
 
 service : (bool) -> {
-    "address" : () -> (ApiStringResult);
-    "balance" : () -> (ApiNatResult);
-    "check_tx" : (text) -> (ApiEmptyResult);
-    "get_user" : () -> (GetUserResult) query;
-    "create_user" : () -> (CreateUserResult);
-    "promote_user_to_admin" : (UserId) -> (ApiEmptyResult);
-    "get_deployment" : (text) -> (GetDeploymentResult) query;
-    "get_deployments" : () -> (GetDeploymentsResult) query;
-    "create_certificate" : (text, text) -> (ApiStringResult);
-    "create_deployment" : (text) -> (CreateDeploymentResult);
-    "deposit_deployment" : (text, nat64) -> (ApiEmptyResult);
-    "update_test_deployment_sdl" : (text) -> (ApiEmptyResult);
-    "create_test_deployment" : () -> (CreateDeploymentResult);
-    "update_deployment_state" : (text, DeploymentState) -> (ApiEmptyResult);
-    "close_deployment" : (text) -> (ApiEmptyResult);
-    "update_akt_balance" : (nat64) -> (ApiFloatResult);
+  "address" : () -> (ApiStringResult);
+  "balance" : () -> (ApiNatResult);
+  "check_tx" : (text) -> (ApiEmptyResult);
+  "get_user" : () -> (GetUserResult) query;
+  "create_user" : () -> (CreateUserResult);
+  "promote_user_to_admin" : (UserId) -> (ApiEmptyResult);
+  "get_deployment" : (text) -> (GetDeploymentResult) query;
+  "get_deployments" : () -> (GetDeploymentsResult) query;
+  "create_certificate" : (text, text) -> (ApiStringResult);
+  "create_deployment" : (text) -> (CreateDeploymentResult);
+  "deposit_deployment" : (text, nat64) -> (ApiEmptyResult);
+  "update_test_deployment_sdl" : (text) -> (ApiEmptyResult);
+  "create_test_deployment" : () -> (CreateDeploymentResult);
+  "update_deployment_state" : (text, DeploymentState) -> (ApiEmptyResult);
+  "close_deployment" : (text) -> (ApiEmptyResult);
+  "update_akt_balance" : (nat64) -> (ApiFloatResult);
+  "get_deployment_icp_price" : () -> (ApiFloatResult);
 
-    //// IC WebSocket methods ////
-    "ws_open" : (CanisterWsOpenArguments) -> (CanisterWsOpenResult);
-    "ws_close" : (CanisterWsCloseArguments) -> (CanisterWsCloseResult);
-    "ws_message" : (CanisterWsMessageArguments, opt DeploymentUpdateWsMessage) -> (CanisterWsMessageResult);
-    "ws_get_messages" : (CanisterWsGetMessagesArguments) -> (CanisterWsGetMessagesResult) query;
-    //// End IC WebSocket methods ////
+  //// IC WebSocket methods ////
+  "ws_open" : (CanisterWsOpenArguments) -> (CanisterWsOpenResult);
+  "ws_close" : (CanisterWsCloseArguments) -> (CanisterWsCloseResult);
+  "ws_message" : (CanisterWsMessageArguments, opt DeploymentUpdateWsMessage) -> (CanisterWsMessageResult);
+  "ws_get_messages" : (CanisterWsGetMessagesArguments) -> (CanisterWsGetMessagesResult) query;
+  //// End IC WebSocket methods ////
 
-    //// Ledger methods ////
-    "query_blocks" : (GetBlocksArgs) -> (QueryBlocksResult) composite_query;
-    "get_icp_price" : () -> (ApiFloatResult);
-    "get_akt_price" : () -> (ApiFloatResult);
-    "get_5_akt_in_icp" : () -> (ApiFloatResult);
-    //// End Ledger methods ////
+  //// Ledger methods ////
+  "query_blocks" : (GetBlocksArgs) -> (QueryBlocksResult) composite_query;
+  "get_icp_price" : () -> (ApiFloatResult);
+  "get_akt_price" : () -> (ApiFloatResult);
+  //// End Ledger methods ////
 };

@@ -4,13 +4,13 @@ pub struct Resources {
     #[prost(uint32, tag = "1")]
     pub id: u32,
     #[prost(message, tag = "2")]
-    pub cpu: ::core::option::Option<super::cpu::CPU>,
+    pub cpu: ::core::option::Option<super::cpu::Cpu>,
     #[prost(message, tag = "3")]
     pub memory: ::core::option::Option<super::memory::Memory>,
     #[prost(message, repeated, tag = "4")]
     pub storage: ::prost::alloc::vec::Vec<super::storage::Storage>,
     #[prost(message, tag = "5")]
-    pub gpu: ::core::option::Option<super::gpu::GPU>,
+    pub gpu: ::core::option::Option<super::gpu::Gpu>,
     #[prost(message, repeated, tag = "6")]
     pub endpoints: ::prost::alloc::vec::Vec<super::endpoint::Endpoint>,
 }

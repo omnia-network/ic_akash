@@ -34,7 +34,7 @@ fn promote_user_to_admin(admin_principal: Principal) -> ApiResult {
 }
 
 #[update]
-pub async fn update_akt_balance(payment_block_height: u64) -> ApiResult<f64> {
+async fn update_akt_balance(payment_block_height: u64) -> ApiResult<f64> {
     let calling_principal = caller();
 
     UsersEndpoints::default()
@@ -43,31 +43,22 @@ pub async fn update_akt_balance(payment_block_height: u64) -> ApiResult<f64> {
         .into()
 }
 
+#[derive(Default)]
 struct UsersEndpoints {
     users_service: UsersService,
     ledger_service: LedgerService,
     access_control_service: AccessControlService,
 }
 
-impl Default for UsersEndpoints {
-    fn default() -> Self {
-        Self {
-            users_service: UsersService::default(),
-            ledger_service: LedgerService::default(),
-            access_control_service: AccessControlService::default(),
-        }
-    }
-}
-
 impl UsersEndpoints {
-    pub fn get_user_by_principal(&self, calling_principal: Principal) -> Result<User, ApiError> {
+    fn get_user_by_principal(&self, calling_principal: Principal) -> Result<User, ApiError> {
         self.access_control_service
             .assert_principal_not_anonymous(&calling_principal)?;
 
         self.users_service.get_user(&calling_principal.into())
     }
 
-    pub fn create_user(&mut self, calling_principal: Principal) -> Result<UserId, ApiError> {
+    fn create_user(&mut self, calling_principal: Principal) -> Result<UserId, ApiError> {
         self.access_control_service
             .assert_principal_not_anonymous(&calling_principal)?;
 
@@ -76,7 +67,7 @@ impl UsersEndpoints {
         self.users_service.create_user(calling_principal, user)
     }
 
-    pub fn make_user_admin(
+    fn make_user_admin(
         &mut self,
         calling_principal: Principal,
         admin_principal: Principal,
@@ -87,10 +78,10 @@ impl UsersEndpoints {
         let admin_id = UserId::new(admin_principal);
 
         self.users_service
-            .change_user_role(&admin_id, UserRole::Admin)
+            .change_user_role(admin_id, UserRole::Admin)
     }
 
-    pub async fn update_akt_balance(
+    async fn update_akt_balance(
         &mut self,
         calling_principal: Principal,
         payment_block_height: u64,
@@ -99,26 +90,19 @@ impl UsersEndpoints {
             .assert_principal_not_anonymous(&calling_principal)?;
 
         // check if the payment has been sent from the caller to the orchestrator
-        let Some(paid_akt) = self
+        let paid_akt = self
             .ledger_service
             .check_payment(calling_principal, payment_block_height)
-            .await?
-        else {
-            print(&format!(
-                "[{:?}]: Did not send payment",
-                calling_principal.to_string()
-            ));
-            return Err(ApiError::permission_denied("Did not send payment"));
-        };
+            .await?;
 
         // check if the payment has not been used for a previous deployment by the same user
         let user_id = UserId::new(calling_principal);
         self.users_service
-            .add_payment_to_user_once(&user_id, payment_block_height, paid_akt)?;
+            .add_payment_to_user_once(user_id, payment_block_height, paid_akt)?;
 
-        print(&format!(
-            "[{:?}]: Received payment of {} AKT. Current balance: {:?} AKT",
-            calling_principal.to_string(),
+        print(format!(
+            "[User {}]: Received payment of {} AKT. Current balance: {} AKT",
+            calling_principal,
             paid_akt,
             self.users_service.get_user_akt_balance(&user_id)?
         ));

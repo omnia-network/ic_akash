@@ -29,7 +29,7 @@ pub async fn create_send_tx(
     };
 
     let msg_send = MsgSend {
-        from_address: get_account_id_from_public_key(&sender_public_key)?,
+        from_address: get_account_id_from_public_key(sender_public_key)?,
         to_address: recipient_account_id,
         amount: vec![amount.clone()],
     };
@@ -44,7 +44,7 @@ pub async fn create_send_tx(
     );
 
     create_tx(
-        &sender_public_key,
+        sender_public_key,
         msg_send.to_any().unwrap(),
         fee,
         account.sequence,

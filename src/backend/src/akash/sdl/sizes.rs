@@ -27,9 +27,7 @@ pub fn convert_resource_string(resource_str: &str) -> Result<f64, String> {
     };
 
     Ok(match power {
-        Some(power) => {
-            value.mul(f64::try_from(base.pow(power as u32 + 1)).map_err(|e| e.to_string())?)
-        }
+        Some(power) => value.mul(f64::from(base.pow(power as u32 + 1))),
         None => value,
     })
 }

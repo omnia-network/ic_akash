@@ -4,7 +4,7 @@ use rand_chacha::ChaCha20Rng;
 use std::cell::RefCell;
 
 thread_local! {
-    static RNG: RefCell<Option<ChaCha20Rng>> = RefCell::new(None);
+    static RNG: RefCell<Option<ChaCha20Rng>> = const { RefCell::new(None) };
 }
 
 async fn with_rng<T>(cb: impl FnOnce(&mut ChaCha20Rng) -> T) -> Result<T, String> {

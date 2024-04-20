@@ -33,8 +33,7 @@ impl Version {
         } else {
             Err(format!(
                 "Unsupported JSON-RPC version: {}, supported: {}",
-                self.0.to_string(),
-                SUPPORTED_VERSION.to_string(),
+                self.0, SUPPORTED_VERSION,
             ))
         }
     }

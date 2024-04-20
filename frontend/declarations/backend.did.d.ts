@@ -69,6 +69,7 @@ export type CreateUserResult = { 'Ok' : UserId } |
 export interface Deployment {
   'sdl' : string,
   'user_id' : UserId,
+  'icp_price' : number,
   'state_history' : Array<[TimestampNs, DeploymentState]>,
 }
 export type DeploymentId = string;
@@ -210,9 +211,9 @@ export interface _SERVICE {
   'create_test_deployment' : ActorMethod<[], CreateDeploymentResult>,
   'create_user' : ActorMethod<[], CreateUserResult>,
   'deposit_deployment' : ActorMethod<[string, bigint], ApiEmptyResult>,
-  'get_5_akt_in_icp' : ActorMethod<[], ApiFloatResult>,
   'get_akt_price' : ActorMethod<[], ApiFloatResult>,
   'get_deployment' : ActorMethod<[string], GetDeploymentResult>,
+  'get_deployment_icp_price' : ActorMethod<[], ApiFloatResult>,
   'get_deployments' : ActorMethod<[], GetDeploymentsResult>,
   'get_icp_price' : ActorMethod<[], ApiFloatResult>,
   'get_user' : ActorMethod<[], GetUserResult>,

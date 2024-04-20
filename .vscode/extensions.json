@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "editorconfig.editorconfig",
+    "rust-lang.rust-analyzer",
+    "dfinity-foundation.vscode-motoko",
+    "tamasfe.even-better-toml"
+  ]
+}

@@ -31,6 +31,7 @@ export const idlFactory = ({ IDL }) => {
   const Deployment = IDL.Record({
     'sdl' : IDL.Text,
     'user_id' : UserId,
+    'icp_price' : IDL.Float64,
     'state_history' : IDL.Vec(IDL.Tuple(TimestampNs, DeploymentState)),
   });
   const GetDeploymentResult = IDL.Variant({
@@ -204,9 +205,9 @@ export const idlFactory = ({ IDL }) => {
         [ApiEmptyResult],
         [],
       ),
-    'get_5_akt_in_icp' : IDL.Func([], [ApiFloatResult], []),
     'get_akt_price' : IDL.Func([], [ApiFloatResult], []),
     'get_deployment' : IDL.Func([IDL.Text], [GetDeploymentResult], ['query']),
+    'get_deployment_icp_price' : IDL.Func([], [ApiFloatResult], []),
     'get_deployments' : IDL.Func([], [GetDeploymentsResult], ['query']),
     'get_icp_price' : IDL.Func([], [ApiFloatResult], []),
     'get_user' : IDL.Func([], [GetUserResult], ['query']),

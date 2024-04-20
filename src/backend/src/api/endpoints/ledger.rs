@@ -1,4 +1,5 @@
 use crate::api::{ApiError, ApiResult, LedgerService};
+use candid::Nat;
 use ic_cdk::{
     api::management_canister::http_request::{HttpResponse, TransformArgs},
     query, update,
@@ -26,20 +27,17 @@ async fn get_akt_price() -> ApiResult<f64> {
         .into()
 }
 
-#[update]
-async fn get_5_akt_in_icp() -> ApiResult<f64> {
-    LedgerEndpoints::default().get_5_akt_in_icp().await.into()
-}
-
 #[query]
 fn price_transform(raw: TransformArgs) -> HttpResponse {
+    let status_ok = Nat::from(200u16);
+
     let mut res = HttpResponse {
         status: raw.response.status.clone(),
         body: raw.response.body.clone(),
         ..Default::default()
     };
 
-    if res.status == 200 {
+    if res.status == status_ok {
         res.body = raw.response.body;
     } else {
         ic_cdk::api::print(format!("Received an error from coinbase: err = {:?}", raw));
@@ -47,29 +45,17 @@ fn price_transform(raw: TransformArgs) -> HttpResponse {
     res
 }
 
+#[derive(Default)]
 struct LedgerEndpoints {
     ledger_service: LedgerService,
 }
 
-impl Default for LedgerEndpoints {
-    fn default() -> Self {
-        Self {
-            ledger_service: LedgerService::default(),
-        }
-    }
-}
-
 impl LedgerEndpoints {
-    pub async fn query_blocks(&self, args: GetBlocksArgs) -> Result<QueryBlocksResponse, ApiError> {
+    async fn query_blocks(&self, args: GetBlocksArgs) -> Result<QueryBlocksResponse, ApiError> {
         self.ledger_service.query_blocks(args).await
     }
 
-    pub async fn get_usd_exchange(&self, ticker: &str) -> Result<f64, ApiError> {
+    async fn get_usd_exchange(&self, ticker: &str) -> Result<f64, ApiError> {
         self.ledger_service.get_usd_exchange(ticker).await
-    }
-
-    pub async fn get_5_akt_in_icp(&self) -> Result<f64, ApiError> {
-        let icp_2_akt_conversion_rate = self.ledger_service.get_icp_2_akt_conversion_rate().await?;
-        Ok(5.0 / icp_2_akt_conversion_rate)
     }
 }

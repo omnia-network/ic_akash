@@ -7,10 +7,10 @@ use crate::helpers::EcdsaKeyIds;
 use super::{
     address::get_account_id_from_public_key,
     proto::deployment::{
-        deployment::DeploymentID,
         deploymentmsg::{
             MsgCloseDeployment, MsgCreateDeployment, MsgDepositDeployment, MsgUpdateDeployment,
         },
+        DeploymentID,
     },
     sdl::SdlV3,
     tx::create_tx,
@@ -20,7 +20,7 @@ pub async fn create_deployment_tx(
     sender_public_key: &PublicKey,
     sdl: &SdlV3,
     dseq: u64,
-    deposit_amount: u64,
+    deposit_uakt_amount: u64,
     account: &BaseAccount,
     ecdsa_key: &EcdsaKeyIds,
 ) -> Result<Vec<u8>, String> {
@@ -36,7 +36,7 @@ pub async fn create_deployment_tx(
         version: sdl.manifest_version(),
         deposit: Some(
             Coin {
-                amount: deposit_amount.into(),
+                amount: deposit_uakt_amount.into(),
                 denom: Denom::from_str("uakt").unwrap(),
             }
             .into(),
@@ -53,7 +53,7 @@ pub async fn create_deployment_tx(
     let fee = Fee::from_amount_and_gas(amount, gas);
 
     let tx_raw = create_tx(
-        &sender_public_key,
+        sender_public_key,
         Any::from_msg(&msg).unwrap(),
         fee,
         account.sequence,
@@ -68,7 +68,7 @@ pub async fn create_deployment_tx(
 pub async fn deposit_deployment_tx(
     sender_public_key: &PublicKey,
     dseq: u64,
-    amount: u64,
+    uakt_amount: u64,
     account: &BaseAccount,
     ecdsa_key: &EcdsaKeyIds,
 ) -> Result<Vec<u8>, String> {
@@ -81,7 +81,7 @@ pub async fn deposit_deployment_tx(
         }),
         amount: Some(
             Coin {
-                amount: amount as u128,
+                amount: uakt_amount as u128,
                 denom: Denom::from_str("uakt").unwrap(),
             }
             .into(),
@@ -98,7 +98,7 @@ pub async fn deposit_deployment_tx(
     let fee = Fee::from_amount_and_gas(amount, gas);
 
     let tx_raw = create_tx(
-        &sender_public_key,
+        sender_public_key,
         Any::from_msg(&msg).unwrap(),
         fee,
         account.sequence,
@@ -137,7 +137,7 @@ pub async fn update_deployment_sdl_tx(
     let fee = Fee::from_amount_and_gas(amount, gas);
 
     let tx_raw = create_tx(
-        &sender_public_key,
+        sender_public_key,
         Any::from_msg(&msg).unwrap(),
         fee,
         account.sequence,
@@ -171,7 +171,7 @@ pub async fn close_deployment_tx(
     let fee = Fee::from_amount_and_gas(amount, gas);
 
     create_tx(
-        &sender_public_key,
+        sender_public_key,
         Any::from_msg(&msg).unwrap(),
         fee,
         account.sequence,

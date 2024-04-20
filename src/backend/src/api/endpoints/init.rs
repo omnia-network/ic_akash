@@ -28,29 +28,21 @@ fn post_upgrade(is_mainnet: bool) {
     init_ic_websocket();
 }
 
+#[derive(Default)]
 struct Init {
     users_service: UsersService,
     config_service: ConfigService,
 }
 
-impl Default for Init {
-    fn default() -> Self {
-        Self {
-            users_service: UsersService::default(),
-            config_service: ConfigService::default(),
-        }
-    }
-}
-
 impl Init {
-    pub fn init_config(&mut self, is_mainnet: bool) {
+    fn init_config(&mut self, is_mainnet: bool) {
         let config = if is_mainnet {
             Config::new_mainnet(
                 EcdsaKeyIds::TestKey1,
                 "https://rpc.akashnet.net",
                 AkashConfig {
                     // fetched from https://api.akashnet.net/cosmos/params/v1beta1/params?subspace=deployment&key=MinDeposits
-                    min_deposit_amount: 500_000,
+                    min_deposit_uakt_amount: 500_000,
                 },
             )
         } else {
@@ -60,7 +52,7 @@ impl Init {
         self.config_service.set_config(config)
     }
 
-    pub fn init_admin(&mut self, principal: Principal) -> Result<UserId, ApiError> {
+    fn init_admin(&mut self, principal: Principal) -> Result<UserId, ApiError> {
         let user = User::new(UserRole::Admin);
 
         self.users_service.create_user(principal, user)

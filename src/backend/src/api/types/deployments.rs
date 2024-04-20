@@ -7,19 +7,23 @@ use utils::{get_time_nanos, Uuid};
 
 pub type DeploymentId = Uuid;
 
-#[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, CandidType, Deserialize, Clone)]
 pub struct Deployment {
     sdl: String,
     user_id: UserId,
     state_history: Vec<(TimestampNs, DeploymentState)>,
+    akt_price: f64,
+    icp_price: f64,
 }
 
 impl Deployment {
-    pub fn new(sdl: String, user_id: UserId) -> Self {
+    pub fn new(sdl: String, user_id: UserId, akt_price: f64, icp_price: f64) -> Self {
         Self {
             sdl,
             user_id,
             state_history: vec![(get_time_nanos(), DeploymentState::Initialized)],
+            akt_price,
+            icp_price,
         }
     }
 
@@ -37,6 +41,10 @@ impl Deployment {
             .expect("must have at least one state")
             .1
             .clone()
+    }
+
+    pub fn icp_price(&self) -> f64 {
+        self.icp_price
     }
 
     pub fn user_owns_deployment(&self, user_id: &UserId) -> bool {

@@ -1,3 +1,4 @@
+use candid::Nat;
 use ic_cdk::{
     api::management_canister::http_request::{
         HttpHeader, HttpMethod, HttpResponse, TransformArgs, TransformContext,
@@ -54,7 +55,7 @@ pub async fn abci_info(url: String) -> Result<<AbciInfoRequest as Request>::Resp
         MAX_RESPONSE_SIZE,
     )
     .await?;
-    <AbciInfoRequest as Request>::Response::from_string(&response.body)
+    <AbciInfoRequest as Request>::Response::from_string(response.body)
 }
 
 pub async fn abci_query(
@@ -67,7 +68,7 @@ pub async fn abci_query(
     let request = AbciQueryRequest {
         path,
         data,
-        height: height.map(|h| Height::new(h)),
+        height: height.map(Height::new),
         prove,
     };
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
@@ -90,7 +91,7 @@ pub async fn abci_query(
         MAX_RESPONSE_SIZE,
     )
     .await?;
-    <AbciQueryRequest as Request>::Response::from_string(&response.body)
+    <AbciQueryRequest as Request>::Response::from_string(response.body)
 }
 
 pub async fn check_tx(url: String, hash_hex: String) -> Result<(), String> {
@@ -115,7 +116,7 @@ pub async fn check_tx(url: String, hash_hex: String) -> Result<(), String> {
         MAX_RESPONSE_SIZE,
     )
     .await?;
-    let response_body = <TxRequest as Request>::Response::from_string(&response.body);
+    let response_body = <TxRequest as Request>::Response::from_string(response.body);
     if let Ok(response_body) = response_body {
         print(format!(
             "[check_tx] response: {:?}",
@@ -131,6 +132,8 @@ pub async fn broadcast_tx_sync(
     url: String,
     tx_raw: Vec<u8>,
 ) -> Result<String, String> {
+    let status_ok = Nat::from(200u16);
+
     let request = TxSyncRequest::new(tx_raw.clone());
     let request_body = Wrapper::new(request).await.into_json().into_bytes();
 
@@ -153,7 +156,7 @@ pub async fn broadcast_tx_sync(
     )
     .await?;
 
-    if response.status != 200 {
+    if response.status != status_ok {
         return Err(format!(
             "incorrect status. Expected 200, received: {:?}",
             response.status
@@ -166,7 +169,7 @@ pub async fn broadcast_tx_sync(
         if let Err(e) = <TxSyncRequest as Request>::Response::from_string(&response.body) {
             if e.contains("tx already exists in cache") {
                 // the transaction has been processed
-                Ok(hex::encode(&sha256(&tx_raw)))
+                Ok(hex::encode(sha256(&tx_raw)))
             } else {
                 Err(e)
             }
@@ -175,7 +178,7 @@ pub async fn broadcast_tx_sync(
         }
     } else {
         // when testing locally only one request is made and therefore the response is 'Ok' if the transaction is accepted by the Akash Network
-        Ok(hex::encode(&sha256(&tx_raw)))
+        Ok(hex::encode(sha256(&tx_raw)))
     }
 }
 
@@ -208,6 +211,5 @@ fn broadcast_tx_sync_transform(raw: TransformArgs) -> HttpResponse {
         status: raw.response.status.clone(),
         body: raw.response.body.clone(),
         headers,
-        ..Default::default()
     }
 }

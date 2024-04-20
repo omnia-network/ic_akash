@@ -16,6 +16,8 @@ The steps are as follows:
     dfx start --clean
     ```
 
+    The local replica is configured to use a _system subnet_ in order for the XRC canister to work.
+
 2. Modify the SDL example in the [`sdl.rs`](./src/backend/src/fixtures/sdl.rs) file. Here you can specify the fields:
 
     - `image`: Docker image you want to deploy

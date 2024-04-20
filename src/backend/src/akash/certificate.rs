@@ -24,24 +24,24 @@ pub struct MsgCreateCertificate {
 }
 
 impl Msg for MsgCreateCertificate {
-    type Proto = proto::cert::cert::MsgCreateCertificate;
+    type Proto = proto::cert::MsgCreateCertificate;
 }
 
-impl TryFrom<proto::cert::cert::MsgCreateCertificate> for MsgCreateCertificate {
+impl TryFrom<proto::cert::MsgCreateCertificate> for MsgCreateCertificate {
     type Error = ErrorReport;
 
     fn try_from(
-        proto: proto::cert::cert::MsgCreateCertificate,
+        proto: proto::cert::MsgCreateCertificate,
     ) -> Result<MsgCreateCertificate, Self::Error> {
         MsgCreateCertificate::try_from(&proto)
     }
 }
 
-impl TryFrom<&proto::cert::cert::MsgCreateCertificate> for MsgCreateCertificate {
+impl TryFrom<&proto::cert::MsgCreateCertificate> for MsgCreateCertificate {
     type Error = ErrorReport;
 
     fn try_from(
-        proto: &proto::cert::cert::MsgCreateCertificate,
+        proto: &proto::cert::MsgCreateCertificate,
     ) -> Result<MsgCreateCertificate, Self::Error> {
         Ok(MsgCreateCertificate {
             owner: proto.owner.parse()?,
@@ -51,15 +51,15 @@ impl TryFrom<&proto::cert::cert::MsgCreateCertificate> for MsgCreateCertificate 
     }
 }
 
-impl From<MsgCreateCertificate> for proto::cert::cert::MsgCreateCertificate {
-    fn from(msg: MsgCreateCertificate) -> proto::cert::cert::MsgCreateCertificate {
-        proto::cert::cert::MsgCreateCertificate::from(&msg)
+impl From<MsgCreateCertificate> for proto::cert::MsgCreateCertificate {
+    fn from(msg: MsgCreateCertificate) -> proto::cert::MsgCreateCertificate {
+        proto::cert::MsgCreateCertificate::from(&msg)
     }
 }
 
-impl From<&MsgCreateCertificate> for proto::cert::cert::MsgCreateCertificate {
-    fn from(msg: &MsgCreateCertificate) -> proto::cert::cert::MsgCreateCertificate {
-        proto::cert::cert::MsgCreateCertificate {
+impl From<&MsgCreateCertificate> for proto::cert::MsgCreateCertificate {
+    fn from(msg: &MsgCreateCertificate) -> proto::cert::MsgCreateCertificate {
+        proto::cert::MsgCreateCertificate {
             owner: msg.owner.to_string(),
             cert: msg.cert.clone(),
             pubkey: msg.pubkey.clone(),
@@ -89,7 +89,7 @@ pub async fn create_certificate_tx(
     let fee = Fee::from_amount_and_gas(amount, gas);
 
     create_tx(
-        &sender_public_key,
+        sender_public_key,
         msg.to_any().unwrap(),
         fee,
         account.sequence,

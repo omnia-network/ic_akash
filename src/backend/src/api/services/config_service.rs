@@ -1,12 +1,7 @@
 use crate::api::{config_state_mut, Config};
 
+#[derive(Default)]
 pub struct ConfigService {}
-
-impl Default for ConfigService {
-    fn default() -> Self {
-        Self {}
-    }
-}
 
 impl ConfigService {
     pub fn set_config(&mut self, config: Config) {

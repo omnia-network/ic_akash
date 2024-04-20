@@ -20,9 +20,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { TEST_DEPLOYMENT_CONFIG } from "@/fixtures/deployment";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Milestone } from "lucide-react";
-import { DEPLOYMENT_PRICE_E8S } from "@/lib/constants";
-import { displayE8sAsIcp } from "@/helpers/ui";
+import { displayE8sAsIcp, icpToE8s } from "@/helpers/ui";
 import { transferE8sToBackend } from "@/services/backend";
+import { Spinner } from "@/components/spinner";
+
+const FETCH_DEPLOYMENT_PRICE_INTERVAL_MS = 30_000; // 30 seconds
 
 export default function NewDeployment() {
   const router = useRouter();
@@ -34,9 +36,11 @@ export default function NewDeployment() {
   const [deploymentSteps, setDeploymentSteps] = useState<
     Array<DeploymentState>
   >([]);
+  const [deploymentE8sPrice, setDeploymentE8sPrice] = useState<bigint | null>(null);
+  const [fetchDeploymentPriceInterval, setFetchDeploymentPriceInterval] = useState<NodeJS.Timeout | null>(null);
   const userHasEnoughBalance = useMemo(() =>
-    ledgerData.balanceE8s !== null && ledgerData.balanceE8s > DEPLOYMENT_PRICE_E8S,
-    [ledgerData.balanceE8s]
+    ledgerData.balanceE8s !== null && deploymentE8sPrice !== null && ledgerData.balanceE8s > deploymentE8sPrice,
+    [ledgerData.balanceE8s, deploymentE8sPrice]
   );
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   const { toast } = useToast();
@@ -199,16 +203,34 @@ export default function NewDeployment() {
       return;
     }
 
+    if (!deploymentE8sPrice) {
+      toastError("Deployment price not fetched");
+      return;
+    }
+
     setIsLoading(true);
 
+
     try {
-      setPaymentStatus("Sending ICP to backend canister...");
-      await transferE8sToBackend(ledgerCanister, DEPLOYMENT_PRICE_E8S, backendActor);
+      setPaymentStatus(`Sending ~${displayE8sAsIcp(deploymentE8sPrice)} to backend canister...`);
+
+      await transferE8sToBackend(
+        ledgerCanister,
+        deploymentE8sPrice,
+        backendActor
+      );
       await refreshLedgerData();
-      setPaymentStatus("Sending ICP to backend canister... DONE");
+
+      if (fetchDeploymentPriceInterval !== null) {
+        clearInterval(fetchDeploymentPriceInterval);
+        setFetchDeploymentPriceInterval(null);
+      }
+
+      setPaymentStatus(prev => prev + " DONE");
     } catch (e) {
       console.error(e);
       toastError("Failed to transfer funds, see console for details");
+      setPaymentStatus(prev => prev + " FAILED");
       setIsLoading(false);
       return;
     }
@@ -231,7 +253,30 @@ export default function NewDeployment() {
     backendActor,
     ledgerCanister,
     refreshLedgerData,
+    deploymentE8sPrice,
+    fetchDeploymentPriceInterval,
   ]);
+
+  const fetchDeploymentPrice = useCallback(async () => {
+    if (!backendActor) {
+      return;
+    }
+
+    try {
+      const res = await backendActor.get_deployment_icp_price();
+      const icpPrice = extractOk(res);
+
+      // add 1 ICP to cover price fluctuation
+      //
+      // TODO: backend canister should first create the deployment
+      // and store the price, so that the frontend can fetch it
+      // and transfer the correct ICP amount accordingly
+      setDeploymentE8sPrice(icpToE8s(icpPrice + 1));
+    } catch (e) {
+      console.error("Failed to fetch deployment price", e);
+      toastError("Failed to fetch deployment price, see console for details");
+    }
+  }, [backendActor, toastError]);
 
   useEffect(() => {
     setWsCallbacks({
@@ -243,6 +288,18 @@ export default function NewDeployment() {
       onError: onWsError,
     });
   }, [onWsOpen, onWsMessage, onWsError, setWsCallbacks]);
+
+  useEffect(() => {
+    fetchDeploymentPrice();
+
+    const interval = setInterval(() => {
+      fetchDeploymentPrice();
+    }, FETCH_DEPLOYMENT_PRICE_INTERVAL_MS);
+
+    setFetchDeploymentPriceInterval(interval);
+
+    return () => clearInterval(interval);
+  }, [fetchDeploymentPrice]);
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
@@ -274,10 +331,14 @@ export default function NewDeployment() {
           </div>
           <div className="flex flex-col gap-2">
             <h5 className="font-bold">
-              Price:
+              Price (est.):
             </h5>
-            <pre>{displayE8sAsIcp(DEPLOYMENT_PRICE_E8S)}</pre>
-            {(!(isLoading || isDeploying) && !userHasEnoughBalance) && (
+            {deploymentE8sPrice !== null ? (
+              <pre>~{displayE8sAsIcp(deploymentE8sPrice, { maximumFractionDigits: 6 })}</pre>
+            ) : (
+              <Spinner />
+            )}
+            {(!(isLoading || isDeploying) && (deploymentE8sPrice !== null) && !userHasEnoughBalance) && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Insufficient balance</AlertTitle>

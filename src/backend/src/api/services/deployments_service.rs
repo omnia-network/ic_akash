@@ -1,9 +1,9 @@
 use crate::{
     api::{
-        init_deployments, ApiError, Deployment, DeploymentId, DeploymentState,
-        DeploymentUpdateWsMessage, DeploymentsMemory, UserId,
+        config_state, init_deployments, ApiError, Config, Deployment, DeploymentId,
+        DeploymentState, DeploymentUpdateWsMessage, DeploymentsMemory, UserId,
     },
-    helpers::send_canister_update,
+    helpers::{send_canister_update, uakt_to_akt},
 };
 use candid::Principal;
 
@@ -20,6 +20,10 @@ impl Default for DeploymentsService {
 }
 
 impl DeploymentsService {
+    pub fn get_config(&self) -> Config {
+        config_state(|state| state.clone())
+    }
+
     pub fn get_deployment(&self, deployment_id: &DeploymentId) -> Result<Deployment, ApiError> {
         self.deployments_memory
             .get(deployment_id)
@@ -30,7 +34,7 @@ impl DeploymentsService {
         self.deployments_memory
             .iter()
             .filter(|(_, deployment)| deployment.user_owns_deployment(user_id))
-            .map(|(k, v)| (k.clone(), v.clone()))
+            .map(|(k, v)| (k, v.clone()))
             .collect()
     }
 
@@ -38,12 +42,14 @@ impl DeploymentsService {
         &mut self,
         user_id: UserId,
         sdl: String,
+        akt_price: f64,
+        icp_price: f64,
     ) -> Result<DeploymentId, ApiError> {
         let deployment_id = DeploymentId::new()
             .await
             .map_err(|e| ApiError::internal(&format!("Failed to create deployment id: {}", e)))?;
 
-        let deployment = Deployment::new(sdl, user_id);
+        let deployment = Deployment::new(sdl, user_id, akt_price, icp_price);
 
         self.deployments_memory.insert(deployment_id, deployment);
 
@@ -145,5 +151,12 @@ impl DeploymentsService {
         }
 
         Ok(())
+    }
+
+    // TODO: calculate price based on the deployment specs
+    pub fn get_deployment_akt_price(&self) -> f64 {
+        let uakt_amount = self.get_config().akash_config().min_deposit_uakt_amount;
+
+        uakt_to_akt(uakt_amount)
     }
 }
