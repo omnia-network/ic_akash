@@ -72,7 +72,7 @@ type DeploymentState = variant {
 };
 
 type Deployment = record {
-  sdl : text;
+  params : DeploymentParams;
   user_id : UserId;
   state_history : vec record { TimestampNs; DeploymentState };
   icp_price : float64;

@@ -4,7 +4,7 @@ use crate::api::{Deployment, DeploymentParams, DeploymentState, TimestampNs};
 
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub struct MappedDeployment {
-    sdl: DeploymentParams,
+    params: DeploymentParams,
     user_id: Principal,
     state_history: Vec<(TimestampNs, DeploymentState)>,
     icp_price: f64,
@@ -13,7 +13,7 @@ pub struct MappedDeployment {
 impl From<Deployment> for MappedDeployment {
     fn from(deployment: Deployment) -> Self {
         Self {
-            sdl: deployment.params(),
+            params: deployment.params(),
             user_id: deployment.user_id().principal(),
             state_history: deployment.get_history(),
             icp_price: deployment.icp_price(),

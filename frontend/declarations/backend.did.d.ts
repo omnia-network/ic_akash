@@ -70,10 +70,10 @@ export type CreateDeploymentResult = { 'Ok' : DeploymentId } |
 export type CreateUserResult = { 'Ok' : UserId } |
   { 'Err' : ApiError };
 export interface Deployment {
-  'sdl' : string,
   'user_id' : UserId,
   'icp_price' : number,
   'state_history' : Array<[TimestampNs, DeploymentState]>,
+  'params' : DeploymentParams,
 }
 export type DeploymentId = string;
 export interface DeploymentParams {

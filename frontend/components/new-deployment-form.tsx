@@ -25,45 +25,10 @@ import { cn } from "@/lib/utils";
 import { ChevronDown, Plus, X } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { LoadingButton } from "@/components/loading-button";
-import type { CpuSize, DeploymentParams, MemorySize, StorageSize } from "@/declarations/backend.did";
-
-enum DeploymentTier {
-  SMALL = "small",
-  MEDIUM = "medium",
-  LARGE = "large",
-};
-
-type TierParams = {
-  cpuSize: CpuSize;
-  memorySize: MemorySize;
-  storageSize: StorageSize;
-  titleText: string;
-  subtitleText: string;
-};
-
-const TIERS: Record<string, TierParams> = {
-  [DeploymentTier.SMALL]: {
-    cpuSize: { Small: null },
-    memorySize: { Small: null },
-    storageSize: { Small: null },
-    titleText: "Small",
-    subtitleText: "0.5 vCPU | 0.5 GB RAM | 500 MB Storage",
-  },
-  [DeploymentTier.MEDIUM]: {
-    cpuSize: { Medium: null },
-    memorySize: { Medium: null },
-    storageSize: { Medium: null },
-    titleText: "Medium",
-    subtitleText: "1 vCPU | 1 GB RAM | 5 GB Storage",
-  },
-  [DeploymentTier.LARGE]: {
-    cpuSize: { Large: null },
-    memorySize: { Large: null },
-    storageSize: { Large: null },
-    titleText: "Large",
-    subtitleText: "2 vCPU | 2 GB RAM | 10 GB Storage",
-  },
-};
+import type { DeploymentParams } from "@/declarations/backend.did";
+import { DeploymentTier } from "@/types/deployment";
+import { DEPLOYMENT_TIERS } from "@/lib/constants";
+import Tier from "@/components/Tier";
 
 const formSchema = z.object({
   deploymentName: z.string().min(2).max(100),
@@ -96,6 +61,7 @@ export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading,
     defaultValues: {
       envVariables: [{ name: "", value: "" }],
       ports: [{ containerPort: undefined, hostPort: undefined }],
+      tier: DeploymentTier.SMALL,
     },
     reValidateMode: "onChange",
   });
@@ -131,7 +97,7 @@ export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading,
   }));
 
   const onFormSubmit: SubmitHandler<z.infer<typeof formSchema>> = async (values) => {
-    const tierParams = TIERS[values.tier];
+    const tierParams = DEPLOYMENT_TIERS[values.tier];
 
     const deploymentParams: DeploymentParams = {
       name: values.deploymentName,
@@ -215,15 +181,13 @@ export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading,
                     <SelectValue placeholder="Select a Tier..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.keys(TIERS).map((tier) => (
+                    {Object.keys(DEPLOYMENT_TIERS).map((tier) => (
                       <SelectItem
                         key={tier}
                         value={tier}
+                        disabled={!DEPLOYMENT_TIERS[tier as DeploymentTier].isEnabled}
                       >
-                        <div className="flex flex-col items-start gap-1">
-                          {TIERS[tier].titleText}
-                          <p className="text-xs text-muted-foreground">{TIERS[tier].subtitleText}</p>
-                        </div>
+                        <Tier tier={tier as DeploymentTier} />
                       </SelectItem>
                     ))}
                   </SelectContent>

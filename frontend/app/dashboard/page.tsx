@@ -1,11 +1,13 @@
 "use client";
 
+import Tier from "@/components/Tier";
 import { LoadingButton } from "@/components/loading-button";
 import { Spinner } from "@/components/spinner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -41,6 +43,7 @@ import {
 } from "@/helpers/deployment";
 import { displayIcp } from "@/helpers/ui";
 import { queryLeaseStatus } from "@/services/deployment";
+import { DeploymentTier } from "@/types/deployment";
 import { ChevronsUpDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -139,10 +142,11 @@ export default function Dashboard() {
         {deployments.length > 0 &&
           deployments.map((el) => (
             <Card key={el.id}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{el.id}</CardTitle>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">{el.deployment.params.name}</CardTitle>
+                <CardDescription><pre className="font-xs">{el.id}</pre></CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex flex-col gap-1">
                 <div>
                   Created at:{" "}
                   {getDeploymentCreatedDate(el.deployment).toISOString()}
@@ -154,6 +158,13 @@ export default function Dashboard() {
                       getLastDeploymentState(el.deployment)
                     )}
                   </span>
+                </div>
+                <div className="flex flex-row gap-1">
+                  Tier:
+                  {/* TODO: display the actual deployment tier */}
+                  <div className="border rounded-md px-3 py-2">
+                    <Tier tier={DeploymentTier.SMALL} />
+                  </div>
                 </div>
                 <div className="flex flex-row gap-1">
                   Price:

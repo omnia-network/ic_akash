@@ -61,10 +61,10 @@ export const idlFactory = ({ IDL }) => {
     'FailedOnCanister' : IDL.Record({ 'reason' : IDL.Text }),
   });
   const Deployment = IDL.Record({
-    'sdl' : IDL.Text,
     'user_id' : UserId,
     'icp_price' : IDL.Float64,
     'state_history' : IDL.Vec(IDL.Tuple(TimestampNs, DeploymentState)),
+    'params' : DeploymentParams,
   });
   const GetDeploymentResult = IDL.Variant({
     'Ok' : IDL.Record({ 'id' : DeploymentId, 'deployment' : Deployment }),
