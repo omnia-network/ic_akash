@@ -51,11 +51,10 @@ const formSchema = z.object({
 export interface NewDeploymentFormProps {
   isLoading?: boolean;
   isSubmitDisabled?: boolean;
-  priceComponent?: React.ReactNode;
   onSubmit: (values: DeploymentParams) => Promise<void> | void;
 };
 
-export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading, isSubmitDisabled, priceComponent, onSubmit }) => {
+export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading, isSubmitDisabled, onSubmit }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -381,7 +380,6 @@ export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading,
             </div>
           </CollapsibleContent>
         </Collapsible>
-        {priceComponent}
         <LoadingButton
           type="submit"
           isLoading={isLoading || form.formState.isSubmitting}

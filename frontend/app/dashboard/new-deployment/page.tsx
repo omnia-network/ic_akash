@@ -317,52 +317,48 @@ export default function NewDeployment() {
           Create Deployment
         </h2>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <NewDeploymentForm
-              isLoading={isSubmitting || isDeploying}
-              isSubmitDisabled={!userHasEnoughBalance}
-              onSubmit={handleDeploy}
-              priceComponent={(
-                <div className="flex flex-col gap-2">
-                  <h5 className="font-bold">
-                    Price (est.):
-                  </h5>
-                  {deploymentE8sPrice !== null ? (
-                    <pre>~{displayE8sAsIcp(deploymentE8sPrice, { maximumFractionDigits: 6 })}</pre>
-                  ) : (
-                    <Spinner />
-                  )}
-                  {(!(isSubmitting || isDeploying) && (deploymentE8sPrice !== null) && !userHasEnoughBalance) && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>Insufficient balance</AlertTitle>
-                      <AlertDescription>
-                        <p>Please top up your account.</p>
-                        <p className="mt-2">Your Ledger Account ID is:</p>
-                        <pre
-                          className="w-fit px-2 py-1 rounded bg-secondary"
-                        >
-                          {ledgerData.accountId?.toHex()}
-                        </pre>
-                        <p className="mt-2">If you&apos;ve already topped up your account, please refresh the balance on the top bar.</p>
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              )}
-            />
-          </div>
+      <div className="grid gap-16 md:grid-cols-2">
+        <div>
+          <NewDeploymentForm
+            isLoading={isSubmitting || isDeploying}
+            isSubmitDisabled={!userHasEnoughBalance}
+            onSubmit={handleDeploy}
+          />
         </div>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 h-fit sticky top-20">
+          <div className="flex flex-col gap-2">
+            <h5 className="font-bold">
+              Price (est.):
+            </h5>
+            {deploymentE8sPrice !== null ? (
+              <pre>~{displayE8sAsIcp(deploymentE8sPrice, { maximumFractionDigits: 6 })}</pre>
+            ) : (
+              <Spinner />
+            )}
+            {(!(isSubmitting || isDeploying) && (deploymentE8sPrice !== null) && !userHasEnoughBalance) && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Insufficient balance</AlertTitle>
+                <AlertDescription>
+                  <p>Please top up your account.</p>
+                  <p className="mt-2">Your Ledger Account ID is:</p>
+                  <pre
+                    className="w-fit px-2 py-1 rounded bg-secondary"
+                  >
+                    {ledgerData.accountId?.toHex()}
+                  </pre>
+                  <p className="mt-2">If you&apos;ve already topped up your account, please refresh the balance on the top bar.</p>
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
           {paymentStatus && (
             <div className="flex flex-col gap-3">
               <h5 className="font-bold">Payment Status:</h5>
               <p>{paymentStatus}</p>
             </div>
           )}
-          {deploymentSteps.length > 0 && (
+          {(isDeploying || deploymentSteps.length > 0) && (
             <div className="flex flex-col gap-3">
               <h5 className="font-bold">Deployment Steps:</h5>
               <div className="flex flex-col gap-2">
@@ -373,6 +369,7 @@ export default function NewDeployment() {
                       {idx + 1}. {el}
                     </p>
                   ))}
+                {isDeploying && <Spinner />}
               </div>
             </div>
           )}

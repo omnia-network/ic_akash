@@ -52,50 +52,46 @@ export default function DashboardLayout({
   return (
     <main className="flex min-h-screen flex-col items-center justify-between">
       <div className="flex flex-col w-full">
-        <div className="border-b">
-          <div className="flex h-16 items-center px-4">
-            <div className="ml-auto flex items-center space-x-4 justify-end">
-              <TooltipProvider>
-                <Tooltip delayDuration={100}>
-                  <TooltipTrigger className="flex flex-row items-center gap-2">
-                    Principal: <pre className="text-primary">{shortPrincipal(userPrincipal!)}</pre>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="bottom"
-                    sideOffset={10}
-                    align="end"
-                  >
-                    <pre>{userPrincipal?.toText()}</pre>
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip delayDuration={100}>
-                  <TooltipTrigger className="flex flex-row items-center gap-2">
-                    Ledger Account ID: <pre className="text-primary">{shortAccountId(userAccountId!)}</pre>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="bottom"
-                    sideOffset={10}
-                    align="end"
-                  >
-                    <pre>{userAccountId?.toHex()}</pre>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <div className="flex flex-row items-center gap-2">
-                Ledger balance:
-                {(!ledgerData.isLoading && ledgerData.balanceE8s !== null) ? <pre className="text-primary">{displayE8sAsIcp(ledgerData.balanceE8s)}</pre> : null}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={fetchBalance}
-                  disabled={ledgerData.isLoading}
-                >
-                  {ledgerData.isLoading ? <Spinner /> : <RefreshCw className="h-4 w-4" />}
-                </Button>
-              </div>
-              <Button variant="outline" onClick={handleLogout}>Logout</Button>
-            </div>
+        <div className="border-b sticky top-0 flex h-16 items-center px-4 space-x-4 justify-end bg-background">
+          <TooltipProvider>
+            <Tooltip delayDuration={100}>
+              <TooltipTrigger className="flex flex-row items-center gap-2">
+                Principal: <pre className="text-primary">{shortPrincipal(userPrincipal!)}</pre>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                sideOffset={10}
+                align="end"
+              >
+                <pre>{userPrincipal?.toText()}</pre>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip delayDuration={100}>
+              <TooltipTrigger className="flex flex-row items-center gap-2">
+                Ledger Account ID: <pre className="text-primary">{shortAccountId(userAccountId!)}</pre>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                sideOffset={10}
+                align="end"
+              >
+                <pre>{userAccountId?.toHex()}</pre>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <div className="flex flex-row items-center gap-2">
+            Ledger balance:
+            {(!ledgerData.isLoading && ledgerData.balanceE8s !== null) ? <pre className="text-primary">{displayE8sAsIcp(ledgerData.balanceE8s)}</pre> : null}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={fetchBalance}
+              disabled={ledgerData.isLoading}
+            >
+              {ledgerData.isLoading ? <Spinner /> : <RefreshCw className="h-4 w-4" />}
+            </Button>
           </div>
+          <Button variant="outline" onClick={handleLogout}>Logout</Button>
         </div>
         {children}
       </div>
