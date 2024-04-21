@@ -456,7 +456,7 @@ async fn handle_create_deployment(
     let mut deployment_service = DeploymentsService::default();
 
     let (tx_hash, dseq, manifest) = akash_service
-        .create_deployment(parsed_sdl)
+        .create_deployment(parsed_sdl.clone())
         .await
         .map_err(|e| ApiError::internal(&format!("Error creating deployment: {}", e)))?;
 
@@ -470,9 +470,13 @@ async fn handle_create_deployment(
         .update_deployment_state(calling_principal, deployment_id, deployment_update, true)
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
 
+    let sdl_yaml = parsed_sdl
+        .to_yaml()
+        .map_err(|e| ApiError::internal(&format!("Error serializing SDL to YAML: {}", e)))?;
+
     print(format!(
-        "[Deployment {}]: Created deployment with manifest: {}",
-        deployment_id, manifest,
+        "[Deployment {}]: Created deployment. YAML: {}, with manifest: {}",
+        deployment_id, sdl_yaml, manifest,
     ));
 
     Ok(dseq)

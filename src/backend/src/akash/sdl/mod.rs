@@ -497,6 +497,10 @@ impl SdlV3 {
         Ok(parsed_sdl)
     }
 
+    pub fn to_yaml(&self) -> Result<String, String> {
+        serde_yaml::to_string(self).map_err(|e| e.to_string())
+    }
+
     pub fn try_from_deployment_params(sdl_params: DeploymentParams) -> Result<SdlV3, String> {
         let service_name = sdl_params.name;
         Ok(SdlV3 {
