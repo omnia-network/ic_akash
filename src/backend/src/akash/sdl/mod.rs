@@ -598,7 +598,10 @@ impl SdlV3 {
                                         size: sdl_params.storage.to_size(),
                                         attributes: None,
                                     }],
-                                    gpu: None,
+                                    gpu: Some(ResourceGpuV3 {
+                                        units: "0".to_string(),
+                                        attributes: None,
+                                    }),
                                     id: None,
                                 },
                             }
