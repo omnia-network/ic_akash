@@ -81,3 +81,17 @@ impl Storable for LogEntry {
 
     const BOUND: Bound = Bound::Unbounded;
 }
+
+#[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
+pub struct LogsFilterRequest {
+    pub before_timestamp_ms: Option<u64>,
+    pub after_timestamp_ms: Option<u64>,
+    pub level: Option<LogLevel>,
+    pub context_contains_any: Option<Vec<String>>,
+    pub message_contains_any: Option<Vec<String>>,
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
+pub struct ListLogsResponse {
+    pub logs: Vec<LogEntry>,
+}

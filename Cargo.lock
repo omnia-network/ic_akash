@@ -1493,6 +1493,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "candid",
+ "chrono",
  "hex",
  "ic-cdk 0.13.2",
  "ic-stable-structures",
