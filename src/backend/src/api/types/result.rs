@@ -1,9 +1,9 @@
 use candid::{CandidType, Deserialize};
+use std::fmt::Display;
 
 #[derive(Debug, CandidType, Deserialize)]
 pub enum ApiResult<T = ()> {
     Ok(T),
-
     Err(ApiError),
 }
 
@@ -11,6 +11,12 @@ pub enum ApiResult<T = ()> {
 pub struct ApiError {
     code: u16,
     message: String,
+}
+
+impl Display for ApiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.code, self.message)
+    }
 }
 
 impl ApiError {
@@ -42,11 +48,24 @@ impl ApiError {
         }
     }
 
+    pub fn conflict(message: &str) -> Self {
+        Self {
+            code: 409,
+            message: message.into(),
+        }
+    }
+
     pub fn internal(message: &str) -> Self {
         Self {
             code: 500,
             message: message.into(),
         }
+    }
+}
+
+impl ApiError {
+    pub fn message(&self) -> &str {
+        &self.message
     }
 }
 

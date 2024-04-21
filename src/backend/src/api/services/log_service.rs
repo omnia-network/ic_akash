@@ -1,4 +1,8 @@
-use crate::api::{ApiError, ListLogsResponse, LogsFilterRequest, DateTime, LogEntry, LogLevel, map_list_logs_response, map_logs_filter_request, LogRepository};
+use crate::api::{
+    backend_api::{ListLogsResponse, LogsFilterRequest},
+    map_list_logs_response, map_logs_filter_request, ApiError, DateTime, LogEntry, LogLevel,
+    LogRepository,
+};
 
 use utils::get_date_time;
 

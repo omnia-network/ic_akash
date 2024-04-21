@@ -1,4 +1,7 @@
-use crate::api::{ApiError, ApiResult, LogService, ListLogsResponse, LogsFilterRequest, AccessControlService, LogRepository};
+use crate::api::{
+    backend_api::{ListLogsResponse, LogsFilterRequest},
+    AccessControlService, ApiError, ApiResult, LogService,
+};
 use candid::Principal;
 use ic_cdk::{caller, query};
 
@@ -16,13 +19,9 @@ struct LogController {
     log_service: LogService,
 }
 
-impl Default for LogController
-{
+impl Default for LogController {
     fn default() -> Self {
-        Self::new(
-            AccessControlService::default(),
-            LogService::default(),
-        )
+        Self::new(AccessControlService::default(), LogService::default())
     }
 }
 
