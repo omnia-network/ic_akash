@@ -11,3 +11,5 @@ thread_local! {
 
 pub(super) const USERS_MEMORY_ID: MemoryId = MemoryId::new(0);
 pub(super) const DEPLOYMENTS_MEMORY_ID: MemoryId = MemoryId::new(1);
+pub(super) const LOGS_INDEX_MEMORY_ID: MemoryId = MemoryId::new(2);
+pub(super) const LOGS_MEMORY_ID: MemoryId = MemoryId::new(3);
