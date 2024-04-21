@@ -40,7 +40,8 @@ profiles:
           - name: null
             size: 512Mi
             attributes: null
-        gpu: null
+        gpu:
+          units: "0"
         id: null
   placement:
     dcloud:
