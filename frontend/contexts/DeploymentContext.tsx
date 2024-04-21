@@ -33,6 +33,8 @@ export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({ children
         getDeploymentCreatedDate(el2.deployment).getTime() - getDeploymentCreatedDate(el1.deployment).getTime()
       )
     );
+
+    console.log("deployments", _deployments);
   }, []);
 
   const loadOrCreateCertificate = useCallback(async (actor: BackendActor): Promise<X509CertificateData | null> => {
