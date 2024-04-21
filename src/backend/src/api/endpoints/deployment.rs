@@ -4,7 +4,7 @@ use crate::{
         map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult, CpuSize,
         Deployment, DeploymentId, DeploymentParams, DeploymentParamsPort, DeploymentState,
         DeploymentsService, GetDeploymentResponse, LedgerService, MemorySize, StorageSize, UserId,
-        UsersService,
+        UsersService, LogServiceImpl, LogRepositoryImpl, LogService,
     },
     fixtures::updated_example_sdl,
     helpers::uakt_to_akt,
@@ -20,7 +20,7 @@ const MAX_FETCH_BIDS_RETRIES: u64 = 5;
 fn get_deployment(deployment_id: String) -> ApiResult<GetDeploymentResponse> {
     let calling_principal = caller();
 
-    DeploymentsEndpoints::default()
+    DeploymentsEndpoints::<LogServiceImpl<LogRepositoryImpl>>::default()
         .get_deployment(&calling_principal, &deployment_id)
         .map(|deployment| map_deployment(deployment_id, deployment))
         .into()
@@ -30,7 +30,7 @@ fn get_deployment(deployment_id: String) -> ApiResult<GetDeploymentResponse> {
 fn get_deployments() -> ApiResult<Vec<GetDeploymentResponse>> {
     let calling_principal = caller();
 
-    DeploymentsEndpoints::default()
+    DeploymentsEndpoints::<LogServiceImpl<LogRepositoryImpl>>::default()
         .get_deployments(&calling_principal)
         .map(|deployments| {
             deployments
@@ -50,7 +50,7 @@ async fn create_certificate(
 ) -> ApiResult<String> {
     let calling_principal = caller();
 
-    DeploymentsEndpoints::default()
+    DeploymentsEndpoints::<LogServiceImpl<LogRepositoryImpl>>::default()
         .create_certificate(calling_principal, cert_pem_base64, pub_key_pem_base64)
         .await
         .into()
@@ -60,7 +60,7 @@ async fn create_certificate(
 async fn create_deployment(sdl_params: DeploymentParams) -> ApiResult<String> {
     let calling_principal = caller();
 
-    DeploymentsEndpoints::default()
+    DeploymentsEndpoints::<LogServiceImpl<LogRepositoryImpl>>::default()
         .create_deployment(calling_principal, sdl_params)
         .await
         .map(|id| id.to_string())
@@ -71,7 +71,7 @@ async fn create_deployment(sdl_params: DeploymentParams) -> ApiResult<String> {
 async fn update_deployment_state(deployment_id: String, update: DeploymentState) -> ApiResult<()> {
     let calling_principal = caller();
 
-    DeploymentsEndpoints::default()
+    DeploymentsEndpoints::<LogServiceImpl<LogRepositoryImpl>>::default()
         .update_deployment_state(calling_principal, deployment_id, update)
         .await
         .into()
@@ -99,7 +99,7 @@ async fn create_test_deployment() -> ApiResult<String> {
     ])
     .build();
 
-    DeploymentsEndpoints::default()
+    DeploymentsEndpoints::<LogServiceImpl<LogRepositoryImpl>>::default()
         .create_deployment(calling_principal, sdl_params)
         .await
         .map(|id| id.to_string())
@@ -110,7 +110,7 @@ async fn create_test_deployment() -> ApiResult<String> {
 async fn deposit_deployment(deployment_id: String, amount_uakt: u64) -> ApiResult<()> {
     let calling_principal = caller();
 
-    DeploymentsEndpoints::default()
+    DeploymentsEndpoints::<LogServiceImpl<LogRepositoryImpl>>::default()
         .deposit_deployment(calling_principal, deployment_id, amount_uakt)
         .await
         .into()
@@ -121,7 +121,7 @@ async fn update_test_deployment_sdl(deployment_id: String) -> ApiResult<()> {
     let calling_principal = caller();
     let sdl = updated_example_sdl().to_string();
 
-    DeploymentsEndpoints::default()
+    DeploymentsEndpoints::<LogServiceImpl<LogRepositoryImpl>>::default()
         .update_deployment_sdl(calling_principal, deployment_id, sdl)
         .await
         .into()
@@ -131,7 +131,7 @@ async fn update_test_deployment_sdl(deployment_id: String) -> ApiResult<()> {
 async fn close_deployment(deployment_id: String) -> ApiResult<()> {
     let calling_principal = caller();
 
-    DeploymentsEndpoints::default()
+    DeploymentsEndpoints::<LogServiceImpl<LogRepositoryImpl>>::default()
         .close_deployment(calling_principal, deployment_id)
         .await
         .into()
@@ -139,22 +139,23 @@ async fn close_deployment(deployment_id: String) -> ApiResult<()> {
 
 #[update]
 async fn get_deployment_icp_price() -> ApiResult<f64> {
-    DeploymentsEndpoints::default()
+    DeploymentsEndpoints::<LogServiceImpl<LogRepositoryImpl>>::default()
         .get_deployment_icp_price()
         .await
         .into()
 }
 
 #[derive(Default)]
-struct DeploymentsEndpoints {
+struct DeploymentsEndpoints<L: LogService> {
     deployments_service: DeploymentsService,
     access_control_service: AccessControlService,
+    log_service: L,
     users_service: UsersService,
     akash_service: AkashService,
     ledger_service: LedgerService,
 }
 
-impl DeploymentsEndpoints {
+impl<L: LogService> DeploymentsEndpoints<L> {
     fn get_deployment(
         &self,
         calling_principal: &Principal,
@@ -241,7 +242,7 @@ impl DeploymentsEndpoints {
             )
             .await?;
 
-        print(format!("[Deployment {}]: Initialized", deployment_id));
+        self.log_service.log_info(format!("[Deployment {}]: Initialized", deployment_id), None)?;
 
         ic_cdk_timers::set_timer(Duration::ZERO, move || {
             ic_cdk::spawn(async move {
