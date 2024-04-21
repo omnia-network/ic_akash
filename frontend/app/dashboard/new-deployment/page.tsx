@@ -71,8 +71,6 @@ export default function NewDeployment() {
         throw new Error("No deployment params");
       }
 
-      await loadOrCreateCertificate(backendActor!);
-
       const res = await backendActor.create_deployment(deploymentParams);
       const deploymentId = extractOk(res);
 
@@ -83,7 +81,7 @@ export default function NewDeployment() {
       console.error(e);
       toastError("Failed to create deployment, see console for details");
     }
-  }, [backendActor, loadOrCreateCertificate, toastError, deploymentParams]);
+  }, [backendActor, toastError, deploymentParams]);
 
   const onWsMessage: OnWsMessageCallback = useCallback(
     async (ev) => {
@@ -223,6 +221,11 @@ export default function NewDeployment() {
     setPaymentStatus(null);
 
     try {
+      const cert = await loadOrCreateCertificate(backendActor!);
+      if (!cert) {
+        throw new Error("No certificate");
+      }
+
       setPaymentStatus(`Sending ~${displayE8sAsIcp(deploymentE8sPrice)} to backend canister...`);
 
       await transferE8sToBackend(
@@ -267,6 +270,7 @@ export default function NewDeployment() {
     refreshLedgerData,
     deploymentE8sPrice,
     fetchDeploymentPriceInterval,
+    loadOrCreateCertificate,
   ]);
 
   const fetchDeploymentPrice = useCallback(async () => {
