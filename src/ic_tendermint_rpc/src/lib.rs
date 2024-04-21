@@ -163,23 +163,29 @@ pub async fn broadcast_tx_sync(
         ));
     }
 
-    if is_mainnet {
-        // when dpeloyed on mainnet the response should eb 'Err' and contain 'tx already exists in cache' even if the transaction is accepted by the Akash Network
-        // this is due to the majority of replicas sending a duplicate request to the Network and thus receiving the error as a response
-        if let Err(e) = <TxSyncRequest as Request>::Response::from_string(&response.body) {
-            if e.contains("tx already exists in cache") {
-                // the transaction has been processed
-                Ok(hex::encode(sha256(&tx_raw)))
-            } else {
-                Err(e)
+    // When deployed on mainnet the response should be an 'Err' that contains 'tx already exists in cache'
+    // even if the transaction is accepted by the Akash Network.
+    // This is due to the majority of replicas sending the same request to the Akash Network
+    // and thus receiving the error as a response
+    let tx_raw = match (
+        <TxSyncRequest as Request>::Response::from_string(&response.body),
+        is_mainnet,
+    ) {
+        (Ok(response), false) => {
+            if response.code.is_err() {
+                return Err(format!("JSON RPC error: {:?}", response));
             }
-        } else {
-            Err("response should contain 'tx already exists in cache'".to_string())
+
+            tx_raw
         }
-    } else {
-        // when testing locally only one request is made and therefore the response is 'Ok' if the transaction is accepted by the Akash Network
-        Ok(hex::encode(sha256(&tx_raw)))
-    }
+        (Err(e), true) if e.contains("tx already exists in cache") => tx_raw,
+        (Ok(_), true) => {
+            return Err("response should contain 'tx already exists in cache'".to_string())
+        }
+        (Err(e), _) => return Err(e),
+    };
+
+    Ok(hex::encode(sha256(&tx_raw)))
 }
 
 #[query]
