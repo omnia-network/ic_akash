@@ -1,6 +1,7 @@
 use crate::api::{init_users, ApiError, User, UserId, UserRole, UsersMemory};
 use candid::Principal;
-use ic_cdk::print;
+
+use super::LogService;
 
 pub struct UsersService {
     users_memory: UsersMemory,
@@ -93,10 +94,13 @@ impl UsersService {
 
         let updated_balance = user.subtract_from_akt_balance(amount_akt);
 
-        print(format!(
-            "[User {}]: Updated balance after deployment: {} AKT",
-            user_id, updated_balance
-        ));
+        LogService::default().log_info(
+            format!(
+                "[User {}]: Updated balance after deployment: {} AKT",
+                user_id, updated_balance
+            ),
+            None,
+        )?;
 
         self.users_memory.insert(user_id, user);
 

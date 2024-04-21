@@ -1,17 +1,16 @@
 use crate::api::ApiError;
 use candid::Principal;
-use ic_cdk::{
-    api::{
-        call::{call, call_with_payment},
-        management_canister::http_request::{HttpMethod, TransformContext},
-    },
-    print,
+use ic_cdk::api::{
+    call::{call, call_with_payment},
+    management_canister::http_request::{HttpMethod, TransformContext},
 };
 use ic_ledger_types::{
     AccountIdentifier, GetBlocksArgs, Operation, QueryBlocksResponse, Subaccount,
 };
 use ic_xrc_types::{Asset, AssetClass, GetExchangeRateRequest, GetExchangeRateResult};
 use utils::{get_time_seconds, make_http_request};
+
+use super::LogService;
 
 /// assume requests are at most 1kb
 const REQUEST_SIZE: u128 = 1_000;
@@ -177,7 +176,8 @@ impl LedgerService {
         let exchange_rate =
             res.map_err(|e| ApiError::internal(&format!("exchange rate error: {:?}", e)))?;
 
-        print(format!("exchange rate result: {:?}", exchange_rate));
+        LogService::default()
+            .log_info(format!("exchange rate result: {:?}", exchange_rate), None)?;
 
         Ok(exchange_rate.rate as f64 / 10_f64.powi(exchange_rate.metadata.decimals as i32))
     }

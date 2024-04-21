@@ -2,7 +2,8 @@ use candid::Principal;
 use ic_cdk::*;
 
 use crate::api::{
-    AccessControlService, ApiError, ApiResult, LedgerService, User, UserId, UserRole, UsersService,
+    AccessControlService, ApiError, ApiResult, LedgerService, LogService, User, UserId, UserRole,
+    UsersService,
 };
 
 #[query]
@@ -48,6 +49,7 @@ struct UsersEndpoints {
     users_service: UsersService,
     ledger_service: LedgerService,
     access_control_service: AccessControlService,
+    log_service: LogService,
 }
 
 impl UsersEndpoints {
@@ -100,12 +102,15 @@ impl UsersEndpoints {
         self.users_service
             .add_payment_to_user_once(user_id, payment_block_height, paid_akt)?;
 
-        print(format!(
-            "[User {}]: Received payment of {} AKT. Current balance: {} AKT",
-            calling_principal,
-            paid_akt,
-            self.users_service.get_user_akt_balance(&user_id)?
-        ));
+        self.log_service.log_info(
+            format!(
+                "[User {}]: Received payment of {} AKT. Current balance: {} AKT",
+                calling_principal,
+                paid_akt,
+                self.users_service.get_user_akt_balance(&user_id)?
+            ),
+            None,
+        )?;
 
         Ok(paid_akt)
     }
