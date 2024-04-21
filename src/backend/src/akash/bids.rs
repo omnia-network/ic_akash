@@ -1,4 +1,4 @@
-use cosmrs::AccountId;
+use cosmrs::{proto::cosmos::base::query::v1beta1::PageRequest, AccountId};
 use prost::Message;
 
 use super::proto::market::{
@@ -15,12 +15,18 @@ pub async fn fetch_bids(
         filters: Some(BidFilters {
             owner: account_id.to_string(),
             dseq, // same as in the CreateDeployment transaction
-            gseq: 0,
-            oseq: 0,
+            gseq: 1,
+            oseq: 1,
             provider: "".to_string(),
             state: "".to_string(),
         }),
-        pagination: None,
+        pagination: Some(PageRequest {
+            key: vec![],
+            limit: 1,
+            offset: 0,
+            count_total: false,
+            reverse: false,
+        }),
     };
 
     let abci_res = ic_tendermint_rpc::abci_query(
