@@ -1,5 +1,6 @@
 "use client";
 
+import ClipboardCopyButton from "@/components/clipboard-copy-button";
 import { Spinner } from "@/components/spinner";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -56,7 +57,9 @@ export default function DashboardLayout({
           <TooltipProvider>
             <Tooltip delayDuration={100}>
               <TooltipTrigger className="flex flex-row items-center gap-2">
-                Principal: <pre className="text-primary">{shortPrincipal(userPrincipal!)}</pre>
+                Principal:
+                <pre className="text-primary">{shortPrincipal(userPrincipal!)}</pre>
+                <ClipboardCopyButton text={userPrincipal!.toText()} />
               </TooltipTrigger>
               <TooltipContent
                 side="bottom"
@@ -68,7 +71,9 @@ export default function DashboardLayout({
             </Tooltip>
             <Tooltip delayDuration={100}>
               <TooltipTrigger className="flex flex-row items-center gap-2">
-                Ledger Account ID: <pre className="text-primary">{shortAccountId(userAccountId!)}</pre>
+                Ledger Account ID:
+                <pre className="text-primary">{shortAccountId(userAccountId!)}</pre>
+                <ClipboardCopyButton text={userAccountId!.toHex()} />
               </TooltipTrigger>
               <TooltipContent
                 side="bottom"
