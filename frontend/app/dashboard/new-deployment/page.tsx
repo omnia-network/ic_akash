@@ -61,6 +61,7 @@ export default function NewDeployment() {
     console.log("ws open");
 
     setIsDeploying(true);
+    setIsSubmitting(false);
     try {
       if (!backendActor) {
         throw new Error("No backend actor");
@@ -82,8 +83,6 @@ export default function NewDeployment() {
       console.error(e);
       toastError("Failed to create deployment, see console for details");
     }
-
-    setIsSubmitting(false);
   }, [backendActor, loadOrCreateCertificate, toastError, deploymentParams]);
 
   const onWsMessage: OnWsMessageCallback = useCallback(
@@ -99,6 +98,7 @@ export default function NewDeployment() {
         console.error("Failed to deploy", err);
         toastError("Failed to deploy, see console for details");
         setIsDeploying(false);
+        closeWs();
         return;
       }
 
@@ -216,8 +216,11 @@ export default function NewDeployment() {
       return;
     }
 
+    setDeploymentSteps([]);
     setDeploymentParams(values);
+    setIsDeploying(false);
     setIsSubmitting(true);
+    setPaymentStatus(null);
 
     try {
       setPaymentStatus(`Sending ~${displayE8sAsIcp(deploymentE8sPrice)} to backend canister...`);
