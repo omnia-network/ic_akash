@@ -73,6 +73,7 @@ pub async fn create_certificate_tx(
     pub_key_pem: Vec<u8>,
     account: &BaseAccount,
     ecdsa_key: &EcdsaKeyIds,
+    chain_id: &str,
 ) -> Result<Vec<u8>, String> {
     let msg = MsgCreateCertificate {
         owner: get_account_id_from_public_key(sender_public_key)?,
@@ -95,6 +96,7 @@ pub async fn create_certificate_tx(
         account.sequence,
         account.account_number,
         ecdsa_key,
+        chain_id,
     )
     .await
 }

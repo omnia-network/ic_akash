@@ -67,6 +67,7 @@ impl AkashService {
             amount,
             &account,
             config.ecdsa_key(),
+            config.chain_id(),
         )
         .await?;
 
@@ -97,6 +98,7 @@ impl AkashService {
             pub_key_pem,
             &account,
             config.ecdsa_key(),
+            config.chain_id(),
         )
         .await?;
 
@@ -125,6 +127,7 @@ impl AkashService {
             deposit,
             &account,
             config.ecdsa_key(),
+            config.chain_id(),
         )
         .await?;
 
@@ -146,9 +149,15 @@ impl AkashService {
 
         let account = get_account(rpc_url.clone(), &public_key).await?;
 
-        let tx_raw =
-            deposit_deployment_tx(&public_key, dseq, amount_uakt, &account, config.ecdsa_key())
-                .await?;
+        let tx_raw = deposit_deployment_tx(
+            &public_key,
+            dseq,
+            amount_uakt,
+            &account,
+            config.ecdsa_key(),
+            config.chain_id(),
+        )
+        .await?;
 
         let _tx_hash =
             ic_tendermint_rpc::broadcast_tx_sync(config.is_mainnet(), rpc_url, tx_raw).await?;
@@ -173,8 +182,15 @@ impl AkashService {
 
         let account = get_account(rpc_url.clone(), &public_key).await?;
 
-        let tx_raw =
-            update_deployment_sdl_tx(&public_key, &sdl, dseq, &account, config.ecdsa_key()).await?;
+        let tx_raw = update_deployment_sdl_tx(
+            &public_key,
+            &sdl,
+            dseq,
+            &account,
+            config.ecdsa_key(),
+            config.chain_id(),
+        )
+        .await?;
 
         let tx_hash =
             ic_tendermint_rpc::broadcast_tx_sync(config.is_mainnet(), rpc_url, tx_raw).await?;
@@ -212,8 +228,14 @@ impl AkashService {
         let bid = bids[0].bid.clone().unwrap();
         let bid_id = bid.bid_id.unwrap();
 
-        let tx_raw =
-            create_lease_tx(&public_key, bid_id.clone(), &account, config.ecdsa_key()).await?;
+        let tx_raw = create_lease_tx(
+            &public_key,
+            bid_id.clone(),
+            &account,
+            config.ecdsa_key(),
+            config.chain_id(),
+        )
+        .await?;
 
         let tx_hash =
             ic_tendermint_rpc::broadcast_tx_sync(config.is_mainnet(), rpc_url, tx_raw).await?;
@@ -233,7 +255,14 @@ impl AkashService {
 
         let account = get_account(rpc_url.clone(), &public_key).await?;
 
-        let tx_raw = close_deployment_tx(&public_key, dseq, &account, config.ecdsa_key()).await?;
+        let tx_raw = close_deployment_tx(
+            &public_key,
+            dseq,
+            &account,
+            config.ecdsa_key(),
+            config.chain_id(),
+        )
+        .await?;
 
         let tx_hash =
             ic_tendermint_rpc::broadcast_tx_sync(config.is_mainnet(), rpc_url, tx_raw).await?;

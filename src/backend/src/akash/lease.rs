@@ -15,6 +15,7 @@ pub async fn create_lease_tx(
     bid_id: BidId,
     account: &BaseAccount,
     ecdsa_key: &EcdsaKeyIds,
+    chain_id: &str,
 ) -> Result<Vec<u8>, String> {
     let msg = MsgCreateLease {
         bid_id: Some(bid_id),
@@ -35,6 +36,7 @@ pub async fn create_lease_tx(
         account.sequence,
         account.account_number,
         ecdsa_key,
+        chain_id,
     )
     .await
 }

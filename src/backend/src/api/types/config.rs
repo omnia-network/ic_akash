@@ -21,6 +21,7 @@ pub struct Config {
     is_mainnet: bool,
     ecdsa_key: EcdsaKeyIds,
     tendermint_rpc_url: String,
+    chain_id: String,
     akash_config: AkashConfig,
 }
 
@@ -33,6 +34,8 @@ impl Config {
         Self {
             is_mainnet: true,
             ecdsa_key,
+            // from https://raw.githubusercontent.com/akash-network/net/main/mainnet/chain-id.txt
+            chain_id: "akashnet-2".to_string(),
             tendermint_rpc_url: tendermint_rpc_url.to_string(),
             akash_config,
         }
@@ -57,6 +60,10 @@ impl Config {
     pub async fn public_key(&self) -> Result<PublicKey, String> {
         get_public_key(self.ecdsa_key()).await
     }
+
+    pub fn chain_id(&self) -> &str {
+        &self.chain_id
+    }
 }
 
 impl Default for Config {
@@ -64,6 +71,8 @@ impl Default for Config {
         Self {
             is_mainnet: false,
             ecdsa_key: EcdsaKeyIds::TestKeyLocalDevelopment,
+            // from https://raw.githubusercontent.com/akash-network/net/main/sandbox/chain-id.txt
+            chain_id: "sandbox-01".to_string(),
             tendermint_rpc_url: "https://rpc.sandbox-01.aksh.pw".to_string(),
             akash_config: AkashConfig {
                 min_deposit_uakt_amount: 5_000_000,
