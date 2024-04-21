@@ -533,7 +533,7 @@ impl SdlV3 {
                             }
                         },
                         expose: {
-                            sdl_params
+                            let mut ports: Vec<_> = sdl_params
                                 .ports
                                 .into_iter()
                                 .map(|port_params| ExposeV2 {
@@ -542,14 +542,35 @@ impl SdlV3 {
                                     proto: Some("TCP".to_string()),
                                     to: Some(vec![ExposeToV2 {
                                         service: None,
-                                        global: Some(port_params.domain.is_some()),
+                                        global: Some(true),
                                         ip: None,
                                         http_options: None,
                                     }]),
                                     accept: port_params.domain.map(|domain| vec![domain]),
                                     http_options: None,
                                 })
-                                .collect()
+                                .collect();
+
+                            if ports.is_empty() {
+                                // a global port is always needed due to legacy reasons on Akash,
+                                // so we expose a fake one if none are provided in the params
+                                // see https://discord.com/channels/747885925232672829/1111748832489910332/1156685118988111982
+                                ports.push(ExposeV2 {
+                                    port: 12345, // fake port number as workaround
+                                    r#as: None,
+                                    proto: None,
+                                    to: Some(vec![ExposeToV2 {
+                                        service: None,
+                                        global: Some(true),
+                                        ip: None,
+                                        http_options: None,
+                                    }]),
+                                    accept: None,
+                                    http_options: None,
+                                });
+                            }
+
+                            ports
                         },
                         dependencies: None,
                         params: None,

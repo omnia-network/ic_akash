@@ -40,12 +40,10 @@ const formSchema = z.object({
     value: z.string().max(50),
   })).max(20),
   volumeMount: z.string().max(50).optional(),
-  ports: z.array(
-    z.object({
-      containerPort: z.coerce.number().min(1).max(65535).optional(),
-      hostPort: z.coerce.number().min(1).max(65535).optional(),
-    }),
-  ).max(5),
+  expose: z.object({
+    httpPort: z.coerce.number().min(1).max(65535).optional(),
+    domain: z.string().max(100).optional(),
+  }).optional(),
 });
 
 export interface NewDeploymentFormProps {
@@ -60,7 +58,6 @@ export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading,
     defaultValues: {
       command: [],
       envVariables: [{ name: "", value: "" }],
-      ports: [{ containerPort: undefined, hostPort: undefined }],
       tier: DeploymentTier.SMALL,
     },
     reValidateMode: "onChange",
@@ -79,21 +76,6 @@ export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading,
   const controlledEnvVariablesFields = envVariablesFields.map((field, index) => ({
     ...field,
     ...watchEnvVariables[index]
-  }));
-
-  const {
-    fields: portsFields,
-    append: appendPort,
-    remove: removePort,
-    update: updatePort,
-  } = useFieldArray({
-    name: "ports",
-    control: form.control,
-  });
-  const watchPorts = form.watch("ports");
-  const controlledPortsFields = portsFields.map((field, index) => ({
-    ...field,
-    ...watchPorts[index]
   }));
 
   const onFormSubmit: SubmitHandler<z.infer<typeof formSchema>> = async (values) => {
@@ -117,14 +99,12 @@ export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading,
       }
     }
 
-    for (const { containerPort, hostPort } of values.ports) {
-      if (containerPort && hostPort) {
-        deploymentParams.ports.push({
-          container_port: containerPort,
-          host_port: hostPort,
-          domain: [],
-        });
-      }
+    if (values.expose?.httpPort) {
+      deploymentParams.ports.push({
+        container_port: values.expose.httpPort,
+        host_port: 80,
+        domain: values.expose.domain ? [values.expose.domain] : [],
+      });
     }
 
     if (values.volumeMount) {
@@ -315,69 +295,40 @@ export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading,
                 </FormItem>
               )}
             />
-            <div>
-              {controlledPortsFields.map((field, index) => (
-                <div
-                  key={field.id}
-                  className="flex flex-row gap-1 items-end"
-                >
-                  <FormField
-                    control={form.control}
-                    name={`ports.${index}.containerPort`}
-                    render={({ field: innerField }) => (
-                      <FormItem className="flex-1">
-                        <FormLabel className={cn(index !== 0 && "sr-only")}>
-                          Ports mapping
-                        </FormLabel>
-                        <FormDescription className={cn(index !== 0 && "sr-only")}>
-                          Add up to 5 ports mapping (if needed)
-                        </FormDescription>
-                        <FormControl>
-                          <Input placeholder="Container Port (e.g. 8080)" type="number" {...innerField} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`ports.${index}.hostPort`}
-                    render={({ field: innerField }) => (
-                      <FormItem className="flex-1">
-                        <FormControl>
-                          <Input placeholder="Host Port (e.g. 80)" type="number" {...innerField} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  {(controlledPortsFields.length > 1 || field.containerPort !== undefined) && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => {
-                        if (controlledPortsFields.length > 1) {
-                          removePort(index);
-                        } else {
-                          updatePort(index, { containerPort: undefined, hostPort: undefined });
-                        }
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-2"
-                onClick={() => appendPort({ containerPort: undefined, hostPort: undefined })}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Port
-              </Button>
+            <div
+              className="flex flex-row gap-1 items-end"
+            >
+              <FormField
+                control={form.control}
+                name="expose.httpPort"
+                render={({ field: innerField }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>
+                      Ports mapping
+                    </FormLabel>
+                    <FormDescription>
+                      Specify the container port that you want to expose publicly via HTTPS,
+                      and eventually the custom domain you want to use.
+                      In future versions, we&apos;ll support other protocols.
+                    </FormDescription>
+                    <FormControl>
+                      <Input placeholder="Container Port (e.g. 8080)" type="number" {...innerField} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="expose.domain"
+                render={({ field: innerField }) => (
+                  <FormItem className="flex-1">
+                    <FormControl>
+                      <Input placeholder="Custom domain (optional)" {...innerField} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             </div>
           </CollapsibleContent>
         </Collapsible>
