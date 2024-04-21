@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## CLI dependencies:
-# jq: https://stedolan.github.io/jq/
+# jq: https://github.com/jqlang/jq
 # yq: https://github.com/mikefarah/yq
 # provider-services: https://akash.network/docs/deployments/akash-cli/installation/#install-akash-cli
 
