@@ -58,6 +58,7 @@ export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading,
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      command: [],
       envVariables: [{ name: "", value: "" }],
       ports: [{ containerPort: undefined, hostPort: undefined }],
       tier: DeploymentTier.SMALL,
@@ -99,15 +100,15 @@ export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading,
     const tierParams = DEPLOYMENT_TIERS[values.tier];
 
     const deploymentParams: DeploymentParams = {
-      name: values.deploymentName,
-      image: values.dockerImage,
+      name: values.deploymentName.trim(),
+      image: values.dockerImage.trim(),
       env_vars: [],
       ports: [],
       cpu: tierParams.cpuSize,
       memory: tierParams.memorySize,
       storage: tierParams.storageSize,
       volume_mount: [],
-      command: values.command,
+      command: values.command.filter(Boolean),
     };
 
     for (const { name, value } of values.envVariables) {
