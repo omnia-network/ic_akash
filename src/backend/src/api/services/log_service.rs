@@ -1,36 +1,19 @@
-use crate::api::{ApiError, ListLogsResponse, LogsFilterRequest, DateTime, LogEntry, LogLevel, map_list_logs_response, map_logs_filter_request, LogRepository, LogRepositoryImpl};
+use crate::api::{ApiError, ListLogsResponse, LogsFilterRequest, DateTime, LogEntry, LogLevel, map_list_logs_response, map_logs_filter_request, LogRepository};
 
 use utils::get_date_time;
 
-pub trait LogService {
-    fn list_logs(&self, filter: LogsFilterRequest) -> ListLogsResponse;
-
-    fn append_log(
-        &self,
-        level: LogLevel,
-        message: String,
-        context: Option<String>,
-    ) -> Result<(), ApiError>;
-
-    fn log_info(&self, message: String, context: Option<String>) -> Result<(), ApiError>;
-
-    fn log_warn(&self, message: String, context: Option<String>) -> Result<(), ApiError>;
-
-    fn log_error(&self, message: String, context: Option<String>) -> Result<(), ApiError>;
+pub struct LogService {
+    log_repository: LogRepository,
 }
 
-pub struct LogServiceImpl<T: LogRepository> {
-    log_repository: T,
-}
-
-impl Default for LogServiceImpl<LogRepositoryImpl> {
+impl Default for LogService {
     fn default() -> Self {
-        Self::new(LogRepositoryImpl::default())
+        Self::new(LogRepository::default())
     }
 }
 
-impl<T: LogRepository> LogService for LogServiceImpl<T> {
-    fn list_logs(&self, request: LogsFilterRequest) -> ListLogsResponse {
+impl LogService {
+    pub fn list_logs(&self, request: LogsFilterRequest) -> ListLogsResponse {
         let filter = map_logs_filter_request(request);
 
         let logs = self
@@ -44,7 +27,7 @@ impl<T: LogRepository> LogService for LogServiceImpl<T> {
         map_list_logs_response(logs)
     }
 
-    fn append_log(
+    pub fn append_log(
         &self,
         level: LogLevel,
         message: String,
@@ -62,21 +45,21 @@ impl<T: LogRepository> LogService for LogServiceImpl<T> {
         self.log_repository.append_log(log_entry).map(|_| ())
     }
 
-    fn log_info(&self, message: String, context: Option<String>) -> Result<(), ApiError> {
+    pub fn log_info(&self, message: String, context: Option<String>) -> Result<(), ApiError> {
         self.append_log(LogLevel::Info, message, context)
     }
 
-    fn log_warn(&self, message: String, context: Option<String>) -> Result<(), ApiError> {
+    pub fn log_warn(&self, message: String, context: Option<String>) -> Result<(), ApiError> {
         self.append_log(LogLevel::Warn, message, context)
     }
 
-    fn log_error(&self, message: String, context: Option<String>) -> Result<(), ApiError> {
+    pub fn log_error(&self, message: String, context: Option<String>) -> Result<(), ApiError> {
         self.append_log(LogLevel::Error, message, context)
     }
 }
 
-impl<T: LogRepository> LogServiceImpl<T> {
-    fn new(log_repository: T) -> Self {
+impl LogService {
+    fn new(log_repository: LogRepository) -> Self {
         Self { log_repository }
     }
 }

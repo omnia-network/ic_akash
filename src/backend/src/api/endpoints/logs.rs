@@ -1,4 +1,4 @@
-use crate::api::{ApiError, ApiResult, LogServiceImpl, ListLogsResponse, LogsFilterRequest, AccessControlService, LogService, LogRepositoryImpl};
+use crate::api::{ApiError, ApiResult, LogService, ListLogsResponse, LogsFilterRequest, AccessControlService, LogRepository};
 use candid::Principal;
 use ic_cdk::{caller, query};
 
@@ -11,26 +11,23 @@ fn list_logs(request: LogsFilterRequest) -> ApiResult<ListLogsResponse> {
         .into()
 }
 
-struct LogController<L: LogService> {
+struct LogController {
     access_control_service: AccessControlService,
-    log_service: L,
+    log_service: LogService,
 }
 
-impl Default
-    for LogController<
-        LogServiceImpl<LogRepositoryImpl>,
-    >
+impl Default for LogController
 {
     fn default() -> Self {
         Self::new(
             AccessControlService::default(),
-            LogServiceImpl::default(),
+            LogService::default(),
         )
     }
 }
 
-impl<L: LogService> LogController<L> {
-    fn new(access_control_service: AccessControlService, log_service: L) -> Self {
+impl LogController {
+    fn new(access_control_service: AccessControlService, log_service: LogService) -> Self {
         Self {
             access_control_service,
             log_service,
