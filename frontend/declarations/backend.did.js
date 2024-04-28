@@ -83,6 +83,28 @@ export const idlFactory = ({ IDL }) => {
     'created_at' : TimestampNs,
   });
   const GetUserResult = IDL.Variant({ 'Ok' : User, 'Err' : ApiError });
+  const LogLevel = IDL.Variant({
+    'info' : IDL.Null,
+    'warn' : IDL.Null,
+    'error' : IDL.Null,
+  });
+  const LogsFilterRequest = IDL.Record({
+    'context_contains_any' : IDL.Opt(IDL.Vec(IDL.Text)),
+    'level' : IDL.Opt(LogLevel),
+    'message_contains_any' : IDL.Opt(IDL.Vec(IDL.Text)),
+    'after_timestamp_ms' : IDL.Opt(IDL.Nat64),
+    'before_timestamp_ms' : IDL.Opt(IDL.Nat64),
+  });
+  const LogEntry = IDL.Record({
+    'context' : IDL.Opt(IDL.Text),
+    'date_time' : IDL.Text,
+    'level' : LogLevel,
+    'message' : IDL.Text,
+  });
+  const ListLogsResponse = IDL.Variant({
+    'Ok' : IDL.Record({ 'logs' : IDL.Vec(LogEntry) }),
+    'Err' : ApiError,
+  });
   const BlockIndex = IDL.Nat64;
   const GetBlocksArgs = IDL.Record({
     'start' : BlockIndex,
@@ -247,6 +269,7 @@ export const idlFactory = ({ IDL }) => {
     'get_deployments' : IDL.Func([], [GetDeploymentsResult], ['query']),
     'get_icp_price' : IDL.Func([], [ApiFloatResult], []),
     'get_user' : IDL.Func([], [GetUserResult], ['query']),
+    'list_logs' : IDL.Func([LogsFilterRequest], [ListLogsResponse], ['query']),
     'promote_user_to_admin' : IDL.Func([UserId], [ApiEmptyResult], []),
     'query_blocks' : IDL.Func(
         [GetBlocksArgs],
