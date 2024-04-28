@@ -3,7 +3,7 @@ use candid::{
     types::{Type, TypeInner},
     CandidType, Deserialize,
 };
-use chrono::{Datelike, NaiveDateTime, TimeZone, Timelike, Utc};
+use chrono::{Datelike, Timelike};
 use ic_stable_structures::{storable::Bound, Storable};
 use std::{borrow::Cow, str::FromStr};
 
@@ -12,6 +12,7 @@ pub struct DateTime(chrono::DateTime<chrono::Utc>);
 
 const DATE_TIME_SIZE: u32 = 25;
 
+#[allow(dead_code)]
 impl DateTime {
     pub fn new(date_time: chrono::DateTime<chrono::Utc>) -> Result<Self, ApiError> {
         Ok(Self(date_time.with_nanosecond(0).ok_or(
@@ -26,10 +27,10 @@ impl DateTime {
                 micros, err
             ))
         })?;
-        let dt = NaiveDateTime::from_timestamp_micros(micros).ok_or(ApiError::internal(
+        let dt = chrono::DateTime::from_timestamp_micros(micros).ok_or(ApiError::internal(
             &format!("Failed to convert timestamp {} to date time", micros),
         ))?;
-        Self::new(Utc.from_utc_datetime(&dt))
+        Self::new(dt)
     }
 
     pub fn sub(&self, duration: chrono::Duration) -> Self {

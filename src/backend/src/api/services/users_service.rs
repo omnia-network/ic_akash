@@ -1,7 +1,5 @@
-use crate::api::{init_users, ApiError, User, UserId, UserRole, UsersMemory};
+use crate::api::{init_users, log_info, ApiError, User, UserId, UserRole, UsersMemory};
 use candid::Principal;
-
-use super::LogService;
 
 pub struct UsersService {
     users_memory: UsersMemory,
@@ -94,13 +92,13 @@ impl UsersService {
 
         let updated_balance = user.subtract_from_akt_balance(amount_akt);
 
-        LogService::default().log_info(
+        log_info!(
             format!(
                 "[User {}]: Updated balance after deployment: {} AKT",
                 user_id, updated_balance
             ),
-            None,
-        )?;
+            "charge_user"
+        );
 
         self.users_memory.insert(user_id, user);
 

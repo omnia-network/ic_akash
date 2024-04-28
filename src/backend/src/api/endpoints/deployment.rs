@@ -1,10 +1,10 @@
 use crate::{
     akash::{address::get_account_id_from_public_key, bids::fetch_bids, sdl::SdlV3},
     api::{
-        map_deployment, services::AkashService, AccessControlService, ApiError, ApiResult, CpuSize,
-        Deployment, DeploymentId, DeploymentParams, DeploymentParamsPort, DeploymentState,
-        DeploymentsService, GetDeploymentResponse, LedgerService, LogService, MemorySize,
-        StorageSize, UserId, UsersService,
+        log_info, map_deployment, services::AkashService, AccessControlService, ApiError,
+        ApiResult, CpuSize, Deployment, DeploymentId, DeploymentParams, DeploymentParamsPort,
+        DeploymentState, DeploymentsService, GetDeploymentResponse, LedgerService, LogService,
+        MemorySize, StorageSize, UserId, UsersService,
     },
     fixtures::updated_example_sdl,
     helpers::uakt_to_akt,
@@ -242,20 +242,20 @@ impl DeploymentsEndpoints {
             )
             .await?;
 
-        self.log_service
-            .log_info(format!("[Deployment {}]: Initialized", deployment_id), None)?;
+        self.log_service.log_info(
+            format!("[Deployment {}]: Initialized", deployment_id),
+            Some("create_deployment".to_string()),
+        )?;
 
         ic_cdk_timers::set_timer(Duration::ZERO, move || {
             ic_cdk::spawn(async move {
-                LogService::default()
-                    .log_info(
-                        format!(
-                            "[Deployment {}]: Starting to handle deployment creation",
-                            deployment_id
-                        ),
-                        None,
-                    )
-                    .unwrap();
+                log_info!(
+                    format!(
+                        "[Deployment {}]: Starting to handle deployment creation",
+                        deployment_id
+                    ),
+                    "create_deployment_task"
+                );
 
                 if let Err(e) =
                     handle_deployment(calling_principal, parsed_sdl, deployment_id).await
@@ -446,15 +446,13 @@ async fn handle_deployment(
 ) -> Result<(), ApiError> {
     let dseq = handle_create_deployment(calling_principal, parsed_sdl, deployment_id).await?;
 
-    LogService::default()
-        .log_info(
-            format!(
-                "[Deployment {}]: Starting to handle lease creation",
-                deployment_id
-            ),
-            None,
-        )
-        .unwrap();
+    log_info!(
+        format!(
+            "[Deployment {}]: Starting to handle lease creation",
+            deployment_id
+        ),
+        "handle_deployment"
+    );
     handle_lease(calling_principal, dseq, deployment_id, 0);
 
     Ok(())
@@ -483,12 +481,10 @@ async fn handle_create_deployment(
         .update_deployment_state(calling_principal, deployment_id, deployment_update, true)
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
 
-    LogService::default()
-        .log_info(
-            format!("[Deployment {}]: Created deployment", deployment_id),
-            None,
-        )
-        .unwrap();
+    log_info!(
+        format!("[Deployment {}]: Created deployment", deployment_id),
+        "handle_create_deployment"
+    );
 
     Ok(dseq)
 }
@@ -498,27 +494,23 @@ fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: Deployme
         ic_cdk::spawn(async move {
             match try_fetch_bids_and_create_lease(calling_principal, dseq, deployment_id).await {
                 Ok(Some((_tx_hash, deployment_url))) => {
-                    LogService::default()
-                        .log_info(
-                            format!(
-                                "[Deployment {}]: Deployment URL: {}",
-                                deployment_id, deployment_url
-                            ),
-                            None,
-                        )
-                        .unwrap();
+                    log_info!(
+                        format!(
+                            "[Deployment {}]: Deployment URL: {}",
+                            deployment_id, deployment_url
+                        ),
+                        "handle_lease"
+                    );
                 }
                 Ok(None) => {
                     if retry > MAX_FETCH_BIDS_RETRIES {
-                        LogService::default()
-                            .log_info(
-                                format!(
-                                    "[Deployment {}]: Too many retries fetching bids",
-                                    deployment_id
-                                ),
-                                None,
-                            )
-                            .unwrap();
+                        log_info!(
+                            format!(
+                                "[Deployment {}]: Too many retries fetching bids",
+                                deployment_id
+                            ),
+                            "handle_lease"
+                        );
                         set_failed_deployment(
                             deployment_id,
                             calling_principal,
@@ -579,24 +571,23 @@ async fn try_fetch_bids_and_create_lease(
         .map_err(|e| ApiError::internal(&format!("failed to get account id: {}", e)))?;
     let rpc_url = config.tendermint_rpc_url();
 
-    LogService::default()
-        .log_info(
-            format!(
-                "[Deployment {}]: Fetching bids for dseq: {}",
-                deployment_id, dseq
-            ),
-            None,
-        )
-        .unwrap();
+    log_info!(
+        format!(
+            "[Deployment {}]: Fetching bids for dseq: {}",
+            deployment_id, dseq
+        ),
+        "try_fetch_bids_and_create_lease"
+    );
 
     let bids = fetch_bids(rpc_url.clone(), &account_id, dseq)
         .await
         .map_err(|e| ApiError::internal(e.as_str()))?;
 
     if !bids.is_empty() {
-        LogService::default()
-            .log_info(format!("[Deployment {}]: Bids found", deployment_id), None)
-            .unwrap();
+        log_info!(
+            format!("[Deployment {}]: Bids found", deployment_id),
+            "try_fetch_bids_and_create_lease"
+        );
         let (tx_hash, deployment_url) =
             handle_create_lease(calling_principal, dseq, deployment_id).await?;
         return Ok(Some((tx_hash, deployment_url)));
@@ -625,10 +616,10 @@ async fn handle_create_lease(
         .update_deployment_state(calling_principal, deployment_id, deployment_update, true)
         .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
 
-    LogService::default().log_info(
+    log_info!(
         format!("[Deployment {}]: Lease created", deployment_id),
-        None,
-    )?;
+        "handle_create_lease"
+    );
 
     Ok((tx_hash, provider_url))
 }
@@ -660,36 +651,32 @@ async fn set_failed_deployment(
         deployment_id,
         reason.clone(),
     ) {
-        LogService::default()
-            .log_info(
-                format!(
-                    "[Deployment {}]: Failed to set deployment as failed: {:?}",
-                    deployment_id, e
-                ),
-                None,
-            )
-            .unwrap();
+        log_info!(
+            format!(
+                "[Deployment {}]: Failed to set deployment as failed: {:?}",
+                deployment_id, e
+            ),
+            "set_failed_deployment"
+        );
     } else {
-        LogService::default()
-            .log_info(
-                format!(
-                    "[Deployment {}]: Set deployment as failed: {}",
-                    deployment_id, reason
-                ),
-                None,
-            )
-            .unwrap();
+        log_info!(
+            format!(
+                "[Deployment {}]: Set deployment as failed: {}",
+                deployment_id, reason
+            ),
+            "set_failed_deployment"
+        );
     }
 }
 
 async fn try_close_akash_deployment(deployment_id: &DeploymentId) -> Result<(), ApiError> {
-    LogService::default().log_info(
+    log_info!(
         format!(
             "[Deployment {}]: Starting to close Akash deployment",
             deployment_id
         ),
-        None,
-    )?;
+        "try_close_akash_deployment"
+    );
 
     let dseq = DeploymentsService::default()
         .get_akash_deployment_info(deployment_id)?
@@ -703,10 +690,10 @@ async fn try_close_akash_deployment(deployment_id: &DeploymentId) -> Result<(), 
         .await
         .map_err(|e| ApiError::internal(&format!("Error closing Akash deployment: {}", e)))?;
 
-    LogService::default().log_info(
+    log_info!(
         format!("[Deployment {}]: Closed Akash deployment", deployment_id),
-        None,
-    )?;
+        "try_close_akash_deployment"
+    );
 
     Ok(())
 }

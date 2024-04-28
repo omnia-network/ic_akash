@@ -109,7 +109,7 @@ impl UsersEndpoints {
                 paid_akt,
                 self.users_service.get_user_akt_balance(&user_id)?
             ),
-            None,
+            Some("update_akt_balance".to_string()),
         )?;
 
         Ok(paid_akt)

@@ -1,7 +1,6 @@
 use crate::api::{
-    backend_api::{ListLogsResponse, LogsFilterRequest},
-    map_list_logs_response, map_logs_filter_request, ApiError, DateTime, LogEntry, LogLevel,
-    LogRepository,
+    map_list_logs_response, map_logs_filter_request, ApiError, DateTime, ListLogsResponse,
+    LogEntry, LogLevel, LogRepository, LogsFilterRequest,
 };
 
 use utils::get_date_time;
@@ -16,6 +15,7 @@ impl Default for LogService {
     }
 }
 
+#[allow(dead_code)]
 impl LogService {
     pub fn list_logs(&self, request: LogsFilterRequest) -> ListLogsResponse {
         let filter = map_logs_filter_request(request);
@@ -67,3 +67,50 @@ impl LogService {
         Self { log_repository }
     }
 }
+
+macro_rules! log_info {
+    ($message:expr) => {
+        $crate::api::LogService::default()
+            .log_info($message.to_string(), None)
+            .unwrap()
+    };
+    ($message:expr, $context:expr) => {
+        $crate::api::LogService::default()
+            .log_info($message.to_string(), Some($context.to_string()))
+            .unwrap()
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! log_warn {
+    ($message:expr) => {
+        $crate::api::LogService::default()
+            .log_warn($message.to_string(), None)
+            .unwrap()
+    };
+    ($message:expr, $context:expr) => {
+        $crate::api::LogService::default()
+            .log_warn($message.to_string(), Some($context.to_string()))
+            .unwrap()
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! log_error {
+    ($message:expr) => {
+        $crate::api::LogService::default()
+            .log_error($message.to_string(), None)
+            .unwrap()
+    };
+    ($message:expr, $context:expr) => {
+        $crate::api::LogService::default()
+            .log_error($message.to_string(), Some($context.to_string()))
+            .unwrap()
+    };
+}
+
+#[allow(unused_imports)]
+pub(crate) use log_error;
+pub(crate) use log_info;
+#[allow(unused_imports)]
+pub(crate) use log_warn;

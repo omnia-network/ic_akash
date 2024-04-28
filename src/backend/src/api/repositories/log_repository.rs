@@ -1,6 +1,7 @@
-use super::{init_logs, LogMemory};
 use crate::api::{ApiError, LogEntry, LogId};
 use std::cell::RefCell;
+
+use super::{init_logs, LogMemory};
 
 pub struct LogRepository {}
 

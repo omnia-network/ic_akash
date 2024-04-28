@@ -1,11 +1,38 @@
-use crate::api::{DateTime, LogEntry, LogLevel, LogsFilter};
+use candid::{CandidType, Deserialize};
 
-use self::backend_api::ListLogsResponse;
+use crate::api::{DateTime, LogEntry, LogLevel, LogsFilter};
 
 const MICROS_PER_MS: u64 = 1_000;
 
-impl From<backend_api::LogsFilterRequest> for LogsFilter {
-    fn from(value: backend_api::LogsFilterRequest) -> Self {
+#[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
+pub struct LogsFilterRequest {
+    pub before_timestamp_ms: Option<u64>,
+    pub after_timestamp_ms: Option<u64>,
+    pub level: Option<MappedLogLevel>,
+    pub context_contains_any: Option<Vec<String>>,
+    pub message_contains_any: Option<Vec<String>>,
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
+pub enum MappedLogLevel {
+    #[serde(rename = "info")]
+    Info,
+    #[serde(rename = "warn")]
+    Warn,
+    #[serde(rename = "error")]
+    Error,
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
+pub struct MappedLogEntry {
+    pub date_time: String,
+    pub level: MappedLogLevel,
+    pub context: Option<String>,
+    pub message: String,
+}
+
+impl From<LogsFilterRequest> for LogsFilter {
+    fn from(value: LogsFilterRequest) -> Self {
         // unwrapping here should be ok, since this struct should be only used in query calls
         Self {
             before: value
@@ -21,7 +48,7 @@ impl From<backend_api::LogsFilterRequest> for LogsFilter {
     }
 }
 
-impl From<LogsFilter> for backend_api::LogsFilterRequest {
+impl From<LogsFilter> for LogsFilterRequest {
     fn from(value: LogsFilter) -> Self {
         Self {
             before_timestamp_ms: value.before.map(|t| t.timestamp_micros() / MICROS_PER_MS),
@@ -33,7 +60,7 @@ impl From<LogsFilter> for backend_api::LogsFilterRequest {
     }
 }
 
-impl From<LogEntry> for backend_api::LogEntry {
+impl From<LogEntry> for MappedLogEntry {
     fn from(value: LogEntry) -> Self {
         Self {
             date_time: value.date_time.to_string(),
@@ -44,17 +71,17 @@ impl From<LogEntry> for backend_api::LogEntry {
     }
 }
 
-impl From<backend_api::LogLevel> for LogLevel {
-    fn from(value: backend_api::LogLevel) -> Self {
+impl From<MappedLogLevel> for LogLevel {
+    fn from(value: MappedLogLevel) -> Self {
         match value {
-            backend_api::LogLevel::Info => Self::Info,
-            backend_api::LogLevel::Warn => Self::Warn,
-            backend_api::LogLevel::Error => Self::Error,
+            MappedLogLevel::Info => Self::Info,
+            MappedLogLevel::Warn => Self::Warn,
+            MappedLogLevel::Error => Self::Error,
         }
     }
 }
 
-impl From<LogLevel> for backend_api::LogLevel {
+impl From<LogLevel> for MappedLogLevel {
     fn from(value: LogLevel) -> Self {
         match value {
             LogLevel::Info => Self::Info,
@@ -64,48 +91,17 @@ impl From<LogLevel> for backend_api::LogLevel {
     }
 }
 
-pub fn map_logs_filter_request(request: backend_api::LogsFilterRequest) -> LogsFilter {
+#[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
+pub struct ListLogsResponse {
+    pub logs: Vec<MappedLogEntry>,
+}
+
+pub fn map_logs_filter_request(request: LogsFilterRequest) -> LogsFilter {
     request.into()
 }
 
 pub fn map_list_logs_response(logs: Vec<LogEntry>) -> ListLogsResponse {
     ListLogsResponse {
-        logs: logs.into_iter().map(backend_api::LogEntry::from).collect(),
-    }
-}
-
-pub mod backend_api {
-    use candid::{CandidType, Deserialize};
-
-    #[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
-    pub struct LogsFilterRequest {
-        pub before_timestamp_ms: Option<u64>,
-        pub after_timestamp_ms: Option<u64>,
-        pub level: Option<LogLevel>,
-        pub context_contains_any: Option<Vec<String>>,
-        pub message_contains_any: Option<Vec<String>>,
-    }
-
-    #[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
-    pub enum LogLevel {
-        #[serde(rename = "info")]
-        Info,
-        #[serde(rename = "warn")]
-        Warn,
-        #[serde(rename = "error")]
-        Error,
-    }
-
-    #[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
-    pub struct LogEntry {
-        pub date_time: String,
-        pub level: LogLevel,
-        pub context: Option<String>,
-        pub message: String,
-    }
-
-    #[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
-    pub struct ListLogsResponse {
-        pub logs: Vec<LogEntry>,
+        logs: logs.into_iter().map(MappedLogEntry::from).collect(),
     }
 }

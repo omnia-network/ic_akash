@@ -1,10 +1,10 @@
 mod endpoints;
 mod mappings;
-mod memories;
+mod repositories;
 mod services;
 mod types;
 
 use mappings::*;
-use memories::*;
+use repositories::*;
 use services::*;
 pub use types::*;

@@ -1,6 +1,5 @@
 use crate::api::{
-    backend_api::{ListLogsResponse, LogsFilterRequest},
-    AccessControlService, ApiError, ApiResult, LogService,
+    AccessControlService, ApiError, ApiResult, ListLogsResponse, LogService, LogsFilterRequest,
 };
 use candid::Principal;
 use ic_cdk::{caller, query};

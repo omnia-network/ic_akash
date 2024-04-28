@@ -19,6 +19,7 @@ impl Display for ApiError {
     }
 }
 
+#[allow(dead_code)]
 impl ApiError {
     pub fn invalid_argument(message: &str) -> Self {
         Self {
@@ -60,12 +61,6 @@ impl ApiError {
             code: 500,
             message: message.into(),
         }
-    }
-}
-
-impl ApiError {
-    pub fn message(&self) -> &str {
-        &self.message
     }
 }
 

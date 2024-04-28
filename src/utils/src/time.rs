@@ -8,7 +8,7 @@ pub fn get_time_nanos() -> u64 {
 
     #[cfg(not(target_family = "wasm"))]
     {
-        1704063600_000_000_000 // 2024-01-01T00:00:00 in nanoseconds
+        1704063600 * 1_000_000_000 // 2024-01-01T00:00:00 in nanoseconds
     }
 }
 
