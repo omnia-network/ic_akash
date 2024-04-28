@@ -10,5 +10,6 @@ ic-stable-structures = "0.6"
 serde = "1.0.195"
 serde_json = { version = "1.0.111", features = ["preserve_order"] }
 hex = "0.4.3"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
 
 utils = { path = "src/utils" }

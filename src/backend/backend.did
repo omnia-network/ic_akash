@@ -133,6 +133,34 @@ type StorageSize = variant {
   Large;
 };
 
+type LogLevel = variant {
+  info;
+  warn;
+  error;
+};
+
+type LogsFilterRequest = record {
+  before_timestamp_ms : opt nat64;
+  after_timestamp_ms : opt nat64;
+  level : opt LogLevel;
+  context_contains_any : opt vec text;
+  message_contains_any : opt vec text;
+};
+
+type LogEntry = record {
+  date_time : text;
+  level : LogLevel;
+  context : opt text;
+  message : text;
+};
+
+type ListLogsResponse = variant {
+  Ok : record {
+    logs : vec LogEntry;
+  };
+  Err : ApiError;
+};
+
 //// IC WebSocket types ////
 import "./ws_types.did";
 
@@ -169,6 +197,7 @@ service : (bool) -> {
   "close_deployment" : (text) -> (ApiEmptyResult);
   "update_akt_balance" : (nat64) -> (ApiFloatResult);
   "get_deployment_icp_price" : () -> (ApiFloatResult);
+  "list_logs" : (LogsFilterRequest) -> (ListLogsResponse) query;
 
   //// IC WebSocket methods ////
   "ws_open" : (CanisterWsOpenArguments) -> (CanisterWsOpenResult);

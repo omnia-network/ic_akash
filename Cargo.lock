@@ -35,6 +35,7 @@ version = "0.1.0"
 dependencies = [
  "bech32",
  "candid",
+ "chrono",
  "cosmrs",
  "getrandom",
  "hex",
@@ -209,6 +210,15 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+
+[[package]]
+name = "chrono"
+version = "0.4.38"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a21f936df1771bf62b77f047b726c4625ff2e8aa607c01ec06e5a05bd8463401"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "const-oid"
@@ -1483,6 +1493,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "candid",
+ "chrono",
  "hex",
  "ic-cdk 0.13.2",
  "ic-stable-structures",

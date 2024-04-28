@@ -122,6 +122,24 @@ export type GetDeploymentsResult = {
   { 'Err' : ApiError };
 export type GetUserResult = { 'Ok' : User } |
   { 'Err' : ApiError };
+export type ListLogsResponse = { 'Ok' : { 'logs' : Array<LogEntry> } } |
+  { 'Err' : ApiError };
+export interface LogEntry {
+  'context' : [] | [string],
+  'date_time' : string,
+  'level' : LogLevel,
+  'message' : string,
+}
+export type LogLevel = { 'info' : null } |
+  { 'warn' : null } |
+  { 'error' : null };
+export interface LogsFilterRequest {
+  'context_contains_any' : [] | [Array<string>],
+  'level' : [] | [LogLevel],
+  'message_contains_any' : [] | [Array<string>],
+  'after_timestamp_ms' : [] | [bigint],
+  'before_timestamp_ms' : [] | [bigint],
+}
 export type Memo = bigint;
 export type MemorySize = { 'Large' : null } |
   { 'Small' : null } |
@@ -243,6 +261,7 @@ export interface _SERVICE {
   'get_deployments' : ActorMethod<[], GetDeploymentsResult>,
   'get_icp_price' : ActorMethod<[], ApiFloatResult>,
   'get_user' : ActorMethod<[], GetUserResult>,
+  'list_logs' : ActorMethod<[LogsFilterRequest], ListLogsResponse>,
   'promote_user_to_admin' : ActorMethod<[UserId], ApiEmptyResult>,
   'query_blocks' : ActorMethod<[GetBlocksArgs], QueryBlocksResult>,
   'update_akt_balance' : ActorMethod<[bigint], ApiFloatResult>,
