@@ -1,5 +1,8 @@
 use crate::{
-    api::{AkashConfig, ApiError, Config, ConfigService, User, UserId, UserRole, UsersService},
+    api::{
+        log_info, AkashConfig, ApiError, Config, ConfigService, User, UserId, UserRole,
+        UsersService,
+    },
     helpers::EcdsaKeyIds,
 };
 use candid::Principal;
@@ -19,6 +22,11 @@ fn init(is_mainnet: bool) {
     }
 
     init_ic_websocket();
+
+    log_info!(
+        format!("Successfully initialized. Is mainnet: {is_mainnet}"),
+        "init"
+    );
 }
 
 #[post_upgrade]
@@ -26,6 +34,11 @@ fn post_upgrade(is_mainnet: bool) {
     Init::default().init_config(is_mainnet);
 
     init_ic_websocket();
+
+    log_info!(
+        format!("Successfully upgraded. Is mainnet: {is_mainnet}"),
+        "post_upgrade"
+    );
 }
 
 #[derive(Default)]
