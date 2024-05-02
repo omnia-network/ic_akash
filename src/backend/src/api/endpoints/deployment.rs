@@ -1,3 +1,8 @@
+use std::time::Duration;
+
+use candid::Principal;
+use ic_cdk::{caller, query, update};
+
 use crate::{
     akash::{address::get_account_id_from_public_key, bids::fetch_bids, sdl::SdlV3},
     api::{
@@ -9,9 +14,6 @@ use crate::{
     fixtures::updated_example_sdl,
     helpers::uakt_to_akt,
 };
-use candid::Principal;
-use ic_cdk::{caller, query, update};
-use std::time::Duration;
 
 const POLLING_BIDS_INTERVAL_SECS: u64 = 3;
 const MAX_FETCH_BIDS_RETRIES: u64 = 5;
@@ -372,7 +374,7 @@ impl DeploymentsEndpoints {
             _ => {
                 return Err(ApiError::invalid_argument(
                     "Deployment must be in LeaseCreated state",
-                ))
+                ));
             }
         }
 
@@ -463,7 +465,7 @@ async fn handle_create_deployment(
     parsed_sdl: SdlV3,
     deployment_id: DeploymentId,
 ) -> Result<u64, ApiError> {
-    let akash_service = AkashService::default();
+    let mut akash_service = AkashService::default();
     let mut deployment_service = DeploymentsService::default();
 
     let (tx_hash, dseq, manifest) = akash_service

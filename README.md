@@ -40,6 +40,12 @@ The steps are as follows:
 
     This script mints ICPs on the local Ledger canister for the account ID corresponding to the `default` DFX identity (`dfx identity use default`). You can change the account ID to whom the ICPs are paid by modifying the `DEFAULT_ACCOUNT_ID` variable in the [`deploy-local-backend-with-icp-ledger.sh`](./scripts/deploy-local-backend-with-icp-ledger.sh) script.
 
+    > Note: You need to have the dfx identity `minter` created in order to mint ICPs. If you don't have it, you can create it by running the following command:
+
+    ```bash
+    dfx identity new minter
+    ```
+
 4. Open the local backend canister Candid UI and call the `address()` method or run the following command:
 
     ```bash
