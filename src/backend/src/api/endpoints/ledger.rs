@@ -2,29 +2,13 @@ use crate::api::{ApiError, ApiResult, LedgerService};
 use candid::Nat;
 use ic_cdk::{
     api::management_canister::http_request::{HttpResponse, TransformArgs},
-    query, update,
+    query,
 };
 use ic_ledger_types::{GetBlocksArgs, QueryBlocksResponse};
 
 #[query(composite = true)]
 async fn query_blocks(args: GetBlocksArgs) -> ApiResult<QueryBlocksResponse> {
     LedgerEndpoints::default().query_blocks(args).await.into()
-}
-
-#[update]
-async fn get_icp_price() -> ApiResult<f64> {
-    LedgerEndpoints::default()
-        .get_usd_exchange("ICP")
-        .await
-        .into()
-}
-
-#[update]
-async fn get_akt_price() -> ApiResult<f64> {
-    LedgerEndpoints::default()
-        .get_usd_exchange("AKT")
-        .await
-        .into()
 }
 
 #[query]
@@ -53,9 +37,5 @@ struct LedgerEndpoints {
 impl LedgerEndpoints {
     async fn query_blocks(&self, args: GetBlocksArgs) -> Result<QueryBlocksResponse, ApiError> {
         self.ledger_service.query_blocks(args).await
-    }
-
-    async fn get_usd_exchange(&self, ticker: &str) -> Result<f64, ApiError> {
-        self.ledger_service.get_usd_exchange(ticker).await
     }
 }

@@ -1,19 +1,11 @@
 use crate::api::{log_info, ApiError};
 use candid::Principal;
-use ic_cdk::api::{
-    call::{call, call_with_payment},
-    management_canister::http_request::{HttpMethod, TransformContext},
-};
+use ic_cdk::api::call::{call, call_with_payment};
 use ic_ledger_types::{
-    AccountIdentifier, GetBlocksArgs, Operation, QueryBlocksResponse, Subaccount,
+    AccountIdentifier, GetBlocksArgs, Operation, QueryBlocksResponse, Subaccount, Tokens,
+    MAINNET_LEDGER_CANISTER_ID,
 };
 use ic_xrc_types::{Asset, AssetClass, GetExchangeRateRequest, GetExchangeRateResult};
-use utils::{get_time_seconds, make_http_request};
-
-/// assume requests are at most 1kb
-const REQUEST_SIZE: u128 = 1_000;
-/// refuse responses that return more than 10kb
-const MAX_RESPONSE_SIZE: u64 = 10_000;
 
 pub struct LedgerService {
     ledger_canister_id: Principal,
@@ -94,58 +86,6 @@ impl LedgerService {
         // has not been used for a previous deployment
         // this is taken care of by the `users_service`
         Ok(paid_akt)
-    }
-
-    pub async fn get_usd_exchange(&self, ticker: &str) -> Result<f64, ApiError> {
-        let current_timestamp_s = get_time_seconds();
-        let host = "api.pro.coinbase.com";
-        let url = format!(
-            "https://{}/products/{}-USD/candles?start={}&end={}",
-            host,
-            ticker,
-            // price info is updated every 60 seconds
-            // by requesting prices in the last 300 seconds, it is guaranteed that the response contains at least one price
-            current_timestamp_s - 300,
-            current_timestamp_s
-        );
-
-        let response = make_http_request(
-            url.to_string(),
-            HttpMethod::GET,
-            None,
-            vec![],
-            Some(TransformContext::from_name(
-                "price_transform".to_string(),
-                vec![],
-            )),
-            REQUEST_SIZE,
-            MAX_RESPONSE_SIZE,
-        )
-        .await
-        .map_err(|e| ApiError::internal(&format!("failed to get {} price: {}", ticker, e)))?;
-
-        // the response body will looks like this:
-        // ("[[1682978460,5.714,5.718,5.714,5.714,243.5678], ...]")
-        // which can be formatted as this
-        //  [
-        //     [
-        //         1682978460, <-- start/timestamp
-        //         5.714, <-- low
-        //         5.718, <-- high
-        //         5.714, <-- open
-        //         5.714, <-- close
-        //         243.5678 <-- volume
-        //     ],
-        //     ...
-        //  ]
-        let parsed_body: Vec<Vec<f64>> = serde_json::from_slice(&response.body)
-            .map_err(|e| ApiError::internal(&format!("failed to parse {} price: {}", ticker, e)))?;
-
-        if parsed_body.is_empty() {
-            return Err(ApiError::internal("API did not return any prices"));
-        }
-        // within the latest price range (index 0 of outer vec), return the lowest price (index 1 of inner vec)
-        Ok(parsed_body[0][1])
     }
 
     pub async fn get_icp_2_akt_conversion_rate(&self) -> Result<f64, ApiError> {

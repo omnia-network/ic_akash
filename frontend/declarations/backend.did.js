@@ -42,7 +42,6 @@ export const idlFactory = ({ IDL }) => {
   });
   const UserId = IDL.Principal;
   const CreateUserResult = IDL.Variant({ 'Ok' : UserId, 'Err' : ApiError });
-  const ApiFloatResult = IDL.Variant({ 'Ok' : IDL.Float64, 'Err' : ApiError });
   const TimestampNs = IDL.Nat64;
   const DeploymentState = IDL.Variant({
     'FailedOnClient' : IDL.Record({ 'reason' : IDL.Text }),
@@ -70,6 +69,7 @@ export const idlFactory = ({ IDL }) => {
     'Ok' : IDL.Record({ 'id' : DeploymentId, 'deployment' : Deployment }),
     'Err' : ApiError,
   });
+  const ApiFloatResult = IDL.Variant({ 'Ok' : IDL.Float64, 'Err' : ApiError });
   const GetDeploymentsResult = IDL.Variant({
     'Ok' : IDL.Vec(
       IDL.Record({ 'id' : DeploymentId, 'deployment' : Deployment })
@@ -263,11 +263,9 @@ export const idlFactory = ({ IDL }) => {
         [ApiEmptyResult],
         [],
       ),
-    'get_akt_price' : IDL.Func([], [ApiFloatResult], []),
     'get_deployment' : IDL.Func([IDL.Text], [GetDeploymentResult], ['query']),
     'get_deployment_icp_price' : IDL.Func([], [ApiFloatResult], []),
     'get_deployments' : IDL.Func([], [GetDeploymentsResult], ['query']),
-    'get_icp_price' : IDL.Func([], [ApiFloatResult], []),
     'get_user' : IDL.Func([], [GetUserResult], ['query']),
     'list_logs' : IDL.Func([LogsFilterRequest], [ListLogsResponse], ['query']),
     'promote_user_to_admin' : IDL.Func([UserId], [ApiEmptyResult], []),
