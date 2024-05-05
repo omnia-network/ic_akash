@@ -54,9 +54,19 @@ impl LedgerService {
             )));
         }
 
+        let operation = &query_blocks_response.blocks[0].transaction.operation;
+
+        log_info!(
+            format!(
+                "[check_payment]: Height: {}, Operation: {:?}",
+                payment_block_height, operation,
+            ),
+            "ledger_service"
+        );
+
         let Some(Operation::Transfer {
             from, to, amount, ..
-        }) = query_blocks_response.blocks[0].transaction.operation
+        }) = operation
         else {
             return Err(ApiError::internal(&format!(
                 "No Transfer operation found in block at height: {}",
@@ -68,21 +78,21 @@ impl LedgerService {
         let orchestrator_account_id =
             AccountIdentifier::new(&ic_cdk::api::id(), &Subaccount([0; 32]));
 
-        if from != caller_account_id {
+        if from != &caller_account_id {
             return Err(ApiError::not_found(
                 "caller is not the sender of the payment",
             ));
         }
-        if to != orchestrator_account_id {
+        if to != &orchestrator_account_id {
             return Err(ApiError::not_found(
                 "orchestrator is not the recipient of the payment",
             ));
         }
-        let paid_akt =
-            (amount.e8s() / 100_000_000) as f64 * self.get_icp_2_akt_conversion_rate().await?;
+        let paid_akt = (amount.e8s() / Tokens::SUBDIVIDABLE_BY) as f64
+            * self.get_icp_2_akt_conversion_rate().await?;
 
         // the payment might still be a double spend,
-        // therefore it is important to check that this 'payment_block_heihgt'
+        // therefore it is important to check that this 'payment_block_height'
         // has not been used for a previous deployment
         // this is taken care of by the `users_service`
         Ok(paid_akt)
