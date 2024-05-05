@@ -34,6 +34,7 @@ export default function NewDeployment() {
   const [deploymentSteps, setDeploymentSteps] = useState<
     Array<DeploymentState>
   >([]);
+  const [deploymentError, setDeploymentError] = useState<string | null>(null);
   const [deploymentE8sPrice, setDeploymentE8sPrice] = useState<bigint | null>(null);
   const [fetchDeploymentPriceInterval, setFetchDeploymentPriceInterval] = useState<NodeJS.Timeout | null>(null);
   const userHasEnoughBalance = useMemo(() =>
@@ -78,10 +79,12 @@ export default function NewDeployment() {
 
       setDeploymentSteps([{ Initialized: null }]);
     } catch (e) {
-      console.error(e);
-      toastError("Failed to create deployment, see console for details");
+      console.error("Failed to create deployment:", e);
+      setDeploymentError("Failed to create deployment, see console for details");
     }
-  }, [backendActor, toastError, deploymentParams]);
+
+    setIsDeploying(false);
+  }, [backendActor, deploymentParams]);
 
   const onWsMessage: OnWsMessageCallback = useCallback(
     async (ev) => {
@@ -93,8 +96,8 @@ export default function NewDeployment() {
 
       if ("FailedOnCanister" in deploymentUpdate.update) {
         const err = deploymentUpdate.update.FailedOnCanister.reason;
-        console.error("Failed to deploy", err);
-        toastError("Failed to deploy, see console for details");
+        console.error("Failed to deploy:", err);
+        setDeploymentError("Failed to deploy, see console for details");
         setIsDeploying(false);
         closeWs();
         return;
@@ -143,10 +146,10 @@ export default function NewDeployment() {
             )
           );
         } catch (e) {
-          console.error("Failed to update deployment", e);
+          console.error("Failed to update deployment:", e);
         }
 
-        toastError(
+        setDeploymentError(
           "Failed to send manifest to provider, see console for details"
         );
         setIsDeploying(false);
@@ -173,8 +176,8 @@ export default function NewDeployment() {
           router.push("/dashboard");
         }
       } catch (e) {
-        console.error(e);
-        toastError("Failed to complete deployment, see console for details");
+        console.error("Failed to complete deployment:", e);
+        setDeploymentError("Failed to complete deployment, see console for details");
         setIsDeploying(false);
       }
     },
@@ -186,7 +189,6 @@ export default function NewDeployment() {
       fetchDeployments,
       router,
       closeWs,
-      toastError,
     ]
   );
 
@@ -242,7 +244,7 @@ export default function NewDeployment() {
 
       setPaymentStatus(prev => prev + " DONE");
     } catch (e) {
-      console.error(e);
+      console.error("Failed to transfer funds:", e);
       toastError("Failed to transfer funds, see console for details");
       setPaymentStatus(prev => prev + " FAILED");
       setDeploymentParams(null);
@@ -289,7 +291,7 @@ export default function NewDeployment() {
       // and transfer the correct ICP amount accordingly
       setDeploymentE8sPrice(icpToE8s(icpPrice + 1));
     } catch (e) {
-      console.error("Failed to fetch deployment price", e);
+      console.error("Failed to fetch deployment price:", e);
       toastError("Failed to fetch deployment price, see console for details");
     }
   }, [backendActor, toastError]);
@@ -380,6 +382,15 @@ export default function NewDeployment() {
                 {isDeploying && <Spinner />}
               </div>
             </div>
+          )}
+          {Boolean(deploymentError) && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Deployment Error</AlertTitle>
+              <AlertDescription>
+                <p>{deploymentError}</p>
+              </AlertDescription>
+            </Alert>
           )}
         </div>
       </div>
