@@ -15,7 +15,7 @@ pub struct LedgerService {
 impl Default for LedgerService {
     fn default() -> Self {
         Self {
-            ledger_canister_id: Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap(),
+            ledger_canister_id: MAINNET_LEDGER_CANISTER_ID,
             xrc_id: Principal::from_text("uf6dk-hyaaa-aaaaq-qaaaq-cai").unwrap(),
         }
     }
