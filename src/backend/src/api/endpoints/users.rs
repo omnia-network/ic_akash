@@ -105,7 +105,7 @@ impl UsersEndpoints {
         self.log_service.log_info(
             format!(
                 "[User {}]: Received payment of {} AKT. Current balance: {} AKT",
-                calling_principal,
+                user_id,
                 paid_akt,
                 self.users_service.get_user_akt_balance(&user_id)?
             ),

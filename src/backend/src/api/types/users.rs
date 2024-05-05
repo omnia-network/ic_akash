@@ -45,7 +45,7 @@ impl Storable for UserId {
 
 impl Display for UserId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", self.0.to_text())
     }
 }
 
