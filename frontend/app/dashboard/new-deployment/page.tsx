@@ -81,9 +81,8 @@ export default function NewDeployment() {
     } catch (e) {
       console.error("Failed to create deployment:", e);
       setDeploymentError("Failed to create deployment, see console for details");
+      setIsDeploying(false);
     }
-
-    setIsDeploying(false);
   }, [backendActor, deploymentParams]);
 
   const onWsMessage: OnWsMessageCallback = useCallback(
@@ -217,6 +216,7 @@ export default function NewDeployment() {
     }
 
     setDeploymentSteps([]);
+    setDeploymentError(null);
     setDeploymentParams(values);
     setIsDeploying(false);
     setIsSubmitting(true);
