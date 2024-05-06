@@ -11,7 +11,7 @@ use crate::{
         DeploymentState, DeploymentsService, GetDeploymentResponse, LedgerService, LogService,
         MemorySize, StorageSize, UserId, UsersService,
     },
-    fixtures::updated_example_sdl,
+    fixtures::example_sdl,
     helpers::uakt_to_akt,
 };
 
@@ -121,7 +121,7 @@ async fn deposit_deployment(deployment_id: String, amount_uakt: u64) -> ApiResul
 #[update]
 async fn update_test_deployment_sdl(deployment_id: String) -> ApiResult<()> {
     let calling_principal = caller();
-    let sdl = updated_example_sdl().to_string();
+    let sdl = example_sdl().to_string();
 
     DeploymentsEndpoints::default()
         .update_deployment_sdl(calling_principal, deployment_id, sdl)

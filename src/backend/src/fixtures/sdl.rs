@@ -1,4 +1,4 @@
-pub fn updated_example_sdl<'a>() -> &'a str {
+pub fn example_sdl<'a>() -> &'a str {
     r#"
 version: "3.0"
 services:
