@@ -36,6 +36,7 @@ pub struct ServiceV2 {
     pub expose: Vec<ExposeV2>,
     pub dependencies: Option<Vec<DependencyV2>>,
     pub params: Option<ServiceParamsV2>,
+    pub credentials: Option<ServiceImageCredentialsV2>,
 }
 
 impl ServiceV2 {
@@ -219,6 +220,25 @@ impl From<ServiceParamsV2> for ManifestServiceParamsV3 {
                         .read_only,
                 })
                 .collect(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct ServiceImageCredentialsV2 {
+    pub host: String,
+    pub email: String,
+    pub username: String,
+    pub password: String,
+}
+
+impl From<ServiceImageCredentialsV2> for ManifestServiceCredentialsV3 {
+    fn from(val: ServiceImageCredentialsV2) -> Self {
+        ManifestServiceCredentialsV3 {
+            host: val.host,
+            email: val.email,
+            username: val.username,
+            password: val.password,
         }
     }
 }
@@ -497,6 +517,10 @@ impl SdlV3 {
         Ok(parsed_sdl)
     }
 
+    pub fn to_yaml(&self) -> Result<String, String> {
+        serde_yaml::to_string(self).map_err(|e| e.to_string())
+    }
+
     pub fn try_from_deployment_params(sdl_params: DeploymentParams) -> Result<SdlV3, String> {
         let service_name = sdl_params.name;
         Ok(SdlV3 {
@@ -507,17 +531,29 @@ impl SdlV3 {
                     service_name.clone(),
                     ServiceV2 {
                         image: sdl_params.image,
-                        command: Some(sdl_params.command),
+                        command: {
+                            if sdl_params.command.is_empty() {
+                                None
+                            } else {
+                                Some(sdl_params.command)
+                            }
+                        },
                         args: None,
-                        env: Some(
-                            sdl_params
-                                .env_vars
-                                .into_iter()
-                                .map(|(k, v)| format!("{k}={v}"))
-                                .collect(),
-                        ),
+                        env: {
+                            if sdl_params.env_vars.is_empty() {
+                                None
+                            } else {
+                                Some(
+                                    sdl_params
+                                        .env_vars
+                                        .into_iter()
+                                        .map(|(k, v)| format!("{k}={v}"))
+                                        .collect(),
+                                )
+                            }
+                        },
                         expose: {
-                            sdl_params
+                            let mut ports: Vec<_> = sdl_params
                                 .ports
                                 .into_iter()
                                 .map(|port_params| ExposeV2 {
@@ -526,17 +562,39 @@ impl SdlV3 {
                                     proto: Some("TCP".to_string()),
                                     to: Some(vec![ExposeToV2 {
                                         service: None,
-                                        global: Some(port_params.domain.is_some()),
+                                        global: Some(true),
                                         ip: None,
                                         http_options: None,
                                     }]),
                                     accept: port_params.domain.map(|domain| vec![domain]),
                                     http_options: None,
                                 })
-                                .collect()
+                                .collect();
+
+                            if ports.is_empty() {
+                                // a global port is always needed due to legacy reasons on Akash,
+                                // so we expose a fake one if none are provided in the params
+                                // see https://discord.com/channels/747885925232672829/1111748832489910332/1156685118988111982
+                                ports.push(ExposeV2 {
+                                    port: 12345, // fake port number as workaround
+                                    r#as: None,
+                                    proto: None,
+                                    to: Some(vec![ExposeToV2 {
+                                        service: None,
+                                        global: Some(true),
+                                        ip: None,
+                                        http_options: None,
+                                    }]),
+                                    accept: None,
+                                    http_options: None,
+                                });
+                            }
+
+                            ports
                         },
                         dependencies: None,
                         params: None,
+                        credentials: None,
                     },
                 );
                 services
@@ -561,7 +619,10 @@ impl SdlV3 {
                                         size: sdl_params.storage.to_size(),
                                         attributes: None,
                                     }],
-                                    gpu: None,
+                                    gpu: Some(ResourceGpuV3 {
+                                        units: "0".to_string(),
+                                        attributes: None,
+                                    }),
                                     id: None,
                                 },
                             }
@@ -840,6 +901,7 @@ impl SdlV3 {
             count: svc_deployment.count,
             expose: self.manifest_expose_v3(service),
             params: service.params.to_owned().map(|params| params.into()),
+            credentials: service.credentials.to_owned().map(|creds| creds.into()),
         }
     }
 
@@ -995,6 +1057,7 @@ pub struct ManifestServiceV3 {
     pub args: Option<Vec<String>>,
     pub command: Option<Vec<String>>,
     pub count: u32,
+    pub credentials: Option<ManifestServiceCredentialsV3>,
     pub env: Option<Vec<String>>,
     pub expose: Vec<ServiceExposeV3>,
     pub image: String,
@@ -1048,6 +1111,14 @@ pub struct ServiceExposeHttpOptionsV3 {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ManifestServiceParamsV3 {
     pub storage: Vec<ServiceStorageParamsV2>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct ManifestServiceCredentialsV3 {
+    pub email: String,
+    pub host: String,
+    pub password: String,
+    pub username: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]

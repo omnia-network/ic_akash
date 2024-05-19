@@ -23,6 +23,7 @@ pub async fn create_deployment_tx(
     deposit_uakt_amount: u64,
     account: &BaseAccount,
     ecdsa_key: &EcdsaKeyIds,
+    chain_id: &str,
 ) -> Result<Vec<u8>, String> {
     let account_id = get_account_id_from_public_key(sender_public_key)?.to_string();
     // see https://github.com/akash-network/cloudmos/blob/8a8098b7e371e801dad3aad81ef92b8dfe387e4c/deploy-web/src/utils/deploymentData/v1beta3.ts#L230
@@ -59,6 +60,7 @@ pub async fn create_deployment_tx(
         account.sequence,
         account.account_number,
         ecdsa_key,
+        chain_id,
     )
     .await?;
 
@@ -71,6 +73,7 @@ pub async fn deposit_deployment_tx(
     uakt_amount: u64,
     account: &BaseAccount,
     ecdsa_key: &EcdsaKeyIds,
+    chain_id: &str,
 ) -> Result<Vec<u8>, String> {
     let account_id = get_account_id_from_public_key(sender_public_key)?.to_string();
     let msg = MsgDepositDeployment {
@@ -104,6 +107,7 @@ pub async fn deposit_deployment_tx(
         account.sequence,
         account.account_number,
         ecdsa_key,
+        chain_id,
     )
     .await?;
 
@@ -116,6 +120,7 @@ pub async fn update_deployment_sdl_tx(
     dseq: u64,
     account: &BaseAccount,
     ecdsa_key: &EcdsaKeyIds,
+    chain_id: &str,
 ) -> Result<Vec<u8>, String> {
     let account_id = get_account_id_from_public_key(sender_public_key)?.to_string();
     let msg = MsgUpdateDeployment {
@@ -143,6 +148,7 @@ pub async fn update_deployment_sdl_tx(
         account.sequence,
         account.account_number,
         ecdsa_key,
+        chain_id,
     )
     .await?;
 
@@ -154,6 +160,7 @@ pub async fn close_deployment_tx(
     dseq: u64,
     account: &BaseAccount,
     ecdsa_key: &EcdsaKeyIds,
+    chain_id: &str,
 ) -> Result<Vec<u8>, String> {
     let msg = MsgCloseDeployment {
         id: Some(DeploymentID {
@@ -163,11 +170,11 @@ pub async fn close_deployment_tx(
     };
 
     let amount = Coin {
-        amount: 20_000u128,
+        amount: 40_000u128,
         denom: Denom::from_str("uakt").unwrap(),
     };
 
-    let gas = 800_000u64;
+    let gas = 1_500_000u64;
     let fee = Fee::from_amount_and_gas(amount, gas);
 
     create_tx(
@@ -177,6 +184,7 @@ pub async fn close_deployment_tx(
         account.sequence,
         account.account_number,
         ecdsa_key,
+        chain_id,
     )
     .await
 }

@@ -23,10 +23,10 @@ use response::Response;
 use tendermint::{block::Height, hash::Algorithm, Hash};
 use utils::{make_http_request, sha256};
 
-/// assume requests are at most 1kb
-const REQUEST_SIZE: u128 = 1_000;
-/// refuse responses that return more than 10kb
-const MAX_RESPONSE_SIZE: u64 = 10_000;
+/// assume requests are at most 5kb
+const REQUEST_SIZE: u128 = 5_000;
+/// refuse responses that return more than 15kb
+const MAX_RESPONSE_SIZE: u64 = 15_000;
 
 // TODO: fix deserialization
 // pub async fn latest_block(url: String) -> Result<<BlockRequest as Request>::Response, String> {
@@ -163,23 +163,29 @@ pub async fn broadcast_tx_sync(
         ));
     }
 
-    if is_mainnet {
-        // when dpeloyed on mainnet the response should eb 'Err' and contain 'tx already exists in cache' even if the transaction is accepted by the Akash Network
-        // this is due to the majority of replicas sending a duplicate request to the Network and thus receiving the error as a response
-        if let Err(e) = <TxSyncRequest as Request>::Response::from_string(&response.body) {
-            if e.contains("tx already exists in cache") {
-                // the transaction has been processed
-                Ok(hex::encode(sha256(&tx_raw)))
-            } else {
-                Err(e)
-            }
-        } else {
-            Err("response should contain 'tx already exists in cache'".to_string())
+    // When deployed on mainnet the response should be an 'Err' that contains 'tx already exists in cache'
+    // even if the transaction is accepted by the Akash Network.
+    // This is due to the majority of replicas sending the same request to the Akash Network
+    // and thus receiving the error as a response
+    let tx_raw = match (
+        <TxSyncRequest as Request>::Response::from_string(&response.body),
+        is_mainnet,
+    ) {
+        (Ok(response), _) if response.code.is_err() => {
+            return Err(format!("JSON RPC error: {:?}", response))
         }
-    } else {
-        // when testing locally only one request is made and therefore the response is 'Ok' if the transaction is accepted by the Akash Network
-        Ok(hex::encode(sha256(&tx_raw)))
-    }
+        (Ok(response), true) => {
+            return Err(format!(
+                "response should contain 'tx already exists in cache', received: {:?} instead",
+                response
+            ))
+        }
+        (Ok(_), false) => tx_raw,
+        (Err(e), true) if e.contains("tx already exists in cache") => tx_raw,
+        (Err(e), _) => return Err(e),
+    };
+
+    Ok(hex::encode(sha256(&tx_raw)))
 }
 
 #[query]
@@ -188,20 +194,12 @@ fn abci_transform(raw: TransformArgs) -> HttpResponse {
     HttpResponse {
         status: raw.response.status.clone(),
         body: raw.response.body.clone(),
-        ..Default::default()
+        headers: vec![],
     }
 }
 
 #[query]
 fn broadcast_tx_sync_transform(raw: TransformArgs) -> HttpResponse {
-    // headers that you want to add to the response
-    let headers = vec![
-        // HttpHeader {
-        //     name: "header-key".to_string(),
-        //     value: "header-value".to_string(),
-        // }
-    ];
-
     // the response to the first request should be accepted and return 'Ok' while the others should be 'Err' and contain "tx already exists in cache"
     // as the transformed response is accepted if at least 2f+1 replicas are in agreement and, in the worst case, at most one honest replica (the one that sent the first request) disagrees
     // (received 'Ok' instead of 'Err'), as long as at most f-1 replicas misreport the response they received, there will be agreement in the transformed response
@@ -210,6 +208,6 @@ fn broadcast_tx_sync_transform(raw: TransformArgs) -> HttpResponse {
     HttpResponse {
         status: raw.response.status.clone(),
         body: raw.response.body.clone(),
-        headers,
+        headers: vec![],
     }
 }

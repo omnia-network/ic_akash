@@ -70,10 +70,10 @@ export type CreateDeploymentResult = { 'Ok' : DeploymentId } |
 export type CreateUserResult = { 'Ok' : UserId } |
   { 'Err' : ApiError };
 export interface Deployment {
-  'sdl' : string,
   'user_id' : UserId,
   'icp_price' : number,
   'state_history' : Array<[TimestampNs, DeploymentState]>,
+  'params' : DeploymentParams,
 }
 export type DeploymentId = string;
 export interface DeploymentParams {
@@ -231,6 +231,7 @@ export type TransferFeeArg = {};
 export type TransferResult = { 'Ok' : BlockIndex } |
   { 'Err' : TransferError };
 export interface User {
+  'akt_balance' : number,
   'payments' : BigUint64Array | bigint[],
   'role' : UserRole,
   'created_at' : TimestampNs,
@@ -255,12 +256,11 @@ export interface _SERVICE {
   'create_test_deployment' : ActorMethod<[], CreateDeploymentResult>,
   'create_user' : ActorMethod<[], CreateUserResult>,
   'deposit_deployment' : ActorMethod<[string, bigint], ApiEmptyResult>,
-  'get_akt_price' : ActorMethod<[], ApiFloatResult>,
   'get_deployment' : ActorMethod<[string], GetDeploymentResult>,
   'get_deployment_icp_price' : ActorMethod<[], ApiFloatResult>,
   'get_deployments' : ActorMethod<[], GetDeploymentsResult>,
-  'get_icp_price' : ActorMethod<[], ApiFloatResult>,
-  'get_user' : ActorMethod<[], GetUserResult>,
+  'get_my_user' : ActorMethod<[], GetUserResult>,
+  'get_user' : ActorMethod<[Principal], GetUserResult>,
   'list_logs' : ActorMethod<[LogsFilterRequest], ListLogsResponse>,
   'promote_user_to_admin' : ActorMethod<[UserId], ApiEmptyResult>,
   'query_blocks' : ActorMethod<[GetBlocksArgs], QueryBlocksResult>,

@@ -42,7 +42,6 @@ export const idlFactory = ({ IDL }) => {
   });
   const UserId = IDL.Principal;
   const CreateUserResult = IDL.Variant({ 'Ok' : UserId, 'Err' : ApiError });
-  const ApiFloatResult = IDL.Variant({ 'Ok' : IDL.Float64, 'Err' : ApiError });
   const TimestampNs = IDL.Nat64;
   const DeploymentState = IDL.Variant({
     'FailedOnClient' : IDL.Record({ 'reason' : IDL.Text }),
@@ -61,15 +60,16 @@ export const idlFactory = ({ IDL }) => {
     'FailedOnCanister' : IDL.Record({ 'reason' : IDL.Text }),
   });
   const Deployment = IDL.Record({
-    'sdl' : IDL.Text,
     'user_id' : UserId,
     'icp_price' : IDL.Float64,
     'state_history' : IDL.Vec(IDL.Tuple(TimestampNs, DeploymentState)),
+    'params' : DeploymentParams,
   });
   const GetDeploymentResult = IDL.Variant({
     'Ok' : IDL.Record({ 'id' : DeploymentId, 'deployment' : Deployment }),
     'Err' : ApiError,
   });
+  const ApiFloatResult = IDL.Variant({ 'Ok' : IDL.Float64, 'Err' : ApiError });
   const GetDeploymentsResult = IDL.Variant({
     'Ok' : IDL.Vec(
       IDL.Record({ 'id' : DeploymentId, 'deployment' : Deployment })
@@ -78,6 +78,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const UserRole = IDL.Variant({ 'Admin' : IDL.Null, 'Deployer' : IDL.Null });
   const User = IDL.Record({
+    'akt_balance' : IDL.Float64,
     'payments' : IDL.Vec(IDL.Nat64),
     'role' : UserRole,
     'created_at' : TimestampNs,
@@ -263,12 +264,11 @@ export const idlFactory = ({ IDL }) => {
         [ApiEmptyResult],
         [],
       ),
-    'get_akt_price' : IDL.Func([], [ApiFloatResult], []),
     'get_deployment' : IDL.Func([IDL.Text], [GetDeploymentResult], ['query']),
     'get_deployment_icp_price' : IDL.Func([], [ApiFloatResult], []),
     'get_deployments' : IDL.Func([], [GetDeploymentsResult], ['query']),
-    'get_icp_price' : IDL.Func([], [ApiFloatResult], []),
-    'get_user' : IDL.Func([], [GetUserResult], ['query']),
+    'get_my_user' : IDL.Func([], [GetUserResult], ['query']),
+    'get_user' : IDL.Func([IDL.Principal], [GetUserResult], ['query']),
     'list_logs' : IDL.Func([LogsFilterRequest], [ListLogsResponse], ['query']),
     'promote_user_to_admin' : IDL.Func([UserId], [ApiEmptyResult], []),
     'query_blocks' : IDL.Func(

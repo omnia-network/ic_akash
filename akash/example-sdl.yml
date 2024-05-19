@@ -1,0 +1,60 @@
+version: "3.0"
+services:
+  ic-websocket-gateway:
+    image: omniadevs/ic-websocket-gateway:v1.4.1
+    command:
+      - /ic-ws-gateway/ic_websocket_gateway
+      - --gateway-address
+      - 0.0.0.0:8080
+      - --ic-network-url
+      - https://icp-api.io
+      - --polling-interval
+      - "400"
+    args: null
+    env: null
+    expose:
+      - port: 8080
+        as: 80
+        proto: TCP
+        to:
+          - service: null
+            global: true
+            http_options: null
+            ip: null
+        accept:
+          - example.com
+        http_options: null
+    dependencies: null
+    params: null
+profiles:
+  compute:
+    ic-websocket-gateway:
+      resources:
+        cpu:
+          units: "0.5"
+          attributes: null
+        memory:
+          size: 512Mi
+          attributes: null
+        storage:
+          - name: null
+            size: 512Mi
+            attributes: null
+        gpu:
+          units: "0"
+        id: null
+  placement:
+    dcloud:
+      attributes: null
+      signedBy: null
+      pricing:
+        ic-websocket-gateway:
+          denom: uakt
+          value: null
+          amount: 1000
+deployment:
+  ic-websocket-gateway:
+    dcloud:
+      profile: ic-websocket-gateway
+      count: 1
+endpoints: null

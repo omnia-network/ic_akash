@@ -12,38 +12,42 @@ export const sendManifestToProvider = async (
   // wait for 5 sec for provider to have lease
   await wait(5_000);
 
-  let response: Response | undefined = undefined;
+  const method = "POST";
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+  }
+  const body: BodyInit = JSON.stringify({
+    method: "PUT",
+    url: manifestUrl,
+    certPem: certData.cert,
+    keyPem: certData.privKey,
+    body: manifest,
+    timeout: 60_000,
+  });
+
   for (let i = 1; i <= 3; i++) {
     console.log("Try sending manifest #" + i);
     try {
-      if (!response) {
-        response = await fetch(PROVIDER_PROXY_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            method: "PUT",
-            url: manifestUrl,
-            certPem: certData.cert,
-            keyPem: certData.privKey,
-            body: manifest,
-            timeout: 60_000,
-          }),
-        });
+      const response = await fetch(PROVIDER_PROXY_URL, {
+        method,
+        headers,
+        body,
+      });
 
-        if (!response.ok) {
-          throw new Error(await response.text());
-        }
-
-        i = 3;
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        throw new Error(`Response status: ${response.status} - response body: ${errorMessage}`);
       }
+
+      // everything went fine, exit the loop
+      break;
+
     } catch (err: any) {
-      if (err.includes && err.includes("no lease for deployment") && i < 3) {
-        console.log("Lease not found, retrying...");
+      if (err.message?.includes && err.message.includes("no lease for deployment") && i < 3) {
+        console.warn("Lease not found, retrying in 6 seconds...");
         await wait(6_000); // Waiting for 6 sec
       } else {
-        throw new Error(err?.response?.data || err);
+        throw new Error(err?.message || err);
       }
     }
   }

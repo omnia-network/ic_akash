@@ -15,17 +15,18 @@ pub async fn create_lease_tx(
     bid_id: BidId,
     account: &BaseAccount,
     ecdsa_key: &EcdsaKeyIds,
+    chain_id: &str,
 ) -> Result<Vec<u8>, String> {
     let msg = MsgCreateLease {
         bid_id: Some(bid_id),
     };
 
     let amount = Coin {
-        amount: 50_000u128,
+        amount: 65_000u128,
         denom: Denom::from_str("uakt").unwrap(),
     };
 
-    let gas = 2_000_000u64;
+    let gas = 2_500_000u64;
     let fee = Fee::from_amount_and_gas(amount, gas);
 
     create_tx(
@@ -35,6 +36,7 @@ pub async fn create_lease_tx(
         account.sequence,
         account.account_number,
         ecdsa_key,
+        chain_id,
     )
     .await
 }

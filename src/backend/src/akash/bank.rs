@@ -22,6 +22,7 @@ pub async fn create_send_tx(
     amount: u64,
     account: &BaseAccount,
     ecdsa_key: &EcdsaKeyIds,
+    chain_id: &str,
 ) -> Result<Vec<u8>, String> {
     let amount = Coin {
         amount: amount.into(),
@@ -50,6 +51,7 @@ pub async fn create_send_tx(
         account.sequence,
         account.account_number,
         ecdsa_key,
+        chain_id,
     )
     .await
 }

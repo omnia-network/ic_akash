@@ -62,6 +62,10 @@ impl ApiError {
             message: message.into(),
         }
     }
+
+    pub fn message(&self) -> &str {
+        &self.message
+    }
 }
 
 impl<T> From<Result<T, ApiError>> for ApiResult<T> {

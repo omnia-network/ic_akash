@@ -1,3 +1,10 @@
+use std::str::FromStr;
+
+use cosmrs::AccountId;
+
+use utils::base64_decode;
+
+use crate::api::repositories::{init_deployments_counter, DeploymentsCounterMemory};
 use crate::{
     akash::{
         address::get_account_id_from_public_key,
@@ -15,12 +22,18 @@ use crate::{
     },
     api::{config_state, Config},
 };
-use cosmrs::AccountId;
-use std::str::FromStr;
-use utils::base64_decode;
 
-#[derive(Default)]
-pub struct AkashService {}
+pub struct AkashService {
+    deployments_counter_memory: DeploymentsCounterMemory,
+}
+
+impl Default for AkashService {
+    fn default() -> Self {
+        Self {
+            deployments_counter_memory: init_deployments_counter(),
+        }
+    }
+}
 
 impl AkashService {
     pub fn get_config(&self) -> Config {
@@ -67,6 +80,7 @@ impl AkashService {
             amount,
             &account,
             config.ecdsa_key(),
+            config.chain_id(),
         )
         .await?;
 
@@ -97,6 +111,7 @@ impl AkashService {
             pub_key_pem,
             &account,
             config.ecdsa_key(),
+            config.chain_id(),
         )
         .await?;
 
@@ -106,16 +121,14 @@ impl AkashService {
         Ok(tx_hash)
     }
 
-    pub async fn create_deployment(&self, sdl: SdlV3) -> Result<(String, u64, String), String> {
+    pub async fn create_deployment(&mut self, sdl: SdlV3) -> Result<(String, u64, String), String> {
         let config = self.get_config();
 
         let public_key = config.public_key().await?;
         let rpc_url = config.tendermint_rpc_url();
 
         let account = get_account(rpc_url.clone(), &public_key).await?;
-
-        let abci_info_res = ic_tendermint_rpc::abci_info(rpc_url.clone()).await?;
-        let dseq = abci_info_res.response.last_block_height.value();
+        let dseq = self.next_deployment_id();
         let deposit = config.akash_config().min_deposit_uakt_amount;
 
         let tx_raw = create_deployment_tx(
@@ -125,6 +138,7 @@ impl AkashService {
             deposit,
             &account,
             config.ecdsa_key(),
+            config.chain_id(),
         )
         .await?;
 
@@ -139,6 +153,15 @@ impl AkashService {
         Ok((tx_hash, dseq, sdl.manifest_sorted_json()))
     }
 
+    fn next_deployment_id(&mut self) -> u64 {
+        let mut deployments_counter = *self.deployments_counter_memory.get();
+        deployments_counter += 1;
+        self.deployments_counter_memory
+            .set(deployments_counter)
+            .unwrap();
+        deployments_counter
+    }
+
     pub async fn deposit_deployment(&self, dseq: u64, amount_uakt: u64) -> Result<(), String> {
         let config = self.get_config();
         let public_key = config.public_key().await?;
@@ -146,9 +169,15 @@ impl AkashService {
 
         let account = get_account(rpc_url.clone(), &public_key).await?;
 
-        let tx_raw =
-            deposit_deployment_tx(&public_key, dseq, amount_uakt, &account, config.ecdsa_key())
-                .await?;
+        let tx_raw = deposit_deployment_tx(
+            &public_key,
+            dseq,
+            amount_uakt,
+            &account,
+            config.ecdsa_key(),
+            config.chain_id(),
+        )
+        .await?;
 
         let _tx_hash =
             ic_tendermint_rpc::broadcast_tx_sync(config.is_mainnet(), rpc_url, tx_raw).await?;
@@ -173,8 +202,15 @@ impl AkashService {
 
         let account = get_account(rpc_url.clone(), &public_key).await?;
 
-        let tx_raw =
-            update_deployment_sdl_tx(&public_key, &sdl, dseq, &account, config.ecdsa_key()).await?;
+        let tx_raw = update_deployment_sdl_tx(
+            &public_key,
+            &sdl,
+            dseq,
+            &account,
+            config.ecdsa_key(),
+            config.chain_id(),
+        )
+        .await?;
 
         let tx_hash =
             ic_tendermint_rpc::broadcast_tx_sync(config.is_mainnet(), rpc_url, tx_raw).await?;
@@ -212,8 +248,14 @@ impl AkashService {
         let bid = bids[0].bid.clone().unwrap();
         let bid_id = bid.bid_id.unwrap();
 
-        let tx_raw =
-            create_lease_tx(&public_key, bid_id.clone(), &account, config.ecdsa_key()).await?;
+        let tx_raw = create_lease_tx(
+            &public_key,
+            bid_id.clone(),
+            &account,
+            config.ecdsa_key(),
+            config.chain_id(),
+        )
+        .await?;
 
         let tx_hash =
             ic_tendermint_rpc::broadcast_tx_sync(config.is_mainnet(), rpc_url, tx_raw).await?;
@@ -225,6 +267,8 @@ impl AkashService {
         Ok((tx_hash, provider.host_uri))
     }
 
+    /// TODO: if closing the deployment fails, we should at least try again.
+    /// Otherwise we don't get the Akash tokens back from the escrow.
     pub async fn close_deployment(&self, dseq: u64) -> Result<String, String> {
         let config = self.get_config();
 
@@ -233,7 +277,14 @@ impl AkashService {
 
         let account = get_account(rpc_url.clone(), &public_key).await?;
 
-        let tx_raw = close_deployment_tx(&public_key, dseq, &account, config.ecdsa_key()).await?;
+        let tx_raw = close_deployment_tx(
+            &public_key,
+            dseq,
+            &account,
+            config.ecdsa_key(),
+            config.chain_id(),
+        )
+        .await?;
 
         let tx_hash =
             ic_tendermint_rpc::broadcast_tx_sync(config.is_mainnet(), rpc_url, tx_raw).await?;

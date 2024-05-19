@@ -7,6 +7,8 @@ use crate::{
 };
 use candid::Principal;
 
+use super::{log_info, log_warn};
+
 pub struct DeploymentsService {
     deployments_memory: DeploymentsMemory,
 }
@@ -63,9 +65,33 @@ impl DeploymentsService {
         // either it fails while being creating deployment and lease (and thus there is no need to close it)
         // or it eventually gets to the LeaseCreated or Active state (and from that point on it can be closed, updated or deposited being made to it)
         match deployment_state {
-            DeploymentState::Active | DeploymentState::LeaseCreated { .. } => Ok(()),
-            _ => Err(ApiError::internal(&format!(
-                "Deployment is not active. Cannot close it now. Current state: {:?}",
+            DeploymentState::Initialized
+            | DeploymentState::DeploymentCreated { .. }
+            | DeploymentState::Active
+            | DeploymentState::LeaseCreated { .. } => {
+                log_info!(
+                    format!(
+                        "[Deployment {}]: Closing deployment in {:?} state",
+                        deployment_id, deployment_state
+                    ),
+                    "check_deployment_state"
+                );
+
+                Ok(())
+            }
+            DeploymentState::FailedOnCanister { .. } | DeploymentState::FailedOnClient { .. } => {
+                log_warn!(
+                    format!(
+                        "[Deployment {}]: Deployment is already in {:?} state",
+                        deployment_id, deployment_state
+                    ),
+                    "check_deployment_state"
+                );
+
+                Ok(())
+            }
+            DeploymentState::Closed => Err(ApiError::permission_denied(&format!(
+                "Cannot close deployment. Current state: {:?}",
                 deployment_state
             ))),
         }
@@ -84,9 +110,7 @@ impl DeploymentsService {
                 reason: reason.clone(),
             },
             true,
-        )?;
-
-        Ok(())
+        )
     }
 
     pub fn get_akash_deployment_info(
@@ -126,7 +150,11 @@ impl DeploymentsService {
             ApiError::not_found(&format!("Deployment {} not found", deployment_id))
         })?;
 
-        if let DeploymentState::FailedOnCanister { .. } = deployment.state() {
+        // the deployment can still be closed if it failed on canister,
+        // it may just fail closing but we let this case pass
+        if matches!(deployment.state(), DeploymentState::FailedOnCanister { .. })
+            && !matches!(deployment_update, DeploymentState::Closed)
+        {
             return Err(ApiError::internal(&format!(
                 "Deployment {} already failed",
                 deployment_id

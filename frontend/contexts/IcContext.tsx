@@ -111,7 +111,11 @@ export const IcProvider: React.FC<IcProviderProps> = ({ children }) => {
 
     setIsLoading(true);
 
-    const authClient = await AuthClient.create();
+    const authClient = await AuthClient.create({
+      idleOptions: {
+        disableIdle: true,
+      }
+    });
 
     return new Promise<[DelegationIdentity, BackendActor]>((resolve, reject) => {
       authClient.login({

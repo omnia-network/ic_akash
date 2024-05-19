@@ -36,6 +36,7 @@ type User = record {
   role : UserRole;
   created_at : TimestampNs;
   payments : vec nat64;
+  akt_balance : float64;
 };
 
 type GetUserResult = variant {
@@ -72,7 +73,7 @@ type DeploymentState = variant {
 };
 
 type Deployment = record {
-  sdl : text;
+  params : DeploymentParams;
   user_id : UserId;
   state_history : vec record { TimestampNs; DeploymentState };
   icp_price : float64;
@@ -183,7 +184,8 @@ service : (bool) -> {
   "address" : () -> (ApiStringResult);
   "balance" : () -> (ApiNatResult);
   "check_tx" : (text) -> (ApiEmptyResult);
-  "get_user" : () -> (GetUserResult) query;
+  "get_user" : (principal) -> (GetUserResult) query;
+  "get_my_user" : () -> (GetUserResult) query;
   "create_user" : () -> (CreateUserResult);
   "promote_user_to_admin" : (UserId) -> (ApiEmptyResult);
   "get_deployment" : (text) -> (GetDeploymentResult) query;
@@ -208,7 +210,5 @@ service : (bool) -> {
 
   //// Ledger methods ////
   "query_blocks" : (GetBlocksArgs) -> (QueryBlocksResult) composite_query;
-  "get_icp_price" : () -> (ApiFloatResult);
-  "get_akt_price" : () -> (ApiFloatResult);
   //// End Ledger methods ////
 };

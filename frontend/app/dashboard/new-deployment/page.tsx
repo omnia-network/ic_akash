@@ -1,7 +1,6 @@
 "use client";
 
 import { BackButton } from "@/components/back-button";
-import { LoadingButton } from "@/components/loading-button";
 import { useToast } from "@/components/ui/use-toast";
 import { useDeploymentContext } from "@/contexts/DeploymentContext";
 import {
@@ -10,19 +9,18 @@ import {
   useIcContext,
   type OnWsErrorCallback,
 } from "@/contexts/IcContext";
-import { type DeploymentState } from "@/declarations/backend.did";
+import type { DeploymentParams, DeploymentState } from "@/declarations/backend.did";
 import { extractDeploymentCreated } from "@/helpers/deployment";
 import { extractOk } from "@/helpers/result";
 import { sendManifestToProvider } from "@/services/deployment";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Textarea } from "@/components/ui/textarea";
-import { TEST_DEPLOYMENT_CONFIG } from "@/fixtures/deployment";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Milestone } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { displayE8sAsIcp, icpToE8s } from "@/helpers/ui";
 import { transferE8sToBackend } from "@/services/backend";
 import { Spinner } from "@/components/spinner";
+import { NewDeploymentForm } from "@/components/new-deployment-form";
 
 const FETCH_DEPLOYMENT_PRICE_INTERVAL_MS = 30_000; // 30 seconds
 
@@ -31,11 +29,12 @@ export default function NewDeployment() {
   const { backendActor, openWs, closeWs, setWsCallbacks, ledgerCanister, ledgerData, refreshLedgerData } = useIcContext();
   const { tlsCertificateData, loadOrCreateCertificate, fetchDeployments } =
     useDeploymentContext();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [deploymentSteps, setDeploymentSteps] = useState<
     Array<DeploymentState>
   >([]);
+  const [deploymentError, setDeploymentError] = useState<string | null>(null);
   const [deploymentE8sPrice, setDeploymentE8sPrice] = useState<bigint | null>(null);
   const [fetchDeploymentPriceInterval, setFetchDeploymentPriceInterval] = useState<NodeJS.Timeout | null>(null);
   const userHasEnoughBalance = useMemo(() =>
@@ -43,11 +42,12 @@ export default function NewDeployment() {
     [ledgerData.balanceE8s, deploymentE8sPrice]
   );
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const [deploymentParams, setDeploymentParams] = useState<DeploymentParams | null>(null);
   const { toast } = useToast();
 
   const toastError = useCallback(
     (message: string) => {
-      setIsLoading(false);
+      setIsSubmitting(false);
 
       toast({
         variant: "destructive",
@@ -62,22 +62,28 @@ export default function NewDeployment() {
     console.log("ws open");
 
     setIsDeploying(true);
+    setIsSubmitting(false);
     try {
-      await loadOrCreateCertificate(backendActor!);
+      if (!backendActor) {
+        throw new Error("No backend actor");
+      }
 
-      const res = await backendActor!.create_test_deployment();
+      if (!deploymentParams) {
+        throw new Error("No deployment params");
+      }
+
+      const res = await backendActor.create_deployment(deploymentParams);
       const deploymentId = extractOk(res);
 
       console.log("deployment id", deploymentId);
 
       setDeploymentSteps([{ Initialized: null }]);
     } catch (e) {
-      console.error(e);
-      toastError("Failed to create deployment, see console for details");
+      console.error("Failed to create deployment:", e);
+      setDeploymentError("Failed to create deployment, see console for details");
+      setIsDeploying(false);
     }
-
-    setIsLoading(false);
-  }, [backendActor, loadOrCreateCertificate, toastError]);
+  }, [backendActor, deploymentParams]);
 
   const onWsMessage: OnWsMessageCallback = useCallback(
     async (ev) => {
@@ -89,8 +95,10 @@ export default function NewDeployment() {
 
       if ("FailedOnCanister" in deploymentUpdate.update) {
         const err = deploymentUpdate.update.FailedOnCanister.reason;
-        console.error("Failed to deploy", err);
-        toastError("Failed to deploy, see console for details");
+        console.error("Failed to deploy:", err);
+        setDeploymentError("Failed to deploy, see console for details");
+        setIsDeploying(false);
+        closeWs();
         return;
       }
 
@@ -137,10 +145,10 @@ export default function NewDeployment() {
             )
           );
         } catch (e) {
-          console.error("Failed to update deployment", e);
+          console.error("Failed to update deployment:", e);
         }
 
-        toastError(
+        setDeploymentError(
           "Failed to send manifest to provider, see console for details"
         );
         setIsDeploying(false);
@@ -167,8 +175,8 @@ export default function NewDeployment() {
           router.push("/dashboard");
         }
       } catch (e) {
-        console.error(e);
-        toastError("Failed to complete deployment, see console for details");
+        console.error("Failed to complete deployment:", e);
+        setDeploymentError("Failed to complete deployment, see console for details");
         setIsDeploying(false);
       }
     },
@@ -180,7 +188,6 @@ export default function NewDeployment() {
       fetchDeployments,
       router,
       closeWs,
-      toastError,
     ]
   );
 
@@ -192,7 +199,7 @@ export default function NewDeployment() {
     [toastError]
   );
 
-  const handleDeploy = useCallback(async () => {
+  const handleDeploy = useCallback(async (values: DeploymentParams) => {
     if (!backendActor || !ledgerCanister) {
       toastError("Backend actor or ledger canister not found");
       return;
@@ -208,10 +215,19 @@ export default function NewDeployment() {
       return;
     }
 
-    setIsLoading(true);
-
+    setDeploymentSteps([]);
+    setDeploymentError(null);
+    setDeploymentParams(values);
+    setIsDeploying(false);
+    setIsSubmitting(true);
+    setPaymentStatus(null);
 
     try {
+      const cert = await loadOrCreateCertificate(backendActor!);
+      if (!cert) {
+        throw new Error("No certificate");
+      }
+
       setPaymentStatus(`Sending ~${displayE8sAsIcp(deploymentE8sPrice)} to backend canister...`);
 
       await transferE8sToBackend(
@@ -228,10 +244,11 @@ export default function NewDeployment() {
 
       setPaymentStatus(prev => prev + " DONE");
     } catch (e) {
-      console.error(e);
+      console.error("Failed to transfer funds:", e);
       toastError("Failed to transfer funds, see console for details");
       setPaymentStatus(prev => prev + " FAILED");
-      setIsLoading(false);
+      setDeploymentParams(null);
+      setIsSubmitting(false);
       return;
     }
 
@@ -255,6 +272,7 @@ export default function NewDeployment() {
     refreshLedgerData,
     deploymentE8sPrice,
     fetchDeploymentPriceInterval,
+    loadOrCreateCertificate,
   ]);
 
   const fetchDeploymentPrice = useCallback(async () => {
@@ -268,12 +286,12 @@ export default function NewDeployment() {
 
       // add 1 ICP to cover price fluctuation
       //
-      // TODO: backend canister should first create the deployment
-      // and store the price, so that the frontend can fetch it
-      // and transfer the correct ICP amount accordingly
+      // TODO: try to deploy and parse the error from the canister.
+      // If the error is a not enough balance error, then we can
+      // send funds to the canister and try again.
       setDeploymentE8sPrice(icpToE8s(icpPrice + 1));
     } catch (e) {
-      console.error("Failed to fetch deployment price", e);
+      console.error("Failed to fetch deployment price:", e);
       toastError("Failed to fetch deployment price, see console for details");
     }
   }, [backendActor, toastError]);
@@ -283,6 +301,7 @@ export default function NewDeployment() {
       onOpen: onWsOpen,
       onMessage: onWsMessage,
       onClose: () => {
+        // TODO: handle close even when deployment is not completed
         console.log("ws close");
       },
       onError: onWsError,
@@ -309,26 +328,15 @@ export default function NewDeployment() {
           Create Deployment
         </h2>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <h5 className="font-bold">
-              Configuration:
-            </h5>
-            <Textarea
-              value={TEST_DEPLOYMENT_CONFIG}
-              rows={TEST_DEPLOYMENT_CONFIG.split("\n").length}
-              disabled
-            />
-            <Alert>
-              <Milestone className="h-4 w-4" />
-              <AlertTitle>Coming soon</AlertTitle>
-              <AlertDescription>
-                In the next versions, you will be able to deploy your own
-                services.
-              </AlertDescription>
-            </Alert>
-          </div>
+      <div className="grid gap-16 md:grid-cols-2">
+        <div>
+          <NewDeploymentForm
+            isLoading={isSubmitting || isDeploying}
+            isSubmitDisabled={!userHasEnoughBalance}
+            onSubmit={handleDeploy}
+          />
+        </div>
+        <div className="flex flex-col gap-4 h-fit sticky top-20">
           <div className="flex flex-col gap-2">
             <h5 className="font-bold">
               Price (est.):
@@ -338,7 +346,7 @@ export default function NewDeployment() {
             ) : (
               <Spinner />
             )}
-            {(!(isLoading || isDeploying) && (deploymentE8sPrice !== null) && !userHasEnoughBalance) && (
+            {(!(isSubmitting || isDeploying) && (deploymentE8sPrice !== null) && !userHasEnoughBalance) && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Insufficient balance</AlertTitle>
@@ -355,22 +363,13 @@ export default function NewDeployment() {
               </Alert>
             )}
           </div>
-          <LoadingButton
-            onClick={handleDeploy}
-            isLoading={isLoading || isDeploying}
-            disabled={!userHasEnoughBalance}
-          >
-            Deploy service
-          </LoadingButton>
-        </div>
-        <div className="flex flex-col gap-4">
           {paymentStatus && (
             <div className="flex flex-col gap-3">
               <h5 className="font-bold">Payment Status:</h5>
               <p>{paymentStatus}</p>
             </div>
           )}
-          {deploymentSteps.length > 0 && (
+          {(isDeploying || deploymentSteps.length > 0) && (
             <div className="flex flex-col gap-3">
               <h5 className="font-bold">Deployment Steps:</h5>
               <div className="flex flex-col gap-2">
@@ -381,8 +380,18 @@ export default function NewDeployment() {
                       {idx + 1}. {el}
                     </p>
                   ))}
+                {isDeploying && <Spinner />}
               </div>
             </div>
+          )}
+          {Boolean(deploymentError) && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Deployment Error</AlertTitle>
+              <AlertDescription>
+                <p>{deploymentError}</p>
+              </AlertDescription>
+            </Alert>
           )}
         </div>
       </div>

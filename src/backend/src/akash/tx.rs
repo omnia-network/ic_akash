@@ -69,6 +69,14 @@ use crate::helpers::{sign, EcdsaKeyIds};
 ///   "accountNumber": "259"
 /// }
 /// ```
+///
+/// Transaction metadata: chain, account, sequence, gas, fee, timeout, and memo.
+/// from:
+/// - sandbox: https://raw.githubusercontent.com/akash-network/net/main/sandbox/chain-id.txt
+/// - mainnet: https://raw.githubusercontent.com/akash-network/net/main/mainnet/chain-id.txt
+///
+/// more config params from: https://github.com/akash-network/net/blob/main/sandbox/meta.json
+/// see also: https://docs.akash.network/guides/sandbox/detailed-steps/part-4.-configure-your-network
 pub async fn create_tx(
     sender_public_key: &PublicKey,
     msg: Any,
@@ -76,17 +84,11 @@ pub async fn create_tx(
     sequence_number: u64,
     account_number: u64,
     ecdsa_key: &EcdsaKeyIds,
+    chain_id: &str,
 ) -> Result<Vec<u8>, String> {
-    // Transaction metadata: chain, account, sequence, gas, fee, timeout, and memo.
-    // from:
-    // - sandbox: https://raw.githubusercontent.com/akash-network/net/main/sandbox/chain-id.txt
-    // - mainnet: https://raw.githubusercontent.com/akash-network/net/main/mainnet/chain-id.txt
-    //
-    // more config params from: https://github.com/akash-network/net/blob/main/sandbox/meta.json
-    // see also: https://docs.akash.network/guides/sandbox/detailed-steps/part-4.-configure-your-network
-    let chain_id = Id::from_str("sandbox-01").map_err(|e| e.to_string())?;
+    let chain_id = Id::from_str(chain_id).map_err(|e| e.to_string())?;
     let timeout_height = 0u16;
-    let memo = "created from canister";
+    let memo = format!("canister id: {}", ic_cdk::id().to_text());
 
     // Create transaction body from the MsgSend, memo, and timeout height.
     let tx_body = tx::Body::new(vec![msg], memo, timeout_height);
