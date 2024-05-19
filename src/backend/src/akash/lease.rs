@@ -22,11 +22,11 @@ pub async fn create_lease_tx(
     };
 
     let amount = Coin {
-        amount: 50_000u128,
+        amount: 65_000u128,
         denom: Denom::from_str("uakt").unwrap(),
     };
 
-    let gas = 2_000_000u64;
+    let gas = 2_500_000u64;
     let fee = Fee::from_amount_and_gas(amount, gas);
 
     create_tx(
