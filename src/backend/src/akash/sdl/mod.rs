@@ -36,6 +36,7 @@ pub struct ServiceV2 {
     pub expose: Vec<ExposeV2>,
     pub dependencies: Option<Vec<DependencyV2>>,
     pub params: Option<ServiceParamsV2>,
+    pub credentials: Option<ServiceImageCredentialsV2>,
 }
 
 impl ServiceV2 {
@@ -219,6 +220,25 @@ impl From<ServiceParamsV2> for ManifestServiceParamsV3 {
                         .read_only,
                 })
                 .collect(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct ServiceImageCredentialsV2 {
+    pub host: String,
+    pub email: String,
+    pub username: String,
+    pub password: String,
+}
+
+impl From<ServiceImageCredentialsV2> for ManifestServiceCredentialsV3 {
+    fn from(val: ServiceImageCredentialsV2) -> Self {
+        ManifestServiceCredentialsV3 {
+            host: val.host,
+            email: val.email,
+            username: val.username,
+            password: val.password,
         }
     }
 }
@@ -574,6 +594,7 @@ impl SdlV3 {
                         },
                         dependencies: None,
                         params: None,
+                        credentials: None,
                     },
                 );
                 services
@@ -880,6 +901,7 @@ impl SdlV3 {
             count: svc_deployment.count,
             expose: self.manifest_expose_v3(service),
             params: service.params.to_owned().map(|params| params.into()),
+            credentials: service.credentials.to_owned().map(|creds| creds.into()),
         }
     }
 
@@ -1035,6 +1057,7 @@ pub struct ManifestServiceV3 {
     pub args: Option<Vec<String>>,
     pub command: Option<Vec<String>>,
     pub count: u32,
+    pub credentials: Option<ManifestServiceCredentialsV3>,
     pub env: Option<Vec<String>>,
     pub expose: Vec<ServiceExposeV3>,
     pub image: String,
@@ -1088,6 +1111,14 @@ pub struct ServiceExposeHttpOptionsV3 {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ManifestServiceParamsV3 {
     pub storage: Vec<ServiceStorageParamsV2>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct ManifestServiceCredentialsV3 {
+    pub email: String,
+    pub host: String,
+    pub password: String,
+    pub username: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
