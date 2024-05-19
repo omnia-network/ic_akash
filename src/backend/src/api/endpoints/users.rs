@@ -7,7 +7,16 @@ use crate::api::{
 };
 
 #[query]
-fn get_user() -> ApiResult<User> {
+fn get_user(user_principal: Principal) -> ApiResult<User> {
+    let calling_principal = caller();
+
+    UsersEndpoints::default()
+        .get_user_as_admin(calling_principal, user_principal)
+        .into()
+}
+
+#[query]
+fn get_my_user() -> ApiResult<User> {
     let calling_principal = caller();
 
     UsersEndpoints::default()
@@ -53,6 +62,17 @@ struct UsersEndpoints {
 }
 
 impl UsersEndpoints {
+    fn get_user_as_admin(
+        &self,
+        calling_principal: Principal,
+        user_principal: Principal,
+    ) -> Result<User, ApiError> {
+        self.access_control_service
+            .assert_principal_is_admin(&calling_principal)?;
+
+        self.users_service.get_user(&user_principal.into())
+    }
+
     fn get_user_by_principal(&self, calling_principal: Principal) -> Result<User, ApiError> {
         self.access_control_service
             .assert_principal_not_anonymous(&calling_principal)?;

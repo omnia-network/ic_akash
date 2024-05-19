@@ -266,7 +266,8 @@ export const idlFactory = ({ IDL }) => {
     'get_deployment' : IDL.Func([IDL.Text], [GetDeploymentResult], ['query']),
     'get_deployment_icp_price' : IDL.Func([], [ApiFloatResult], []),
     'get_deployments' : IDL.Func([], [GetDeploymentsResult], ['query']),
-    'get_user' : IDL.Func([], [GetUserResult], ['query']),
+    'get_my_user' : IDL.Func([], [GetUserResult], ['query']),
+    'get_user' : IDL.Func([IDL.Principal], [GetUserResult], ['query']),
     'list_logs' : IDL.Func([LogsFilterRequest], [ListLogsResponse], ['query']),
     'promote_user_to_admin' : IDL.Func([UserId], [ApiEmptyResult], []),
     'query_blocks' : IDL.Func(
