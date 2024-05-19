@@ -88,7 +88,7 @@ impl LedgerService {
                 "orchestrator is not the recipient of the payment",
             ));
         }
-        let paid_akt = (amount.e8s() / Tokens::SUBDIVIDABLE_BY) as f64
+        let paid_akt = (amount.e8s() as f64 / Tokens::SUBDIVIDABLE_BY as f64)
             * self.get_icp_2_akt_conversion_rate().await?;
 
         // the payment might still be a double spend,
