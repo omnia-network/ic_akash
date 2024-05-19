@@ -24,5 +24,7 @@ export const getOrCreateCurrentUser = async (actor: BackendActor): Promise<User>
     user = extractOk(res);
   }
 
+  console.log("Current user:", user);
+
   return user;
 };
