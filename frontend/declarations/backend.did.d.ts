@@ -231,6 +231,7 @@ export type TransferFeeArg = {};
 export type TransferResult = { 'Ok' : BlockIndex } |
   { 'Err' : TransferError };
 export interface User {
+  'akt_balance' : number,
   'payments' : BigUint64Array | bigint[],
   'role' : UserRole,
   'created_at' : TimestampNs,

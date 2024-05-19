@@ -36,6 +36,7 @@ type User = record {
   role : UserRole;
   created_at : TimestampNs;
   payments : vec nat64;
+  akt_balance : float64;
 };
 
 type GetUserResult = variant {

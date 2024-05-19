@@ -78,6 +78,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const UserRole = IDL.Variant({ 'Admin' : IDL.Null, 'Deployer' : IDL.Null });
   const User = IDL.Record({
+    'akt_balance' : IDL.Float64,
     'payments' : IDL.Vec(IDL.Nat64),
     'role' : UserRole,
     'created_at' : TimestampNs,
