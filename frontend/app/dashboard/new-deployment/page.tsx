@@ -286,9 +286,9 @@ export default function NewDeployment() {
 
       // add 1 ICP to cover price fluctuation
       //
-      // TODO: backend canister should first create the deployment
-      // and store the price, so that the frontend can fetch it
-      // and transfer the correct ICP amount accordingly
+      // TODO: try to deploy and parse the error from the canister.
+      // If the error is a not enough balance error, then we can
+      // send funds to the canister and try again.
       setDeploymentE8sPrice(icpToE8s(icpPrice + 1));
     } catch (e) {
       console.error("Failed to fetch deployment price:", e);
