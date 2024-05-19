@@ -267,6 +267,8 @@ impl AkashService {
         Ok((tx_hash, provider.host_uri))
     }
 
+    /// TODO: if closing the deployment fails, we should at least try again.
+    /// Otherwise we don't get the Akash tokens back from the escrow.
     pub async fn close_deployment(&self, dseq: u64) -> Result<String, String> {
         let config = self.get_config();
 

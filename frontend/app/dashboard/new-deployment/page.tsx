@@ -301,6 +301,7 @@ export default function NewDeployment() {
       onOpen: onWsOpen,
       onMessage: onWsMessage,
       onClose: () => {
+        // TODO: handle close even when deployment is not completed
         console.log("ws close");
       },
       onError: onWsError,
