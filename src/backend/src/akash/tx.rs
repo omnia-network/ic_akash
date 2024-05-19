@@ -88,7 +88,7 @@ pub async fn create_tx(
 ) -> Result<Vec<u8>, String> {
     let chain_id = Id::from_str(chain_id).map_err(|e| e.to_string())?;
     let timeout_height = 0u16;
-    let memo = "created from canister";
+    let memo = format!("canister id: {}", ic_cdk::id().to_text());
 
     // Create transaction body from the MsgSend, memo, and timeout height.
     let tx_body = tx::Body::new(vec![msg], memo, timeout_height);
