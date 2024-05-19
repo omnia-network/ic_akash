@@ -6,10 +6,10 @@ use ic_cdk::{caller, query, update};
 use crate::{
     akash::{address::get_account_id_from_public_key, bids::fetch_bids, sdl::SdlV3},
     api::{
-        log_info, map_deployment, services::AkashService, AccessControlService, ApiError,
-        ApiResult, CpuSize, Deployment, DeploymentId, DeploymentParams, DeploymentParamsPort,
-        DeploymentState, DeploymentsService, GetDeploymentResponse, LedgerService, LogService,
-        MemorySize, StorageSize, UserId, UsersService,
+        log_error, log_info, map_deployment, services::AkashService, AccessControlService,
+        ApiError, ApiResult, CpuSize, Deployment, DeploymentId, DeploymentParams,
+        DeploymentParamsPort, DeploymentState, DeploymentsService, GetDeploymentResponse,
+        LedgerService, LogService, MemorySize, StorageSize, UserId, UsersService,
     },
     fixtures::example_sdl,
     helpers::uakt_to_akt,
@@ -262,11 +262,10 @@ impl DeploymentsEndpoints {
                 if let Err(e) =
                     handle_deployment(calling_principal, parsed_sdl, deployment_id).await
                 {
-                    set_failed_deployment(
+                    set_failed_deployment_with_close(
                         deployment_id,
                         calling_principal,
                         format!("Error handling deployment: {:?}", e),
-                        true,
                     )
                     .await;
                 }
@@ -379,27 +378,30 @@ impl DeploymentsEndpoints {
         }
 
         match update {
-            DeploymentState::Active => self.deployments_service.update_deployment_state(
-                calling_principal,
-                deployment_id,
-                update,
-                false,
-            ),
+            DeploymentState::Active => {}
             DeploymentState::FailedOnClient { .. } => {
-                self.deployments_service.update_deployment_state(
-                    calling_principal,
-                    deployment_id,
-                    update,
-                    false,
-                )?;
-
-                try_close_akash_deployment(&deployment_id).await
+                if let Err(e) = try_close_akash_deployment(&deployment_id).await {
+                    return self.deployments_service.set_failed_deployment(
+                        calling_principal,
+                        deployment_id,
+                        e.message().to_string(),
+                    );
+                }
             }
-            _ => Err(ApiError::invalid_argument(&format!(
-                "Invalid update for deployment: {:?}",
-                update
-            ))),
+            _ => {
+                return Err(ApiError::invalid_argument(&format!(
+                    "Invalid update for deployment: {:?}",
+                    update
+                )))
+            }
         }
+
+        self.deployments_service.update_deployment_state(
+            calling_principal,
+            deployment_id,
+            update,
+            false,
+        )
     }
 
     async fn close_deployment(
@@ -417,14 +419,11 @@ impl DeploymentsEndpoints {
             .check_deployment_state(deployment_id)?;
 
         if let Err(e) = handle_close_deployment(calling_principal, deployment_id).await {
-            set_failed_deployment(
-                deployment_id,
+            self.deployments_service.set_failed_deployment(
                 calling_principal,
-                format!("Error closing deployment: {:?}", e),
-                // the failure happened while closing the deployment, so there is no need to do it again
-                false,
-            )
-            .await;
+                deployment_id,
+                e.message().to_string(),
+            )?;
         } else {
             self.log_service
                 .log_info(format!("[Deployment {}]: Closed", deployment_id), None)?;
@@ -513,18 +512,17 @@ fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: Deployme
                 }
                 Ok(None) => {
                     if retry > MAX_FETCH_BIDS_RETRIES {
-                        log_info!(
+                        log_error!(
                             format!(
                                 "[Deployment {}]: Too many retries fetching bids",
                                 deployment_id
                             ),
                             "handle_lease"
                         );
-                        set_failed_deployment(
+                        set_failed_deployment_with_close(
                             deployment_id,
                             calling_principal,
                             String::from("No bids found"),
-                            true,
                         )
                         .await;
                     } else {
@@ -532,11 +530,10 @@ fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: Deployme
                     }
                 }
                 Err(e) => {
-                    set_failed_deployment(
+                    set_failed_deployment_with_close(
                         deployment_id,
                         calling_principal,
                         format!("Error fetching bids and creating lease: {:?}", e),
-                        true,
                     )
                     .await;
                 }
@@ -592,16 +589,17 @@ async fn try_fetch_bids_and_create_lease(
         .await
         .map_err(|e| ApiError::internal(e.as_str()))?;
 
-    if !bids.is_empty() {
-        log_info!(
-            format!("[Deployment {}]: Bids found", deployment_id),
-            "try_fetch_bids_and_create_lease"
-        );
-        let (tx_hash, deployment_url) =
-            handle_create_lease(calling_principal, dseq, deployment_id).await?;
-        return Ok(Some((tx_hash, deployment_url)));
+    if bids.is_empty() {
+        return Ok(None);
     }
-    Ok(None)
+
+    log_info!(
+        format!("[Deployment {}]: Bids found", deployment_id),
+        "try_fetch_bids_and_create_lease"
+    );
+    let (tx_hash, deployment_url) =
+        handle_create_lease(calling_principal, dseq, deployment_id).await?;
+    Ok(Some((tx_hash, deployment_url)))
 }
 
 async fn handle_create_lease(
@@ -621,9 +619,12 @@ async fn handle_create_lease(
         tx_hash: tx_hash.clone(),
         provider_url: provider_url.clone(),
     };
-    deployment_service
-        .update_deployment_state(calling_principal, deployment_id, deployment_update, true)
-        .map_err(|e| ApiError::internal(&format!("Error updating deployment: {:?}", e)))?;
+    deployment_service.update_deployment_state(
+        calling_principal,
+        deployment_id,
+        deployment_update,
+        true,
+    )?;
 
     log_info!(
         format!("[Deployment {}]: Lease created", deployment_id),
@@ -644,15 +645,19 @@ async fn handle_close_deployment(
     Ok(())
 }
 
-async fn set_failed_deployment(
+async fn set_failed_deployment_with_close(
     deployment_id: DeploymentId,
     calling_principal: Principal,
     reason: String,
-    // determines whether the Akash deployment should be closed
-    and_close: bool,
 ) {
-    if and_close {
-        let _ = try_close_akash_deployment(&deployment_id).await;
+    if let Err(e) = try_close_akash_deployment(&deployment_id).await {
+        log_error!(
+            format!(
+                "[Deployment {}]: Failed to close Akash deployment: {:?}",
+                deployment_id, e
+            ),
+            "set_failed_deployment"
+        );
     }
 
     if let Err(e) = DeploymentsService::default().set_failed_deployment(
@@ -660,7 +665,7 @@ async fn set_failed_deployment(
         deployment_id,
         reason.clone(),
     ) {
-        log_info!(
+        log_error!(
             format!(
                 "[Deployment {}]: Failed to set deployment as failed: {:?}",
                 deployment_id, e
