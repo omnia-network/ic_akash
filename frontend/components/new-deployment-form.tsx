@@ -60,6 +60,7 @@ export const NewDeploymentForm: React.FC<NewDeploymentFormProps> = ({ isLoading,
       envVariables: [{ name: "", value: "" }],
       tier: DeploymentTier.SMALL,
     },
+    mode: "onChange",
     reValidateMode: "onChange",
   });
 
