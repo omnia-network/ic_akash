@@ -378,7 +378,12 @@ impl DeploymentsEndpoints {
         }
 
         match update {
-            DeploymentState::Active => {}
+            DeploymentState::Active => self.deployments_service.update_deployment_state(
+                calling_principal,
+                deployment_id,
+                update,
+                false,
+            ),
             DeploymentState::FailedOnClient { .. } => {
                 if let Err(e) = try_close_akash_deployment(&deployment_id).await {
                     return self.deployments_service.set_failed_deployment(
@@ -387,21 +392,19 @@ impl DeploymentsEndpoints {
                         e.message().to_string(),
                     );
                 }
-            }
-            _ => {
-                return Err(ApiError::invalid_argument(&format!(
-                    "Invalid update for deployment: {:?}",
-                    update
-                )))
-            }
-        }
 
-        self.deployments_service.update_deployment_state(
-            calling_principal,
-            deployment_id,
-            update,
-            false,
-        )
+                self.deployments_service.update_deployment_state(
+                    calling_principal,
+                    deployment_id,
+                    update,
+                    false,
+                )
+            }
+            _ => Err(ApiError::invalid_argument(&format!(
+                "Invalid update for deployment: {:?}",
+                update
+            ))),
+        }
     }
 
     async fn close_deployment(
