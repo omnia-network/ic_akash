@@ -190,75 +190,72 @@ export default function Dashboard() {
                   </CollapsibleContent>
                 </Collapsible>
               </CardContent>
-              {!(
-                isDeploymentClosed(el.deployment) ||
-                isDeploymentFailed(el.deployment)
-              ) && (
-                  <CardFooter className="gap-2">
-                    {isDeploymentActive(el.deployment) && (
-                      <>
-                        <Button
-                          variant="secondary"
-                          onClick={() => handleFetchStatus(el.deployment)}
+              {!isDeploymentClosed(el.deployment) && (
+                <CardFooter className="gap-2">
+                  {(isDeploymentActive(el.deployment) && !isDeploymentFailed(el.deployment)) && (
+                    <>
+                      <Button
+                        variant="secondary"
+                        onClick={() => handleFetchStatus(el.deployment)}
+                      >
+                        Fetch status
+                      </Button>
+                      <Dialog
+                        open={isStatusDialogOpen}
+                        onOpenChange={setIsStatusDialogOpen}
+                      >
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Deployment status</DialogTitle>
+                            <DialogDescription>
+                              {isFetchingStatus ? (
+                                <Spinner />
+                              ) : (
+                                Boolean(leaseStatusData) && (
+                                  <span className="font-mono">
+                                    {JSON.stringify(leaseStatusData, null, 2)}
+                                  </span>
+                                )
+                              )}
+                            </DialogDescription>
+                          </DialogHeader>
+                        </DialogContent>
+                      </Dialog>
+                    </>
+                  )}
+                  <Dialog
+                    open={dialogDeploymentId === el.id}
+                    onOpenChange={(open) =>
+                      setDialogDeploymentId(open ? el.id : undefined)
+                    }
+                  >
+                    <DialogTrigger asChild>
+                      <Button variant="outline">Close Deployment</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Are you sure?</DialogTitle>
+                        <DialogDescription>
+                          Deployment id to close:
+                          <br />
+                          <span className="font-mono text-nowrap">{el.id}</span>
+                          <br />
+                          <b>This action cannot be undone.</b>
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <LoadingButton
+                          variant="destructive"
+                          onClick={() => handleCloseDeployment(el.id)}
+                          isLoading={isClosingDeployment}
                         >
-                          Fetch status
-                        </Button>
-                        <Dialog
-                          open={isStatusDialogOpen}
-                          onOpenChange={setIsStatusDialogOpen}
-                        >
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Deployment status</DialogTitle>
-                              <DialogDescription>
-                                {isFetchingStatus ? (
-                                  <Spinner />
-                                ) : (
-                                  Boolean(leaseStatusData) && (
-                                    <span className="font-mono">
-                                      {JSON.stringify(leaseStatusData, null, 2)}
-                                    </span>
-                                  )
-                                )}
-                              </DialogDescription>
-                            </DialogHeader>
-                          </DialogContent>
-                        </Dialog>
-                      </>
-                    )}
-                    <Dialog
-                      open={dialogDeploymentId === el.id}
-                      onOpenChange={(open) =>
-                        setDialogDeploymentId(open ? el.id : undefined)
-                      }
-                    >
-                      <DialogTrigger asChild>
-                        <Button variant="outline">Close Deployment</Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Are you sure?</DialogTitle>
-                          <DialogDescription>
-                            Deployment id to close:
-                            <br />
-                            <span className="font-mono text-nowrap">{el.id}</span>
-                            <br />
-                            <b>This action cannot be undone.</b>
-                          </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter>
-                          <LoadingButton
-                            variant="destructive"
-                            onClick={() => handleCloseDeployment(el.id)}
-                            isLoading={isClosingDeployment}
-                          >
-                            Close Deployment
-                          </LoadingButton>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </CardFooter>
-                )}
+                          Close Deployment
+                        </LoadingButton>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </CardFooter>
+              )}
             </Card>
           ))}
       </div>
