@@ -1,7 +1,8 @@
 use std::{borrow::Cow, fmt::Display};
 
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
-use ic_stable_structures::{storable::Bound, Storable};
+use ic_stable_structures::{Storable, storable::Bound};
+
 use utils::get_time_nanos;
 
 use super::TimestampNs;
@@ -73,6 +74,7 @@ pub struct User {
     created_at: TimestampNs,
     payments: Vec<u64>,
     akt_balance: f64,
+    mutual_tls_certificate: Option<String>,
 }
 
 impl User {
@@ -82,6 +84,7 @@ impl User {
             created_at: get_time_nanos(),
             payments: vec![],
             akt_balance: 0.0,
+            mutual_tls_certificate: None,
         }
     }
 
@@ -113,6 +116,10 @@ impl User {
     pub fn subtract_from_akt_balance(&mut self, amount: f64) -> f64 {
         self.akt_balance -= amount;
         self.akt_balance
+    }
+
+    pub fn set_mutual_tls_certificate(&mut self, certificate: String) {
+        self.mutual_tls_certificate = Some(certificate);
     }
 }
 

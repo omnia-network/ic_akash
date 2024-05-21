@@ -1,5 +1,6 @@
-use crate::api::{init_users, log_info, ApiError, User, UserId, UserRole, UsersMemory};
 use candid::Principal;
+
+use crate::api::{ApiError, init_users, log_info, User, UserId, UserRole, UsersMemory};
 
 pub struct UsersService {
     users_memory: UsersMemory,
@@ -99,6 +100,23 @@ impl UsersService {
             ),
             "charge_user"
         );
+
+        self.users_memory.insert(user_id, user);
+
+        Ok(())
+    }
+
+    pub fn set_user_mutual_tls_certificate(
+        &mut self,
+        user_id: UserId,
+        certificate: String,
+    ) -> Result<(), ApiError> {
+        let mut user = self
+            .users_memory
+            .get(&user_id)
+            .ok_or_else(|| ApiError::not_found("User not found"))?;
+
+        user.set_mutual_tls_certificate(certificate);
 
         self.users_memory.insert(user_id, user);
 

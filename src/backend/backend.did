@@ -188,6 +188,7 @@ service : (bool) -> {
   "get_my_user" : () -> (GetUserResult) query;
   "create_user" : () -> (CreateUserResult);
   "promote_user_to_admin" : (UserId) -> (ApiEmptyResult);
+  "set_mutual_tls_certificate" : (text) -> (ApiEmptyResult);
   "get_deployment" : (text) -> (GetDeploymentResult) query;
   "get_deployments" : () -> (GetDeploymentsResult) query;
   "create_certificate" : (text, text) -> (ApiStringResult);
