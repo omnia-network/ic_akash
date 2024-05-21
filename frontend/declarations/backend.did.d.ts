@@ -264,6 +264,7 @@ export interface _SERVICE {
   'list_logs' : ActorMethod<[LogsFilterRequest], ListLogsResponse>,
   'promote_user_to_admin' : ActorMethod<[UserId], ApiEmptyResult>,
   'query_blocks' : ActorMethod<[GetBlocksArgs], QueryBlocksResult>,
+  'set_mutual_tls_certificate' : ActorMethod<[string], ApiEmptyResult>,
   'update_akt_balance' : ActorMethod<[bigint], ApiFloatResult>,
   'update_deployment_state' : ActorMethod<
     [string, DeploymentState],

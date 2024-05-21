@@ -276,6 +276,7 @@ export const idlFactory = ({ IDL }) => {
         [QueryBlocksResult],
         ['composite_query'],
       ),
+    'set_mutual_tls_certificate' : IDL.Func([IDL.Text], [ApiEmptyResult], []),
     'update_akt_balance' : IDL.Func([IDL.Nat64], [ApiFloatResult], []),
     'update_deployment_state' : IDL.Func(
         [IDL.Text, DeploymentState],
