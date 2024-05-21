@@ -37,6 +37,7 @@ type User = record {
   created_at : TimestampNs;
   payments : vec nat64;
   akt_balance : float64;
+  mutual_tls_certificate : text;
 };
 
 type GetUserResult = variant {

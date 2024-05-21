@@ -74,7 +74,7 @@ pub struct User {
     created_at: TimestampNs,
     payments: Vec<u64>,
     akt_balance: f64,
-    mutual_tls_certificate: Option<String>,
+    mutual_tls_certificate: String,
 }
 
 impl User {
@@ -84,7 +84,7 @@ impl User {
             created_at: get_time_nanos(),
             payments: vec![],
             akt_balance: 0.0,
-            mutual_tls_certificate: None,
+            mutual_tls_certificate: "".to_string(),
         }
     }
 
@@ -119,7 +119,7 @@ impl User {
     }
 
     pub fn set_mutual_tls_certificate(&mut self, certificate: String) {
-        self.mutual_tls_certificate = Some(certificate);
+        self.mutual_tls_certificate = certificate;
     }
 }
 

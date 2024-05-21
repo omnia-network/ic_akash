@@ -231,6 +231,7 @@ export type TransferFeeArg = {};
 export type TransferResult = { 'Ok' : BlockIndex } |
   { 'Err' : TransferError };
 export interface User {
+  'mutual_tls_certificate' : string,
   'akt_balance' : number,
   'payments' : BigUint64Array | bigint[],
   'role' : UserRole,
