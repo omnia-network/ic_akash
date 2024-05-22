@@ -6,10 +6,10 @@ use ic_cdk::{caller, query, update};
 use crate::{
     akash::{address::get_account_id_from_public_key, bids::fetch_bids, sdl::SdlV3},
     api::{
-        log_error, log_info, map_deployment, services::AkashService, AccessControlService,
-        ApiError, ApiResult, CpuSize, Deployment, DeploymentId, DeploymentParams,
-        DeploymentParamsPort, DeploymentState, DeploymentsService, GetDeploymentResponse,
-        LedgerService, LogService, MemorySize, StorageSize, UserId, UsersService,
+        AccessControlService, ApiError, ApiResult, CpuSize, Deployment,
+        DeploymentId, DeploymentParams, DeploymentParamsPort, DeploymentsService, DeploymentState, GetDeploymentResponse,
+        LedgerService, log_error, log_info, LogService,
+        map_deployment, MemorySize, services::AkashService, StorageSize, UserId, UsersService,
     },
     fixtures::example_sdl,
     helpers::uakt_to_akt,
@@ -86,20 +86,20 @@ async fn create_test_deployment() -> ApiResult<String> {
         "IC WebSocket Gateway".to_string(),
         "omniadevs/ic-websocket-gateway:v1.3.2".to_string(),
     )
-    .cpu(CpuSize::Small)
-    .memory(MemorySize::Small)
-    .storage(StorageSize::Small)
-    .port(DeploymentParamsPort::new(8080, 80).with_domain("akash-gateway.icws.io".to_string()))
-    .command(vec![
-        "/ic-ws-gateway/ic_websocket_gateway".to_string(),
-        "--gateway-address".to_string(),
-        "0.0.0.0:8080".to_string(),
-        "--ic-network-url".to_string(),
-        "https://icp-api.io".to_string(),
-        "--polling-interval".to_string(),
-        "400".to_string(),
-    ])
-    .build();
+        .cpu(CpuSize::Small)
+        .memory(MemorySize::Small)
+        .storage(StorageSize::Small)
+        .port(DeploymentParamsPort::new(8080, 80).with_domain("akash-gateway.icws.io".to_string()))
+        .command(vec![
+            "/ic-ws-gateway/ic_websocket_gateway".to_string(),
+            "--gateway-address".to_string(),
+            "0.0.0.0:8080".to_string(),
+            "--ic-network-url".to_string(),
+            "https://icp-api.io".to_string(),
+            "--polling-interval".to_string(),
+            "400".to_string(),
+        ])
+        .build();
 
     DeploymentsEndpoints::default()
         .create_deployment(calling_principal, sdl_params)
@@ -231,8 +231,42 @@ impl DeploymentsEndpoints {
 
         let user_id = UserId::new(calling_principal);
         // deduct AKT from user's balance for deployment escrow
-        self.users_service
-            .charge_user(user_id, deployment_akt_price)?;
+        if let Err(e) = self.users_service.charge_user(user_id, deployment_akt_price) {
+            return match e {
+                e if e.to_string().contains("Not enough AKT balance.") => {
+                    let msg = e.to_string();
+                    let mut required_akt = "";
+                    let mut current_balance = "";
+
+                    // Extract the current balance
+                    if let Some(start) = msg.find("Current balance: ") {
+                        let start = start + "Current balance: ".len();
+                        if let Some(end) = msg[start..].find(" AKT") {
+                            current_balance = &msg[start..start + end];
+                        }
+                    }
+
+                    // Extract the required amount
+                    if let Some(start) = msg.find("required: ") {
+                        let start = start + "required: ".len();
+                        if let Some(end) = msg[start..].find(" AKT") {
+                            required_akt = &msg[start..start + end];
+                        }
+                    }
+
+                    let user_balance_icp = self.akt_to_icp(current_balance.parse().unwrap()).await?;
+                    let required_icp = self.akt_to_icp(required_akt.parse().unwrap()).await?;
+
+                    return Err(ApiError::permission_denied(&format!(
+                        "Not enough ICP balance. Current balance: {} ICP, required: {} ICP",
+                        user_balance_icp, required_icp,
+                    )));
+                }
+                _ => Err(e)
+            };
+        };
+        // self.users_service
+        //     .charge_user(user_id, deployment_akt_price)?;
 
         let deployment_id = self
             .deployments_service
@@ -267,7 +301,7 @@ impl DeploymentsEndpoints {
                         calling_principal,
                         format!("Error handling deployment: {:?}", e),
                     )
-                    .await;
+                        .await;
                 }
             });
         });
@@ -436,10 +470,15 @@ impl DeploymentsEndpoints {
     }
 
     async fn get_deployment_icp_price(&self) -> Result<f64, ApiError> {
-        let icp_2_akt = self.ledger_service.get_icp_2_akt_conversion_rate().await?;
         let deployment_akt_price = self.deployments_service.get_deployment_akt_price();
 
-        Ok(deployment_akt_price / icp_2_akt)
+        self.akt_to_icp(deployment_akt_price).await
+    }
+
+    async fn akt_to_icp(&self, amount_akt: f64) -> Result<f64, ApiError> {
+        let icp_2_akt = self.ledger_service.get_icp_2_akt_conversion_rate().await?;
+
+        Ok(amount_akt / icp_2_akt)
     }
 }
 
@@ -527,7 +566,7 @@ fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: Deployme
                             calling_principal,
                             String::from("No bids found"),
                         )
-                        .await;
+                            .await;
                     } else {
                         handle_lease(calling_principal, dseq, deployment_id, retry + 1);
                     }
@@ -538,7 +577,7 @@ fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: Deployme
                         calling_principal,
                         format!("Error fetching bids and creating lease: {:?}", e),
                     )
-                    .await;
+                        .await;
                 }
             }
         })
