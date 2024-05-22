@@ -1,9 +1,10 @@
-import { type _SERVICE, type GetDeploymentsResult } from "@/declarations/backend.did";
-import { getDeploymentCreatedDate } from "@/helpers/deployment";
-import { type OkType, extractOk } from "@/helpers/result";
-import { X509CertificateData, createX509, loadCertificate, saveCertificate } from "@/lib/certificate";
-import { type BackendActor } from "@/services/backend";
-import { createContext, useCallback, useContext, useState } from "react";
+import {type GetDeploymentsResult} from "@/declarations/backend.did";
+import {getDeploymentCreatedDate} from "@/helpers/deployment";
+import {extractOk, type OkType} from "@/helpers/result";
+import {createX509, X509CertificateData} from "@/lib/certificate";
+import {type BackendActor} from "@/services/backend";
+import {createContext, useCallback, useContext, useState} from "react";
+import {getCurrentUser, setUserMutualTlsCertificate} from "@/services/user";
 
 export type Deployments = OkType<GetDeploymentsResult>;
 
@@ -20,7 +21,7 @@ type DeploymentProviderProps = {
   children?: React.ReactNode;
 }
 
-export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({ children }) => {
+export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({children}) => {
   const [tlsCertificateData, setCertificateData] = useState<X509CertificateData | null>(null);
   const [deployments, setDeployments] = useState<Deployments>([]);
 
@@ -38,7 +39,12 @@ export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({ children
   }, []);
 
   const loadOrCreateCertificate = useCallback(async (actor: BackendActor): Promise<X509CertificateData | null> => {
-    let certData = loadCertificate();
+    const mutualTlsCertificateStringified = (await getCurrentUser(actor)).mutual_tls_certificate;
+    let certData = null;
+    if (mutualTlsCertificateStringified) {
+      certData = JSON.parse(mutualTlsCertificateStringified);
+    }
+    
     if (!certData) {
       try {
         const akashAddress = extractOk(await actor.address());
@@ -48,7 +54,7 @@ export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({ children
           Buffer.from(certData.pubKey, "utf-8").toString("base64"),
         ));
 
-        saveCertificate(certData);
+        await setUserMutualTlsCertificate(actor, JSON.stringify(certData));
       } catch (e) {
         console.error(e);
         alert("Failed to create certificate, see console for details");

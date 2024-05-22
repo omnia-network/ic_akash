@@ -1,6 +1,6 @@
-import { type User } from "@/declarations/backend.did";
-import { extractOk } from "@/helpers/result";
-import { BackendActor } from "./backend";
+import {type User} from "@/declarations/backend.did";
+import {extractOk} from "@/helpers/result";
+import {BackendActor} from "./backend";
 
 export const getCurrentUser = async (actor: BackendActor): Promise<User> => {
   const res = await actor.get_my_user();
@@ -28,3 +28,7 @@ export const getOrCreateCurrentUser = async (actor: BackendActor): Promise<User>
 
   return user;
 };
+
+export const setUserMutualTlsCertificate = async (actor: BackendActor, stringifiedCertificate: string): Promise<void> => {
+  extractOk(await actor.set_mutual_tls_certificate(stringifiedCertificate));
+}
