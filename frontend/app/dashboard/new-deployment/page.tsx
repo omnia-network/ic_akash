@@ -18,9 +18,9 @@ import {useCallback, useEffect, useMemo, useState} from "react";
 import {Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
 import {AlertCircle} from "lucide-react";
 import {displayE8sAsIcp, icpToE8s} from "@/helpers/ui";
-import {transferE8sToBackend} from "@/services/backend";
 import {Spinner} from "@/components/spinner";
 import {NewDeploymentForm} from "@/components/new-deployment-form";
+import {transferE8sToBackend} from "@/services/backend";
 
 const FETCH_DEPLOYMENT_PRICE_INTERVAL_MS = 30_000; // 30 seconds
 
@@ -59,6 +59,48 @@ export default function NewDeployment() {
     [toast]
   );
 
+  const sendIcpToBackend = async (userCanisterBalance: number) => {
+    if (!backendActor || !ledgerCanister) {
+      toastError("Backend actor or ledger canister not found");
+      return;
+    }
+
+    if (!deploymentE8sPrice) {
+      toastError("Deployment price not fetched");
+      return;
+    }
+
+    const icpToSend = deploymentE8sPrice - BigInt(userCanisterBalance);
+
+    setDeploymentSteps([]);
+    setDeploymentError(null);
+    setIsDeploying(false);
+    setIsSubmitting(true);
+    setPaymentStatus(null);
+
+    try {
+      setPaymentStatus(`Sending ~${displayE8sAsIcp(icpToSend)} to backend canister...`);
+
+      await transferE8sToBackend(
+        ledgerCanister,
+        icpToSend,
+        backendActor
+      );
+      await refreshLedgerData();
+
+      setPaymentStatus(prev => prev + " DONE");
+
+      await handleDeploy(deploymentParams!);
+    } catch (e) {
+      console.error("Failed to transfer funds:", e);
+      toastError("Failed to transfer funds, see console for details");
+      setPaymentStatus(prev => prev + " FAILED");
+      setDeploymentParams(null);
+      setIsSubmitting(false);
+      return;
+    }
+  }
+
   const onWsOpen: OnWsOpenCallback = useCallback(async () => {
     console.log("ws open");
 
@@ -79,10 +121,19 @@ export default function NewDeployment() {
       console.log("deployment id", deploymentId);
 
       setDeploymentSteps([{Initialized: null}]);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to create deployment:", e);
-      setDeploymentError("Failed to create deployment, see console for details");
+
       setIsDeploying(false);
+
+      if (e.message.startsWith("Not enough ICP balance")) {
+        setDeploymentError("Failed to create deployment, insufficient balance. Auto top-up initiated.");
+
+        const userCanisterBalance = parseInt(e.message.split(" ")[6]);
+        await sendIcpToBackend(userCanisterBalance);
+      } else {
+        setDeploymentError("Failed to create deployment, see console for details");
+      }
     }
   }, [backendActor, deploymentParams]);
 
@@ -201,7 +252,7 @@ export default function NewDeployment() {
   );
 
   const handleDeploy = useCallback(async (values: DeploymentParams) => {
-    if (!backendActor || !ledgerCanister) {
+    if (!backendActor) {
       toastError("Backend actor or ledger canister not found");
       return;
     }
@@ -211,18 +262,12 @@ export default function NewDeployment() {
       return;
     }
 
-    if (!deploymentE8sPrice) {
-      toastError("Deployment price not fetched");
-      return;
-    }
-
     setDeploymentSteps([]);
     setDeploymentError(null);
     setDeploymentParams(values);
     setIsDeploying(false);
     setIsSubmitting(true);
     setCertificateStatus(null);
-    setPaymentStatus(null);
 
     try {
       setCertificateStatus("Retrieving certificate...");
@@ -232,25 +277,12 @@ export default function NewDeployment() {
       }
       setCertificateStatus("Certificate retrieved");
 
-      setPaymentStatus(`Sending ~${displayE8sAsIcp(deploymentE8sPrice)} to backend canister...`);
-
-      await transferE8sToBackend(
-        ledgerCanister,
-        deploymentE8sPrice,
-        backendActor
-      );
-      await refreshLedgerData();
-
       if (fetchDeploymentPriceInterval !== null) {
         clearInterval(fetchDeploymentPriceInterval);
         setFetchDeploymentPriceInterval(null);
       }
 
-      setPaymentStatus(prev => prev + " DONE");
     } catch (e) {
-      console.error("Failed to transfer funds:", e);
-      toastError("Failed to transfer funds, see console for details");
-      setPaymentStatus(prev => prev + " FAILED");
       setDeploymentParams(null);
       setIsSubmitting(false);
       return;
@@ -288,12 +320,12 @@ export default function NewDeployment() {
       const res = await backendActor.get_deployment_icp_price();
       const icpPrice = extractOk(res);
 
-      // add 1 ICP to cover price fluctuation
+      // add 1% ICP to cover price fluctuation
       //
       // TODO: try to deploy and parse the error from the canister.
       // If the error is a not enough balance error, then we can
       // send funds to the canister and try again.
-      setDeploymentE8sPrice(icpToE8s(icpPrice + 1));
+      setDeploymentE8sPrice(icpToE8s(icpPrice * 1.01));
     } catch (e) {
       console.error("Failed to fetch deployment price:", e);
       toastError("Failed to fetch deployment price, see console for details");
