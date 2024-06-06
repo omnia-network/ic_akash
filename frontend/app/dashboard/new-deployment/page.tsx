@@ -73,7 +73,6 @@ export default function NewDeployment() {
 
     setDeploymentSteps([]);
     setDeploymentError(null);
-    setIsDeploying(false);
     setIsSubmitting(true);
     setPaymentStatus(null);
 
@@ -94,6 +93,7 @@ export default function NewDeployment() {
       setPaymentStatus(prev => prev + " FAILED");
       setDeploymentParams(null);
       setIsSubmitting(false);
+      setIsDeploying(false);
       return;
     }
   }, [backendActor, deploymentE8sPrice, ledgerCanister, refreshLedgerData, toastError]);
@@ -121,10 +121,6 @@ export default function NewDeployment() {
     try {
       await createDeployment();
     } catch (e: any) {
-      console.error("Failed to create deployment:", e);
-
-      setIsDeploying(false);
-
       if (e.message.startsWith("Not enough balance. Required: ")) {
         console.warn("Failed to create deployment, insufficient balance. Auto top-up initiated.");
 
@@ -133,6 +129,8 @@ export default function NewDeployment() {
 
         await createDeployment();
       } else {
+        console.error("Failed to create deployment:", e);
+        setIsDeploying(false);
         setDeploymentError("Failed to create deployment, see console for details");
       }
     }
