@@ -32,12 +32,18 @@ type UserRole = variant {
   Deployer;
 };
 
+type MTlsCertificateData = record {
+  cert : text;
+  pub_key : text;
+  priv_key : text;
+};
+
 type User = record {
   role : UserRole;
   created_at : TimestampNs;
   payments : vec nat64;
   akt_balance : float64;
-  mutual_tls_certificate : text;
+  mtls_certificate : opt MTlsCertificateData;
 };
 
 type GetUserResult = variant {
@@ -189,10 +195,9 @@ service : (bool) -> {
   "get_my_user" : () -> (GetUserResult) query;
   "create_user" : () -> (CreateUserResult);
   "promote_user_to_admin" : (UserId) -> (ApiEmptyResult);
-  "set_mutual_tls_certificate" : (text) -> (ApiEmptyResult);
   "get_deployment" : (text) -> (GetDeploymentResult) query;
   "get_deployments" : () -> (GetDeploymentsResult) query;
-  "create_certificate" : (text, text) -> (ApiStringResult);
+  "create_certificate" : (MTlsCertificateData) -> (ApiStringResult);
   "create_deployment" : (DeploymentParams) -> (CreateDeploymentResult);
   "deposit_deployment" : (text, nat64) -> (ApiEmptyResult);
   "update_test_deployment_sdl" : (text) -> (ApiEmptyResult);

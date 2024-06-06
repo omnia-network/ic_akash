@@ -1,33 +1,33 @@
 "use client";
 
-import {BackButton} from "@/components/back-button";
-import {useToast} from "@/components/ui/use-toast";
-import {useDeploymentContext} from "@/contexts/DeploymentContext";
+import { BackButton } from "@/components/back-button";
+import { useToast } from "@/components/ui/use-toast";
+import { useDeploymentContext } from "@/contexts/DeploymentContext";
 import {
   type OnWsErrorCallback,
   type OnWsMessageCallback,
   type OnWsOpenCallback,
   useIcContext,
 } from "@/contexts/IcContext";
-import type {DeploymentParams, DeploymentState} from "@/declarations/backend.did";
-import {extractDeploymentCreated} from "@/helpers/deployment";
-import {extractOk} from "@/helpers/result";
-import {sendManifestToProvider} from "@/services/deployment";
-import {useRouter} from "next/navigation";
-import {useCallback, useEffect, useMemo, useState} from "react";
-import {Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
-import {AlertCircle} from "lucide-react";
-import {displayE8sAsIcp, icpToE8s} from "@/helpers/ui";
-import {Spinner} from "@/components/spinner";
-import {NewDeploymentForm} from "@/components/new-deployment-form";
-import {transferE8sToBackend} from "@/services/backend";
+import type { DeploymentParams, DeploymentState } from "@/declarations/backend.did";
+import { extractDeploymentCreated } from "@/helpers/deployment";
+import { extractOk } from "@/helpers/result";
+import { sendManifestToProvider } from "@/services/deployment";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+import { displayE8sAsIcp, icpToE8s } from "@/helpers/ui";
+import { Spinner } from "@/components/spinner";
+import { NewDeploymentForm } from "@/components/new-deployment-form";
+import { transferE8sToBackend } from "@/services/backend";
 
 const FETCH_DEPLOYMENT_PRICE_INTERVAL_MS = 30_000; // 30 seconds
 
 export default function NewDeployment() {
   const router = useRouter();
-  const {backendActor, openWs, closeWs, setWsCallbacks, ledgerCanister, ledgerData, refreshLedgerData} = useIcContext();
-  const {tlsCertificateData, loadOrCreateCertificate, fetchDeployments} =
+  const { backendActor, openWs, closeWs, setWsCallbacks, ledgerCanister, ledgerData, refreshLedgerData } = useIcContext();
+  const { tlsCertificateData, loadOrCreateCertificate, fetchDeployments } =
     useDeploymentContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
@@ -38,13 +38,12 @@ export default function NewDeployment() {
   const [deploymentE8sPrice, setDeploymentE8sPrice] = useState<bigint | null>(null);
   const [fetchDeploymentPriceInterval, setFetchDeploymentPriceInterval] = useState<NodeJS.Timeout | null>(null);
   const userHasEnoughBalance = useMemo(() =>
-      ledgerData.balanceE8s !== null && deploymentE8sPrice !== null && ledgerData.balanceE8s > deploymentE8sPrice,
+    ledgerData.balanceE8s !== null && deploymentE8sPrice !== null && ledgerData.balanceE8s > deploymentE8sPrice,
     [ledgerData.balanceE8s, deploymentE8sPrice]
   );
-  const [certificateStatus, setCertificateStatus] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   const [deploymentParams, setDeploymentParams] = useState<DeploymentParams | null>(null);
-  const {toast} = useToast();
+  const { toast } = useToast();
 
   const toastError = useCallback(
     (message: string) => {
@@ -59,7 +58,7 @@ export default function NewDeployment() {
     [toast]
   );
 
-  const sendIcpToBackend = async (userCanisterBalance: number) => {
+  const sendIcpToBackend = useCallback(async (userCanisterBalance: number) => {
     if (!backendActor || !ledgerCanister) {
       toastError("Backend actor or ledger canister not found");
       return;
@@ -89,8 +88,6 @@ export default function NewDeployment() {
       await refreshLedgerData();
 
       setPaymentStatus(prev => prev + " DONE");
-
-      await handleDeploy(deploymentParams!);
     } catch (e) {
       console.error("Failed to transfer funds:", e);
       toastError("Failed to transfer funds, see console for details");
@@ -99,14 +96,12 @@ export default function NewDeployment() {
       setIsSubmitting(false);
       return;
     }
-  }
+  }, [backendActor, deploymentE8sPrice, ledgerCanister, refreshLedgerData, toastError]);
 
   const onWsOpen: OnWsOpenCallback = useCallback(async () => {
     console.log("ws open");
 
-    setIsDeploying(true);
-    setIsSubmitting(false);
-    try {
+    const createDeployment = async () => {
       if (!backendActor) {
         throw new Error("No backend actor");
       }
@@ -117,25 +112,31 @@ export default function NewDeployment() {
 
       const res = await backendActor.create_deployment(deploymentParams);
       const deploymentId = extractOk(res);
-
       console.log("deployment id", deploymentId);
+      setDeploymentSteps([{ Initialized: null }]);
+    };
 
-      setDeploymentSteps([{Initialized: null}]);
+    setIsDeploying(true);
+    setIsSubmitting(false);
+    try {
+      await createDeployment();
     } catch (e: any) {
       console.error("Failed to create deployment:", e);
 
       setIsDeploying(false);
 
-      if (e.message.startsWith("Not enough ICP balance")) {
-        setDeploymentError("Failed to create deployment, insufficient balance. Auto top-up initiated.");
+      if (e.message.startsWith("Not enough balance. Required: ")) {
+        console.warn("Failed to create deployment, insufficient balance. Auto top-up initiated.");
 
-        const userCanisterBalance = parseInt(e.message.split(" ")[6]);
+        const userCanisterBalance = parseInt(e.message.replace("Not enough balance. Required: ", "").replace(" ICP", ""));
         await sendIcpToBackend(userCanisterBalance);
+
+        await createDeployment();
       } else {
         setDeploymentError("Failed to create deployment, see console for details");
       }
     }
-  }, [backendActor, deploymentParams]);
+  }, [backendActor, deploymentParams, sendIcpToBackend]);
 
   const onWsMessage: OnWsMessageCallback = useCallback(
     async (ev) => {
@@ -158,12 +159,12 @@ export default function NewDeployment() {
 
       try {
         if ("LeaseCreated" in deploymentUpdate.update) {
-          const {manifest_sorted_json, dseq} = extractDeploymentCreated(
+          const { manifest_sorted_json, dseq } = extractDeploymentCreated(
             deploymentSteps.find((el) =>
               el.hasOwnProperty("DeploymentCreated")
             )!
           );
-          const {provider_url} = deploymentUpdate.update.LeaseCreated;
+          const { provider_url } = deploymentUpdate.update.LeaseCreated;
 
           const manifestUrl = new URL(
             `/deployment/${dseq}/manifest`,
@@ -267,15 +268,14 @@ export default function NewDeployment() {
     setDeploymentParams(values);
     setIsDeploying(false);
     setIsSubmitting(true);
-    setCertificateStatus(null);
 
     try {
-      setCertificateStatus("Retrieving certificate...");
+      console.log("Retrieving mTLS certificate...");
       const cert = await loadOrCreateCertificate(backendActor!);
       if (!cert) {
         throw new Error("No certificate");
       }
-      setCertificateStatus("Certificate retrieved");
+      console.log("mTLS certificate retrieved");
 
       if (fetchDeploymentPriceInterval !== null) {
         clearInterval(fetchDeploymentPriceInterval);
@@ -304,9 +304,6 @@ export default function NewDeployment() {
     userHasEnoughBalance,
     toastError,
     backendActor,
-    ledgerCanister,
-    refreshLedgerData,
-    deploymentE8sPrice,
     fetchDeploymentPriceInterval,
     loadOrCreateCertificate,
   ]);
@@ -321,10 +318,6 @@ export default function NewDeployment() {
       const icpPrice = extractOk(res);
 
       // add 1% ICP to cover price fluctuation
-      //
-      // TODO: try to deploy and parse the error from the canister.
-      // If the error is a not enough balance error, then we can
-      // send funds to the canister and try again.
       setDeploymentE8sPrice(icpToE8s(icpPrice * 1.01));
     } catch (e) {
       console.error("Failed to fetch deployment price:", e);
@@ -359,7 +352,7 @@ export default function NewDeployment() {
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-start">
-        <BackButton/>
+        <BackButton />
         <h2 className="ml-4 text-3xl font-bold tracking-tight">
           Create Deployment
         </h2>
@@ -378,13 +371,13 @@ export default function NewDeployment() {
               Price (est.):
             </h5>
             {deploymentE8sPrice !== null ? (
-              <pre>~{displayE8sAsIcp(deploymentE8sPrice, {maximumFractionDigits: 6})}</pre>
+              <pre>~{displayE8sAsIcp(deploymentE8sPrice, { maximumFractionDigits: 6 })}</pre>
             ) : (
-              <Spinner/>
+              <Spinner />
             )}
             {(!(isSubmitting || isDeploying) && (deploymentE8sPrice !== null) && !userHasEnoughBalance) && (
               <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4"/>
+                <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Insufficient balance</AlertTitle>
                 <AlertDescription>
                   <p>Please top up your account.</p>
@@ -400,12 +393,6 @@ export default function NewDeployment() {
               </Alert>
             )}
           </div>
-          {certificateStatus && (
-            <div className="flex flex-col gap-3">
-              <h5 className="font-bold">Certificate Status:</h5>
-              <p>{certificateStatus}</p>
-            </div>
-          )}
           {paymentStatus && (
             <div className="flex flex-col gap-3">
               <h5 className="font-bold">Payment Status:</h5>
@@ -423,13 +410,13 @@ export default function NewDeployment() {
                       {idx + 1}. {el}
                     </p>
                   ))}
-                {isDeploying && <Spinner/>}
+                {isDeploying && <Spinner />}
               </div>
             </div>
           )}
           {Boolean(deploymentError) && (
             <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4"/>
+              <AlertCircle className="h-4 w-4" />
               <AlertTitle>Deployment Error</AlertTitle>
               <AlertDescription>
                 <p>{deploymentError}</p>

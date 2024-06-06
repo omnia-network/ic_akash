@@ -1,19 +1,7 @@
+import { MTlsCertificateData } from "@/declarations/backend.did";
 import * as x509 from "@peculiar/x509";
 
-export type X509CertificateData = {
-  /**
-   * Base64 encoded certificate
-   */
-  cert: string;
-  /**
-   * Base64 encoded public key
-   */
-  pubKey: string;
-  /**
-   * Base64 encoded private key
-   */
-  privKey: string;
-};
+export type X509CertificateData = MTlsCertificateData;
 
 const SIGNING_ALGORITHM = {
   name: "ECDSA",
@@ -21,8 +9,6 @@ const SIGNING_ALGORITHM = {
 };
 
 const CERTIFICATE_DURATION_DAYS = 365;
-
-const CERTIFICATE_STORAGE_KEY = "x509-certificate";
 
 export const createX509 = async (canisterAkashAddress: String): Promise<X509CertificateData> => {
   const keyPair = await window.crypto.subtle.generateKey(
@@ -60,34 +46,20 @@ export const createX509 = async (canisterAkashAddress: String): Promise<X509Cert
   const spki = await window.crypto.subtle.exportKey("spki", keyPair.publicKey);
   const pkcs8 = await window.crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
 
-  const pubKey = `-----BEGIN EC PUBLIC KEY-----\n${formatPEM(
+  const pub_key = `-----BEGIN EC PUBLIC KEY-----\n${formatPEM(
     Buffer.from(spki).toString("base64")
   )}\n-----END EC PUBLIC KEY-----`
-  const privKey = `-----BEGIN PRIVATE KEY-----\n${formatPEM(
+  const priv_key = `-----BEGIN PRIVATE KEY-----\n${formatPEM(
     Buffer.from(pkcs8).toString("base64")
   )}\n-----END PRIVATE KEY-----`;
 
   const certData: X509CertificateData = {
     cert: cert.toString("pem"),
-    pubKey,
-    privKey,
+    pub_key,
+    priv_key,
   };
 
   return certData;
-}
-
-export const loadCertificate = (): X509CertificateData | null => {
-  const cert = localStorage.getItem(CERTIFICATE_STORAGE_KEY);
-
-  if (!cert) {
-    return null;
-  }
-
-  return JSON.parse(cert);
-};
-
-export const saveCertificate = (cert: X509CertificateData) => {
-  localStorage.setItem(CERTIFICATE_STORAGE_KEY, JSON.stringify(cert));
 };
 
 const formatPEM = (pemString: string): string => {

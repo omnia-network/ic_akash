@@ -3,6 +3,11 @@ export const idlFactory = ({ IDL }) => {
   const ApiStringResult = IDL.Variant({ 'Ok' : IDL.Text, 'Err' : ApiError });
   const ApiNatResult = IDL.Variant({ 'Ok' : IDL.Nat64, 'Err' : ApiError });
   const ApiEmptyResult = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : ApiError });
+  const MTlsCertificateData = IDL.Record({
+    'cert' : IDL.Text,
+    'pub_key' : IDL.Text,
+    'priv_key' : IDL.Text,
+  });
   const CpuSize = IDL.Variant({
     'Large' : IDL.Null,
     'Small' : IDL.Null,
@@ -78,9 +83,9 @@ export const idlFactory = ({ IDL }) => {
   });
   const UserRole = IDL.Variant({ 'Admin' : IDL.Null, 'Deployer' : IDL.Null });
   const User = IDL.Record({
-    'mutual_tls_certificate' : IDL.Text,
     'akt_balance' : IDL.Float64,
     'payments' : IDL.Vec(IDL.Nat64),
+    'mtls_certificate' : IDL.Opt(MTlsCertificateData),
     'role' : UserRole,
     'created_at' : TimestampNs,
   });
@@ -249,7 +254,7 @@ export const idlFactory = ({ IDL }) => {
     'check_tx' : IDL.Func([IDL.Text], [ApiEmptyResult], []),
     'close_deployment' : IDL.Func([IDL.Text], [ApiEmptyResult], []),
     'create_certificate' : IDL.Func(
-        [IDL.Text, IDL.Text],
+        [MTlsCertificateData],
         [ApiStringResult],
         [],
       ),
@@ -277,7 +282,6 @@ export const idlFactory = ({ IDL }) => {
         [QueryBlocksResult],
         ['composite_query'],
       ),
-    'set_mutual_tls_certificate' : IDL.Func([IDL.Text], [ApiEmptyResult], []),
     'update_akt_balance' : IDL.Func([IDL.Nat64], [ApiFloatResult], []),
     'update_deployment_state' : IDL.Func(
         [IDL.Text, DeploymentState],

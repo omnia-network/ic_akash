@@ -1,7 +1,7 @@
 use std::{borrow::Cow, fmt::Display};
 
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
-use ic_stable_structures::{Storable, storable::Bound};
+use ic_stable_structures::{storable::Bound, Storable};
 
 use utils::get_time_nanos;
 
@@ -68,13 +68,20 @@ impl Storable for UserRole {
     const BOUND: Bound = Bound::Unbounded;
 }
 
+#[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
+pub struct MTlsCertificateData {
+    pub cert: String,
+    pub pub_key: String,
+    pub priv_key: String,
+}
+
 #[derive(Debug, CandidType, Deserialize, Clone)]
 pub struct User {
     role: UserRole,
     created_at: TimestampNs,
     payments: Vec<u64>,
     akt_balance: f64,
-    mutual_tls_certificate: String,
+    mtls_certificate: Option<MTlsCertificateData>,
 }
 
 impl User {
@@ -84,7 +91,7 @@ impl User {
             created_at: get_time_nanos(),
             payments: vec![],
             akt_balance: 0.0,
-            mutual_tls_certificate: "".to_string(),
+            mtls_certificate: None,
         }
     }
 
@@ -118,8 +125,8 @@ impl User {
         self.akt_balance
     }
 
-    pub fn set_mutual_tls_certificate(&mut self, certificate: String) {
-        self.mutual_tls_certificate = certificate;
+    pub fn set_mtls_certificate(&mut self, certificate: MTlsCertificateData) {
+        self.mtls_certificate = Some(certificate);
     }
 }
 
@@ -133,4 +140,24 @@ impl Storable for User {
     }
 
     const BOUND: Bound = Bound::Unbounded;
+}
+
+#[derive(Debug, CandidType, Deserialize, Clone, PartialEq, Eq)]
+pub struct UpdateUserInput {
+    pub mtls_certificate: Option<MTlsCertificateData>,
+}
+
+impl UpdateUserInput {
+    pub fn validate(&self) -> Result<(), String> {
+        if let Some(cert_data) = &self.mtls_certificate {
+            if cert_data.cert.is_empty()
+                || cert_data.pub_key.is_empty()
+                || cert_data.priv_key.is_empty()
+            {
+                return Err("Certificate data cannot be empty".to_string());
+            }
+        }
+
+        Ok(())
+    }
 }

@@ -20,7 +20,7 @@ export const sendManifestToProvider = async (
     method: "PUT",
     url: manifestUrl,
     certPem: certData.cert,
-    keyPem: certData.privKey,
+    keyPem: certData.priv_key,
     body: manifest,
     timeout: 60_000,
   });
@@ -63,7 +63,7 @@ export const queryLeaseStatus = async (queryLeaseUrl: string, certData: X509Cert
       method: "GET",
       url: queryLeaseUrl,
       certPem: certData.cert,
-      keyPem: certData.privKey,
+      keyPem: certData.priv_key,
     }),
   });
 

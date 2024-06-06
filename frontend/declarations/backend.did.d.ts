@@ -140,6 +140,11 @@ export interface LogsFilterRequest {
   'after_timestamp_ms' : [] | [bigint],
   'before_timestamp_ms' : [] | [bigint],
 }
+export interface MTlsCertificateData {
+  'cert' : string,
+  'pub_key' : string,
+  'priv_key' : string,
+}
 export type Memo = bigint;
 export type MemorySize = { 'Large' : null } |
   { 'Small' : null } |
@@ -231,9 +236,9 @@ export type TransferFeeArg = {};
 export type TransferResult = { 'Ok' : BlockIndex } |
   { 'Err' : TransferError };
 export interface User {
-  'mutual_tls_certificate' : string,
   'akt_balance' : number,
   'payments' : BigUint64Array | bigint[],
+  'mtls_certificate' : [] | [MTlsCertificateData],
   'role' : UserRole,
   'created_at' : TimestampNs,
 }
@@ -252,7 +257,7 @@ export interface _SERVICE {
   'balance' : ActorMethod<[], ApiNatResult>,
   'check_tx' : ActorMethod<[string], ApiEmptyResult>,
   'close_deployment' : ActorMethod<[string], ApiEmptyResult>,
-  'create_certificate' : ActorMethod<[string, string], ApiStringResult>,
+  'create_certificate' : ActorMethod<[MTlsCertificateData], ApiStringResult>,
   'create_deployment' : ActorMethod<[DeploymentParams], CreateDeploymentResult>,
   'create_test_deployment' : ActorMethod<[], CreateDeploymentResult>,
   'create_user' : ActorMethod<[], CreateUserResult>,
@@ -265,7 +270,6 @@ export interface _SERVICE {
   'list_logs' : ActorMethod<[LogsFilterRequest], ListLogsResponse>,
   'promote_user_to_admin' : ActorMethod<[UserId], ApiEmptyResult>,
   'query_blocks' : ActorMethod<[GetBlocksArgs], QueryBlocksResult>,
-  'set_mutual_tls_certificate' : ActorMethod<[string], ApiEmptyResult>,
   'update_akt_balance' : ActorMethod<[bigint], ApiFloatResult>,
   'update_deployment_state' : ActorMethod<
     [string, DeploymentState],

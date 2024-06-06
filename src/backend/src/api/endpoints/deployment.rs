@@ -2,14 +2,16 @@ use std::time::Duration;
 
 use candid::Principal;
 use ic_cdk::{caller, query, update};
+use utils::base64_encode;
 
 use crate::{
     akash::{address::get_account_id_from_public_key, bids::fetch_bids, sdl::SdlV3},
     api::{
-        AccessControlService, ApiError, ApiResult, CpuSize, Deployment,
-        DeploymentId, DeploymentParams, DeploymentParamsPort, DeploymentsService, DeploymentState, GetDeploymentResponse,
-        LedgerService, log_error, log_info, LogService,
-        map_deployment, MemorySize, services::AkashService, StorageSize, UserId, UsersService,
+        log_error, log_info, map_deployment, services::AkashService, AccessControlService,
+        ApiError, ApiResult, CpuSize, Deployment, DeploymentId, DeploymentParams,
+        DeploymentParamsPort, DeploymentState, DeploymentsService, GetDeploymentResponse,
+        LedgerService, LogService, MTlsCertificateData, MemorySize, StorageSize, UpdateUserInput,
+        UserId, UsersService,
     },
     fixtures::example_sdl,
     helpers::uakt_to_akt,
@@ -46,14 +48,11 @@ fn get_deployments() -> ApiResult<Vec<GetDeploymentResponse>> {
 }
 
 #[update]
-async fn create_certificate(
-    cert_pem_base64: String,
-    pub_key_pem_base64: String,
-) -> ApiResult<String> {
+async fn create_certificate(cert_data: MTlsCertificateData) -> ApiResult<String> {
     let calling_principal = caller();
 
     DeploymentsEndpoints::default()
-        .create_certificate(calling_principal, cert_pem_base64, pub_key_pem_base64)
+        .create_certificate(calling_principal, cert_data)
         .await
         .into()
 }
@@ -86,20 +85,20 @@ async fn create_test_deployment() -> ApiResult<String> {
         "IC WebSocket Gateway".to_string(),
         "omniadevs/ic-websocket-gateway:v1.3.2".to_string(),
     )
-        .cpu(CpuSize::Small)
-        .memory(MemorySize::Small)
-        .storage(StorageSize::Small)
-        .port(DeploymentParamsPort::new(8080, 80).with_domain("akash-gateway.icws.io".to_string()))
-        .command(vec![
-            "/ic-ws-gateway/ic_websocket_gateway".to_string(),
-            "--gateway-address".to_string(),
-            "0.0.0.0:8080".to_string(),
-            "--ic-network-url".to_string(),
-            "https://icp-api.io".to_string(),
-            "--polling-interval".to_string(),
-            "400".to_string(),
-        ])
-        .build();
+    .cpu(CpuSize::Small)
+    .memory(MemorySize::Small)
+    .storage(StorageSize::Small)
+    .port(DeploymentParamsPort::new(8080, 80).with_domain("akash-gateway.icws.io".to_string()))
+    .command(vec![
+        "/ic-ws-gateway/ic_websocket_gateway".to_string(),
+        "--gateway-address".to_string(),
+        "0.0.0.0:8080".to_string(),
+        "--ic-network-url".to_string(),
+        "https://icp-api.io".to_string(),
+        "--polling-interval".to_string(),
+        "400".to_string(),
+    ])
+    .build();
 
     DeploymentsEndpoints::default()
         .create_deployment(calling_principal, sdl_params)
@@ -188,18 +187,32 @@ impl DeploymentsEndpoints {
     }
 
     async fn create_certificate(
-        &self,
+        &mut self,
         calling_principal: Principal,
-        cert_pem_base64: String,
-        pub_key_pem_base64: String,
+        cert_data: MTlsCertificateData,
     ) -> Result<String, ApiError> {
         self.access_control_service
             .assert_principal_is_user(&calling_principal)?;
 
-        AkashService::default()
+        let cert_pem_base64 = base64_encode(&cert_data.cert);
+        let pub_key_pem_base64 = base64_encode(&cert_data.pub_key);
+
+        let tx_hash = self
+            .akash_service
             .create_certificate(cert_pem_base64, pub_key_pem_base64)
             .await
-            .map_err(|e| ApiError::internal(&format!("Error creating certificate: {}", e)))
+            .map_err(|e| ApiError::internal(&format!("Error creating certificate: {}", e)))?;
+
+        let user_id = UserId::new(calling_principal);
+
+        self.users_service.update_user(
+            user_id,
+            UpdateUserInput {
+                mtls_certificate: Some(cert_data),
+            },
+        )?;
+
+        Ok(tx_hash)
     }
 
     async fn create_deployment(
@@ -231,42 +244,18 @@ impl DeploymentsEndpoints {
 
         let user_id = UserId::new(calling_principal);
         // deduct AKT from user's balance for deployment escrow
-        if let Err(e) = self.users_service.charge_user(user_id, deployment_akt_price) {
-            return match e {
-                e if e.to_string().contains("Not enough AKT balance.") => {
-                    let msg = e.to_string();
-                    let mut required_akt = "";
-                    let mut current_balance = "";
-
-                    // Extract the current balance
-                    if let Some(start) = msg.find("Current balance: ") {
-                        let start = start + "Current balance: ".len();
-                        if let Some(end) = msg[start..].find(" AKT") {
-                            current_balance = &msg[start..start + end];
-                        }
-                    }
-
-                    // Extract the required amount
-                    if let Some(start) = msg.find("required: ") {
-                        let start = start + "required: ".len();
-                        if let Some(end) = msg[start..].find(" AKT") {
-                            required_akt = &msg[start..start + end];
-                        }
-                    }
-
-                    let user_balance_icp = self.akt_to_icp(current_balance.parse().unwrap()).await?;
-                    let required_icp = self.akt_to_icp(required_akt.parse().unwrap()).await?;
-
-                    return Err(ApiError::permission_denied(&format!(
-                        "Not enough ICP balance. Current balance: {} ICP, required: {} ICP",
-                        user_balance_icp, required_icp,
-                    )));
+        self.users_service
+            .charge_user(user_id, deployment_akt_price)
+            .map_err(|e| {
+                if e.message().contains("Not enough AKT balance.") {
+                    ApiError::permission_denied(&format!(
+                        "Not enough balance. Required: {} ICP",
+                        deployment_icp_price,
+                    ))
+                } else {
+                    e
                 }
-                _ => Err(e)
-            };
-        };
-        // self.users_service
-        //     .charge_user(user_id, deployment_akt_price)?;
+            })?;
 
         let deployment_id = self
             .deployments_service
@@ -301,7 +290,7 @@ impl DeploymentsEndpoints {
                         calling_principal,
                         format!("Error handling deployment: {:?}", e),
                     )
-                        .await;
+                    .await;
                 }
             });
         });
@@ -566,7 +555,7 @@ fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: Deployme
                             calling_principal,
                             String::from("No bids found"),
                         )
-                            .await;
+                        .await;
                     } else {
                         handle_lease(calling_principal, dseq, deployment_id, retry + 1);
                     }
@@ -577,7 +566,7 @@ fn handle_lease(calling_principal: Principal, dseq: u64, deployment_id: Deployme
                         calling_principal,
                         format!("Error fetching bids and creating lease: {:?}", e),
                     )
-                        .await;
+                    .await;
                 }
             }
         })

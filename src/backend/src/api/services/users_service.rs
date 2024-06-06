@@ -1,6 +1,8 @@
 use candid::Principal;
 
-use crate::api::{ApiError, init_users, log_info, User, UserId, UserRole, UsersMemory};
+use crate::api::{
+    init_users, log_info, ApiError, UpdateUserInput, User, UserId, UserRole, UsersMemory,
+};
 
 pub struct UsersService {
     users_memory: UsersMemory,
@@ -106,20 +108,26 @@ impl UsersService {
         Ok(())
     }
 
-    pub fn set_user_mutual_tls_certificate(
+    pub fn update_user(
         &mut self,
         user_id: UserId,
-        certificate: String,
-    ) -> Result<(), ApiError> {
+        input: UpdateUserInput,
+    ) -> Result<User, ApiError> {
+        input
+            .validate()
+            .map_err(|e| ApiError::invalid_argument(&format!("Invalid input: {}", e)))?;
+
         let mut user = self
             .users_memory
             .get(&user_id)
             .ok_or_else(|| ApiError::not_found("User not found"))?;
 
-        user.set_mutual_tls_certificate(certificate);
+        if let Some(mtls_certificate) = input.mtls_certificate {
+            user.set_mtls_certificate(mtls_certificate);
+        }
 
-        self.users_memory.insert(user_id, user);
+        self.users_memory.insert(user_id, user.clone());
 
-        Ok(())
+        Ok(user)
     }
 }

@@ -53,15 +53,6 @@ async fn update_akt_balance(payment_block_height: u64) -> ApiResult<f64> {
         .into()
 }
 
-#[update]
-fn set_mutual_tls_certificate(certificate: String) -> ApiResult {
-    let calling_principal = caller();
-
-    UsersEndpoints::default()
-        .set_mutual_tls_certificate(calling_principal, certificate)
-        .into()
-}
-
 #[derive(Default)]
 struct UsersEndpoints {
     users_service: UsersService,
@@ -142,18 +133,5 @@ impl UsersEndpoints {
         )?;
 
         Ok(paid_akt)
-    }
-
-    fn set_mutual_tls_certificate(
-        &mut self,
-        calling_principal: Principal,
-        certificate: String,
-    ) -> Result<(), ApiError> {
-        self.access_control_service
-            .assert_principal_not_anonymous(&calling_principal)?;
-
-        let user_id = UserId::new(calling_principal);
-
-        self.users_service.set_user_mutual_tls_certificate(user_id, certificate)
     }
 }
