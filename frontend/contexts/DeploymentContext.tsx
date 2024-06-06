@@ -1,9 +1,10 @@
-import { type _SERVICE, type GetDeploymentsResult } from "@/declarations/backend.did";
+import { type GetDeploymentsResult } from "@/declarations/backend.did";
 import { getDeploymentCreatedDate } from "@/helpers/deployment";
-import { type OkType, extractOk } from "@/helpers/result";
-import { X509CertificateData, createX509, loadCertificate, saveCertificate } from "@/lib/certificate";
+import { extractOk, type OkType } from "@/helpers/result";
+import { createX509, X509CertificateData } from "@/lib/certificate";
 import { type BackendActor } from "@/services/backend";
 import { createContext, useCallback, useContext, useState } from "react";
+import { getCurrentUser } from "@/services/user";
 
 export type Deployments = OkType<GetDeploymentsResult>;
 
@@ -38,17 +39,13 @@ export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({ children
   }, []);
 
   const loadOrCreateCertificate = useCallback(async (actor: BackendActor): Promise<X509CertificateData | null> => {
-    let certData = loadCertificate();
+    let certData = (await getCurrentUser(actor)).mtls_certificate[0] || null;
+
     if (!certData) {
       try {
         const akashAddress = extractOk(await actor.address());
         certData = await createX509(akashAddress);
-        extractOk(await actor.create_certificate(
-          Buffer.from(certData.cert, "utf-8").toString("base64"),
-          Buffer.from(certData.pubKey, "utf-8").toString("base64"),
-        ));
-
-        saveCertificate(certData);
+        extractOk(await actor.create_certificate(certData));
       } catch (e) {
         console.error(e);
         alert("Failed to create certificate, see console for details");

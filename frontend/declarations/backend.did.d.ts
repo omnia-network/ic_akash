@@ -140,6 +140,11 @@ export interface LogsFilterRequest {
   'after_timestamp_ms' : [] | [bigint],
   'before_timestamp_ms' : [] | [bigint],
 }
+export interface MTlsCertificateData {
+  'cert' : string,
+  'pub_key' : string,
+  'priv_key' : string,
+}
 export type Memo = bigint;
 export type MemorySize = { 'Large' : null } |
   { 'Small' : null } |
@@ -233,6 +238,7 @@ export type TransferResult = { 'Ok' : BlockIndex } |
 export interface User {
   'akt_balance' : number,
   'payments' : BigUint64Array | bigint[],
+  'mtls_certificate' : [] | [MTlsCertificateData],
   'role' : UserRole,
   'created_at' : TimestampNs,
 }
@@ -251,7 +257,7 @@ export interface _SERVICE {
   'balance' : ActorMethod<[], ApiNatResult>,
   'check_tx' : ActorMethod<[string], ApiEmptyResult>,
   'close_deployment' : ActorMethod<[string], ApiEmptyResult>,
-  'create_certificate' : ActorMethod<[string, string], ApiStringResult>,
+  'create_certificate' : ActorMethod<[MTlsCertificateData], ApiStringResult>,
   'create_deployment' : ActorMethod<[DeploymentParams], CreateDeploymentResult>,
   'create_test_deployment' : ActorMethod<[], CreateDeploymentResult>,
   'create_user' : ActorMethod<[], CreateUserResult>,

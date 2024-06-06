@@ -4,10 +4,10 @@ import { BackButton } from "@/components/back-button";
 import { useToast } from "@/components/ui/use-toast";
 import { useDeploymentContext } from "@/contexts/DeploymentContext";
 import {
+  type OnWsErrorCallback,
   type OnWsMessageCallback,
   type OnWsOpenCallback,
   useIcContext,
-  type OnWsErrorCallback,
 } from "@/contexts/IcContext";
 import type { DeploymentParams, DeploymentState } from "@/declarations/backend.did";
 import { extractDeploymentCreated } from "@/helpers/deployment";
@@ -18,9 +18,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { displayE8sAsIcp, icpToE8s } from "@/helpers/ui";
-import { transferE8sToBackend } from "@/services/backend";
 import { Spinner } from "@/components/spinner";
 import { NewDeploymentForm } from "@/components/new-deployment-form";
+import { transferE8sToBackend } from "@/services/backend";
 
 const FETCH_DEPLOYMENT_PRICE_INTERVAL_MS = 30_000; // 30 seconds
 
@@ -58,12 +58,50 @@ export default function NewDeployment() {
     [toast]
   );
 
+  const sendIcpToBackend = useCallback(async (userCanisterBalance: number) => {
+    if (!backendActor || !ledgerCanister) {
+      toastError("Backend actor or ledger canister not found");
+      return;
+    }
+
+    if (!deploymentE8sPrice) {
+      toastError("Deployment price not fetched");
+      return;
+    }
+
+    const icpToSend = deploymentE8sPrice - BigInt(userCanisterBalance);
+
+    setDeploymentSteps([]);
+    setDeploymentError(null);
+    setIsDeploying(false);
+    setIsSubmitting(true);
+    setPaymentStatus(null);
+
+    try {
+      setPaymentStatus(`Sending ~${displayE8sAsIcp(icpToSend)} to backend canister...`);
+
+      await transferE8sToBackend(
+        ledgerCanister,
+        icpToSend,
+        backendActor
+      );
+      await refreshLedgerData();
+
+      setPaymentStatus(prev => prev + " DONE");
+    } catch (e) {
+      console.error("Failed to transfer funds:", e);
+      toastError("Failed to transfer funds, see console for details");
+      setPaymentStatus(prev => prev + " FAILED");
+      setDeploymentParams(null);
+      setIsSubmitting(false);
+      return;
+    }
+  }, [backendActor, deploymentE8sPrice, ledgerCanister, refreshLedgerData, toastError]);
+
   const onWsOpen: OnWsOpenCallback = useCallback(async () => {
     console.log("ws open");
 
-    setIsDeploying(true);
-    setIsSubmitting(false);
-    try {
+    const createDeployment = async () => {
       if (!backendActor) {
         throw new Error("No backend actor");
       }
@@ -74,16 +112,31 @@ export default function NewDeployment() {
 
       const res = await backendActor.create_deployment(deploymentParams);
       const deploymentId = extractOk(res);
-
       console.log("deployment id", deploymentId);
-
       setDeploymentSteps([{ Initialized: null }]);
-    } catch (e) {
+    };
+
+    setIsDeploying(true);
+    setIsSubmitting(false);
+    try {
+      await createDeployment();
+    } catch (e: any) {
       console.error("Failed to create deployment:", e);
-      setDeploymentError("Failed to create deployment, see console for details");
+
       setIsDeploying(false);
+
+      if (e.message.startsWith("Not enough balance. Required: ")) {
+        console.warn("Failed to create deployment, insufficient balance. Auto top-up initiated.");
+
+        const userCanisterBalance = parseInt(e.message.replace("Not enough balance. Required: ", "").replace(" ICP", ""));
+        await sendIcpToBackend(userCanisterBalance);
+
+        await createDeployment();
+      } else {
+        setDeploymentError("Failed to create deployment, see console for details");
+      }
     }
-  }, [backendActor, deploymentParams]);
+  }, [backendActor, deploymentParams, sendIcpToBackend]);
 
   const onWsMessage: OnWsMessageCallback = useCallback(
     async (ev) => {
@@ -200,7 +253,7 @@ export default function NewDeployment() {
   );
 
   const handleDeploy = useCallback(async (values: DeploymentParams) => {
-    if (!backendActor || !ledgerCanister) {
+    if (!backendActor) {
       toastError("Backend actor or ledger canister not found");
       return;
     }
@@ -210,43 +263,26 @@ export default function NewDeployment() {
       return;
     }
 
-    if (!deploymentE8sPrice) {
-      toastError("Deployment price not fetched");
-      return;
-    }
-
     setDeploymentSteps([]);
     setDeploymentError(null);
     setDeploymentParams(values);
     setIsDeploying(false);
     setIsSubmitting(true);
-    setPaymentStatus(null);
 
     try {
+      console.log("Retrieving mTLS certificate...");
       const cert = await loadOrCreateCertificate(backendActor!);
       if (!cert) {
         throw new Error("No certificate");
       }
-
-      setPaymentStatus(`Sending ~${displayE8sAsIcp(deploymentE8sPrice)} to backend canister...`);
-
-      await transferE8sToBackend(
-        ledgerCanister,
-        deploymentE8sPrice,
-        backendActor
-      );
-      await refreshLedgerData();
+      console.log("mTLS certificate retrieved");
 
       if (fetchDeploymentPriceInterval !== null) {
         clearInterval(fetchDeploymentPriceInterval);
         setFetchDeploymentPriceInterval(null);
       }
 
-      setPaymentStatus(prev => prev + " DONE");
     } catch (e) {
-      console.error("Failed to transfer funds:", e);
-      toastError("Failed to transfer funds, see console for details");
-      setPaymentStatus(prev => prev + " FAILED");
       setDeploymentParams(null);
       setIsSubmitting(false);
       return;
@@ -268,9 +304,6 @@ export default function NewDeployment() {
     userHasEnoughBalance,
     toastError,
     backendActor,
-    ledgerCanister,
-    refreshLedgerData,
-    deploymentE8sPrice,
     fetchDeploymentPriceInterval,
     loadOrCreateCertificate,
   ]);
@@ -284,12 +317,8 @@ export default function NewDeployment() {
       const res = await backendActor.get_deployment_icp_price();
       const icpPrice = extractOk(res);
 
-      // add 1 ICP to cover price fluctuation
-      //
-      // TODO: try to deploy and parse the error from the canister.
-      // If the error is a not enough balance error, then we can
-      // send funds to the canister and try again.
-      setDeploymentE8sPrice(icpToE8s(icpPrice + 1));
+      // add 1% ICP to cover price fluctuation
+      setDeploymentE8sPrice(icpToE8s(icpPrice * 1.01));
     } catch (e) {
       console.error("Failed to fetch deployment price:", e);
       toastError("Failed to fetch deployment price, see console for details");
@@ -358,7 +387,8 @@ export default function NewDeployment() {
                   >
                     {ledgerData.accountId?.toHex()}
                   </pre>
-                  <p className="mt-2">If you&apos;ve already topped up your account, please refresh the balance on the top bar.</p>
+                  <p className="mt-2">If you&apos;ve already topped up your account, please refresh the balance on the
+                    top bar.</p>
                 </AlertDescription>
               </Alert>
             )}

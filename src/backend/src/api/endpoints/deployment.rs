@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use candid::Principal;
 use ic_cdk::{caller, query, update};
+use utils::base64_encode;
 
 use crate::{
     akash::{address::get_account_id_from_public_key, bids::fetch_bids, sdl::SdlV3},
@@ -9,7 +10,8 @@ use crate::{
         log_error, log_info, map_deployment, services::AkashService, AccessControlService,
         ApiError, ApiResult, CpuSize, Deployment, DeploymentId, DeploymentParams,
         DeploymentParamsPort, DeploymentState, DeploymentsService, GetDeploymentResponse,
-        LedgerService, LogService, MemorySize, StorageSize, UserId, UsersService,
+        LedgerService, LogService, MTlsCertificateData, MemorySize, StorageSize, UpdateUserInput,
+        UserId, UsersService,
     },
     fixtures::example_sdl,
     helpers::uakt_to_akt,
@@ -46,14 +48,11 @@ fn get_deployments() -> ApiResult<Vec<GetDeploymentResponse>> {
 }
 
 #[update]
-async fn create_certificate(
-    cert_pem_base64: String,
-    pub_key_pem_base64: String,
-) -> ApiResult<String> {
+async fn create_certificate(cert_data: MTlsCertificateData) -> ApiResult<String> {
     let calling_principal = caller();
 
     DeploymentsEndpoints::default()
-        .create_certificate(calling_principal, cert_pem_base64, pub_key_pem_base64)
+        .create_certificate(calling_principal, cert_data)
         .await
         .into()
 }
@@ -188,18 +187,32 @@ impl DeploymentsEndpoints {
     }
 
     async fn create_certificate(
-        &self,
+        &mut self,
         calling_principal: Principal,
-        cert_pem_base64: String,
-        pub_key_pem_base64: String,
+        cert_data: MTlsCertificateData,
     ) -> Result<String, ApiError> {
         self.access_control_service
             .assert_principal_is_user(&calling_principal)?;
 
-        AkashService::default()
+        let cert_pem_base64 = base64_encode(&cert_data.cert);
+        let pub_key_pem_base64 = base64_encode(&cert_data.pub_key);
+
+        let tx_hash = self
+            .akash_service
             .create_certificate(cert_pem_base64, pub_key_pem_base64)
             .await
-            .map_err(|e| ApiError::internal(&format!("Error creating certificate: {}", e)))
+            .map_err(|e| ApiError::internal(&format!("Error creating certificate: {}", e)))?;
+
+        let user_id = UserId::new(calling_principal);
+
+        self.users_service.update_user(
+            user_id,
+            UpdateUserInput {
+                mtls_certificate: Some(cert_data),
+            },
+        )?;
+
+        Ok(tx_hash)
     }
 
     async fn create_deployment(
@@ -232,7 +245,17 @@ impl DeploymentsEndpoints {
         let user_id = UserId::new(calling_principal);
         // deduct AKT from user's balance for deployment escrow
         self.users_service
-            .charge_user(user_id, deployment_akt_price)?;
+            .charge_user(user_id, deployment_akt_price)
+            .map_err(|e| {
+                if e.message().contains("Not enough AKT balance.") {
+                    ApiError::permission_denied(&format!(
+                        "Not enough balance. Required: {} ICP",
+                        deployment_icp_price,
+                    ))
+                } else {
+                    e
+                }
+            })?;
 
         let deployment_id = self
             .deployments_service
@@ -436,10 +459,15 @@ impl DeploymentsEndpoints {
     }
 
     async fn get_deployment_icp_price(&self) -> Result<f64, ApiError> {
-        let icp_2_akt = self.ledger_service.get_icp_2_akt_conversion_rate().await?;
         let deployment_akt_price = self.deployments_service.get_deployment_akt_price();
 
-        Ok(deployment_akt_price / icp_2_akt)
+        self.akt_to_icp(deployment_akt_price).await
+    }
+
+    async fn akt_to_icp(&self, amount_akt: f64) -> Result<f64, ApiError> {
+        let icp_2_akt = self.ledger_service.get_icp_2_akt_conversion_rate().await?;
+
+        Ok(amount_akt / icp_2_akt)
     }
 }
 
