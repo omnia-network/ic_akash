@@ -1,33 +1,33 @@
 "use client";
 
-import { BackButton } from "@/components/back-button";
-import { useToast } from "@/components/ui/use-toast";
-import { useDeploymentContext } from "@/contexts/DeploymentContext";
+import {BackButton} from "@/components/back-button";
+import {useToast} from "@/components/ui/use-toast";
+import {useDeploymentContext} from "@/contexts/DeploymentContext";
 import {
   type OnWsErrorCallback,
   type OnWsMessageCallback,
   type OnWsOpenCallback,
   useIcContext,
 } from "@/contexts/IcContext";
-import type { DeploymentParams, DeploymentState } from "@/declarations/backend.did";
-import { extractDeploymentCreated } from "@/helpers/deployment";
-import { extractOk } from "@/helpers/result";
-import { sendManifestToProvider } from "@/services/deployment";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
-import { displayE8sAsIcp, icpToE8s } from "@/helpers/ui";
-import { Spinner } from "@/components/spinner";
-import { NewDeploymentForm } from "@/components/new-deployment-form";
-import { transferE8sToBackend } from "@/services/backend";
+import type {DeploymentParams, DeploymentState} from "@/declarations/backend.did";
+import {extractOk} from "@/helpers/result";
+import {useRouter} from "next/navigation";
+import {useCallback, useEffect, useMemo, useState} from "react";
+import {Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
+import {AlertCircle} from "lucide-react";
+import {displayE8sAsIcp, icpToE8s} from "@/helpers/ui";
+import {Spinner} from "@/components/spinner";
+import {NewDeploymentForm} from "@/components/new-deployment-form";
+import {transferE8sToBackend} from "@/services/backend";
+import {extractDeploymentCreated} from "@/helpers/deployment";
+import {sendManifestToProvider} from "@/services/deployment";
 
 const FETCH_DEPLOYMENT_PRICE_INTERVAL_MS = 30_000; // 30 seconds
 
 export default function NewDeployment() {
   const router = useRouter();
-  const { backendActor, openWs, closeWs, setWsCallbacks, ledgerCanister, ledgerData, refreshLedgerData } = useIcContext();
-  const { tlsCertificateData, loadOrCreateCertificate, fetchDeployments } =
+  const {backendActor, openWs, closeWs, setWsCallbacks, ledgerCanister, ledgerData, refreshLedgerData} = useIcContext();
+  const {tlsCertificateData, loadOrCreateCertificate, fetchDeployments} =
     useDeploymentContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
@@ -38,12 +38,12 @@ export default function NewDeployment() {
   const [deploymentE8sPrice, setDeploymentE8sPrice] = useState<bigint | null>(null);
   const [fetchDeploymentPriceInterval, setFetchDeploymentPriceInterval] = useState<NodeJS.Timeout | null>(null);
   const userHasEnoughBalance = useMemo(() =>
-    ledgerData.balanceE8s !== null && deploymentE8sPrice !== null && ledgerData.balanceE8s > deploymentE8sPrice,
+      ledgerData.balanceE8s !== null && deploymentE8sPrice !== null && ledgerData.balanceE8s > deploymentE8sPrice,
     [ledgerData.balanceE8s, deploymentE8sPrice]
   );
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   const [deploymentParams, setDeploymentParams] = useState<DeploymentParams | null>(null);
-  const { toast } = useToast();
+  const {toast} = useToast();
 
   const toastError = useCallback(
     (message: string) => {
@@ -113,7 +113,7 @@ export default function NewDeployment() {
       const res = await backendActor.create_deployment(deploymentParams);
       const deploymentId = extractOk(res);
       console.log("deployment id", deploymentId);
-      setDeploymentSteps([{ Initialized: null }]);
+      setDeploymentSteps([{Initialized: null}]);
     };
 
     setIsDeploying(true);
@@ -157,12 +157,15 @@ export default function NewDeployment() {
 
       try {
         if ("LeaseCreated" in deploymentUpdate.update) {
-          const { manifest_sorted_json, dseq } = extractDeploymentCreated(
+          // closeWs();
+          // return;
+
+          const {manifest_sorted_json, dseq} = extractDeploymentCreated(
             deploymentSteps.find((el) =>
               el.hasOwnProperty("DeploymentCreated")
             )!
           );
-          const { provider_url } = deploymentUpdate.update.LeaseCreated;
+          const {provider_url} = deploymentUpdate.update.LeaseCreated;
 
           const manifestUrl = new URL(
             `/deployment/${dseq}/manifest`,
@@ -350,7 +353,7 @@ export default function NewDeployment() {
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-start">
-        <BackButton />
+        <BackButton/>
         <h2 className="ml-4 text-3xl font-bold tracking-tight">
           Create Deployment
         </h2>
@@ -369,13 +372,13 @@ export default function NewDeployment() {
               Price (est.):
             </h5>
             {deploymentE8sPrice !== null ? (
-              <pre>~{displayE8sAsIcp(deploymentE8sPrice, { maximumFractionDigits: 6 })}</pre>
+              <pre>~{displayE8sAsIcp(deploymentE8sPrice, {maximumFractionDigits: 6})}</pre>
             ) : (
-              <Spinner />
+              <Spinner/>
             )}
             {(!(isSubmitting || isDeploying) && (deploymentE8sPrice !== null) && !userHasEnoughBalance) && (
               <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
+                <AlertCircle className="h-4 w-4"/>
                 <AlertTitle>Insufficient balance</AlertTitle>
                 <AlertDescription>
                   <p>Please top up your account.</p>
@@ -408,13 +411,13 @@ export default function NewDeployment() {
                       {idx + 1}. {el}
                     </p>
                   ))}
-                {isDeploying && <Spinner />}
+                {isDeploying && <Spinner/>}
               </div>
             </div>
           )}
           {Boolean(deploymentError) && (
             <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
+              <AlertCircle className="h-4 w-4"/>
               <AlertTitle>Deployment Error</AlertTitle>
               <AlertDescription>
                 <p>{deploymentError}</p>

@@ -1,22 +1,11 @@
 "use client";
 
 import Tier from "@/components/Tier";
-import { LoadingButton } from "@/components/loading-button";
-import { Spinner } from "@/components/spinner";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import {LoadingButton} from "@/components/loading-button";
+import {Spinner} from "@/components/spinner";
+import {Button} from "@/components/ui/button";
+import {Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,} from "@/components/ui/card";
+import {Collapsible, CollapsibleContent, CollapsibleTrigger,} from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -26,10 +15,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useToast } from "@/components/ui/use-toast";
-import { useDeploymentContext } from "@/contexts/DeploymentContext";
-import { useIcContext } from "@/contexts/IcContext";
-import { type Deployment } from "@/declarations/backend.did";
+import {useToast} from "@/components/ui/use-toast";
+import {useDeploymentContext} from "@/contexts/DeploymentContext";
+import {useIcContext} from "@/contexts/IcContext";
+import {type Deployment} from "@/declarations/backend.did";
 import {
   extractDeploymentCreated,
   extractLeaseCreated,
@@ -41,17 +30,17 @@ import {
   isDeploymentClosed,
   isDeploymentFailed,
 } from "@/helpers/deployment";
-import { displayIcp } from "@/helpers/ui";
-import { queryLeaseStatus } from "@/services/deployment";
-import { DeploymentTier } from "@/types/deployment";
-import { ChevronsUpDown } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import {displayIcp} from "@/helpers/ui";
+import {queryLeaseStatus, sendManifestToProvider} from "@/services/deployment";
+import {DeploymentTier} from "@/types/deployment";
+import {ChevronsUpDown} from "lucide-react";
+import {useRouter} from "next/navigation";
+import {useCallback, useEffect, useState} from "react";
 
 export default function Dashboard() {
   const router = useRouter();
-  const { isLoggedIn, backendActor } = useIcContext();
-  const { deployments, fetchDeployments, loadOrCreateCertificate } =
+  const {isLoggedIn, backendActor} = useIcContext();
+  const {deployments, fetchDeployments, loadOrCreateCertificate} =
     useDeploymentContext();
   const [isClosingDeployment, setIsClosingDeployment] = useState(false);
   const [dialogDeploymentId, setDialogDeploymentId] = useState<string>();
@@ -59,7 +48,7 @@ export default function Dashboard() {
   const [isFetchingStatus, setIsFetchingStatus] = useState(false);
   const [leaseStatusData, setLeaseStatusData] =
     useState<Record<string, unknown>>();
-  const { toast } = useToast();
+  const {toast} = useToast();
 
   const handleNewDeployment = useCallback(async () => {
     router.push("/dashboard/new-deployment");
@@ -92,10 +81,10 @@ export default function Dashboard() {
       try {
         const certData = await loadOrCreateCertificate(backendActor!);
         const updates = deployment.state_history.map(([_, d]) => d);
-        const { dseq } = extractDeploymentCreated(
+        const {dseq} = extractDeploymentCreated(
           updates.find((el) => el.hasOwnProperty("DeploymentCreated"))!
         );
-        const { provider_url } = extractLeaseCreated(
+        const {provider_url} = extractLeaseCreated(
           updates.find((el) => el.hasOwnProperty("LeaseCreated"))!
         );
 
@@ -129,6 +118,41 @@ export default function Dashboard() {
     }
   }, [isLoggedIn, fetchDeployments, backendActor]);
 
+  useEffect(() => {
+    checkDeploymentState();
+  }, [deployments]);
+
+  const checkDeploymentState = useCallback(async () => {
+    for (const deployment of deployments) {
+      const lastState = deployment.deployment.state_history[deployment.deployment.state_history.length - 1][1];
+      if ("LeaseCreated" in lastState) {
+        try {
+          const cert = await loadOrCreateCertificate(backendActor!);
+
+          const deploymentCreatedState = deployment.deployment.state_history.find(([_, state]) => "DeploymentCreated" in state)!;
+          const {manifest_sorted_json, dseq} = extractDeploymentCreated(
+            deploymentCreatedState[1]
+          );
+
+          const {provider_url} = lastState.LeaseCreated;
+
+          const manifestUrl = new URL(
+            `/deployment/${dseq}/manifest`,
+            provider_url
+          );
+
+          await sendManifestToProvider(
+            manifestUrl.toString(),
+            manifest_sorted_json,
+            cert!
+          );
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, [deployments]);
+
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
@@ -144,7 +168,9 @@ export default function Dashboard() {
             <Card key={el.id}>
               <CardHeader>
                 <CardTitle className="text-sm font-medium">{el.deployment.params.name}</CardTitle>
-                <CardDescription><pre className="font-xs">{el.id}</pre></CardDescription>
+                <CardDescription>
+                  <pre className="font-xs">{el.id}</pre>
+                </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-1">
                 <div>
@@ -163,17 +189,17 @@ export default function Dashboard() {
                   Tier:
                   {/* TODO: display the actual deployment tier */}
                   <div className="border rounded-md px-3 py-2">
-                    <Tier tier={DeploymentTier.SMALL} />
+                    <Tier tier={DeploymentTier.SMALL}/>
                   </div>
                 </div>
                 <div className="flex flex-row gap-1">
                   Price:
-                  <pre>{displayIcp(el.deployment.icp_price, { maximumFractionDigits: 6 })}</pre>
+                  <pre>{displayIcp(el.deployment.icp_price, {maximumFractionDigits: 6})}</pre>
                 </div>
                 <Collapsible>
                   <CollapsibleTrigger className="flex items-center gap-4 w-full mt-4">
                     Status history
-                    <ChevronsUpDown className="h-4 w-4" />
+                    <ChevronsUpDown className="h-4 w-4"/>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="flex flex-col gap-1">
                     {el.deployment.state_history.map((item, i) => (
@@ -209,7 +235,7 @@ export default function Dashboard() {
                             <DialogTitle>Deployment status</DialogTitle>
                             <DialogDescription>
                               {isFetchingStatus ? (
-                                <Spinner />
+                                <Spinner/>
                               ) : (
                                 Boolean(leaseStatusData) && (
                                   <span className="font-mono">
@@ -237,9 +263,9 @@ export default function Dashboard() {
                         <DialogTitle>Are you sure?</DialogTitle>
                         <DialogDescription>
                           Deployment id to close:
-                          <br />
+                          <br/>
                           <span className="font-mono text-nowrap">{el.id}</span>
-                          <br />
+                          <br/>
                           <b>This action cannot be undone.</b>
                         </DialogDescription>
                       </DialogHeader>
