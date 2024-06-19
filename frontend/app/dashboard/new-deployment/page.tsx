@@ -19,7 +19,7 @@ import {displayE8sAsIcp, icpToE8s} from "@/helpers/ui";
 import {Spinner} from "@/components/spinner";
 import {NewDeploymentForm} from "@/components/new-deployment-form";
 import {transferE8sToBackend} from "@/services/backend";
-import {sendManifestToProviderFlow} from "@/services/deployment";
+import {confirmDeployment} from "@/services/deployment";
 
 const FETCH_DEPLOYMENT_PRICE_INTERVAL_MS = 30_000; // 30 seconds
 
@@ -163,7 +163,7 @@ export default function NewDeployment() {
             el.hasOwnProperty("DeploymentCreated")
           )!;
 
-          await sendManifestToProviderFlow(
+          await confirmDeployment(
             deploymentUpdate.update,
             deploymentCreatedState,
             tlsCertificateData!

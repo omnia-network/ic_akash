@@ -77,7 +77,7 @@ export const queryLeaseStatus = async (queryLeaseUrl: string, certData: X509Cert
   return await res.json();
 };
 
-export const sendManifestToProviderFlow = async (deploymentState: DeploymentState, deploymentCreatedState: DeploymentState, cert: MTlsCertificateData) => {
+export const confirmDeployment = async (deploymentState: DeploymentState, deploymentCreatedState: DeploymentState, cert: MTlsCertificateData) => {
   try {
     if ("LeaseCreated" in deploymentState) {
       const {manifest_sorted_json, dseq} = extractDeploymentCreated(deploymentCreatedState);
@@ -94,6 +94,7 @@ export const sendManifestToProviderFlow = async (deploymentState: DeploymentStat
         manifest_sorted_json,
         cert!
       );
+
     } else {
       throw new Error("Deployment state is not in LeaseCreated state");
     }

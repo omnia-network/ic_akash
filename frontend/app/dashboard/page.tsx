@@ -31,7 +31,7 @@ import {
   isDeploymentFailed,
 } from "@/helpers/deployment";
 import {displayIcp} from "@/helpers/ui";
-import {queryLeaseStatus, sendManifestToProviderFlow} from "@/services/deployment";
+import {confirmDeployment, queryLeaseStatus} from "@/services/deployment";
 import {DeploymentTier} from "@/types/deployment";
 import {ChevronsUpDown} from "lucide-react";
 import {useRouter} from "next/navigation";
@@ -131,7 +131,7 @@ export default function Dashboard() {
         try {
           const cert = await loadOrCreateCertificate(backendActor!);
 
-          await sendManifestToProviderFlow(
+          await confirmDeployment(
             lastState,
             deploymentCreatedState,
             cert!
@@ -147,8 +147,10 @@ export default function Dashboard() {
               stepActive
             )
           );
+
+          await fetchDeployments(backendActor!);
         } catch (e) {
-          console.error(e);
+          console.error("Failed to update deployment:", e);
         }
       }
     }
