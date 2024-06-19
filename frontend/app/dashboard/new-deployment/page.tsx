@@ -19,8 +19,7 @@ import {displayE8sAsIcp, icpToE8s} from "@/helpers/ui";
 import {Spinner} from "@/components/spinner";
 import {NewDeploymentForm} from "@/components/new-deployment-form";
 import {transferE8sToBackend} from "@/services/backend";
-import {extractDeploymentCreated} from "@/helpers/deployment";
-import {sendManifestToProvider} from "@/services/deployment";
+import {sendManifestToProviderFlow} from "@/services/deployment";
 
 const FETCH_DEPLOYMENT_PRICE_INTERVAL_MS = 30_000; // 30 seconds
 
@@ -160,21 +159,13 @@ export default function NewDeployment() {
           // closeWs();
           // return;
 
-          const {manifest_sorted_json, dseq} = extractDeploymentCreated(
-            deploymentSteps.find((el) =>
-              el.hasOwnProperty("DeploymentCreated")
-            )!
-          );
-          const {provider_url} = deploymentUpdate.update.LeaseCreated;
+          const deploymentCreatedState = deploymentSteps.find((el) =>
+            el.hasOwnProperty("DeploymentCreated")
+          )!;
 
-          const manifestUrl = new URL(
-            `/deployment/${dseq}/manifest`,
-            provider_url
-          );
-
-          await sendManifestToProvider(
-            manifestUrl.toString(),
-            manifest_sorted_json,
+          await sendManifestToProviderFlow(
+            deploymentUpdate.update,
+            deploymentCreatedState,
             tlsCertificateData!
           );
 

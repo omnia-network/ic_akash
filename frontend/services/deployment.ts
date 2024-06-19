@@ -1,5 +1,7 @@
-import { X509CertificateData } from "@/lib/certificate";
-import { wait } from "@/helpers/timer";
+import {X509CertificateData} from "@/lib/certificate";
+import {wait} from "@/helpers/timer";
+import {DeploymentState, MTlsCertificateData} from "@/declarations/backend.did";
+import {extractDeploymentCreated} from "@/helpers/deployment";
 
 const PROVIDER_PROXY_URL = "https://akash-provider-proxy.omnia-network.com/";
 
@@ -74,3 +76,29 @@ export const queryLeaseStatus = async (queryLeaseUrl: string, certData: X509Cert
 
   return await res.json();
 };
+
+export const sendManifestToProviderFlow = async (deploymentState: DeploymentState, deploymentCreatedState: DeploymentState, cert: MTlsCertificateData) => {
+  try {
+    if ("LeaseCreated" in deploymentState) {
+      const {manifest_sorted_json, dseq} = extractDeploymentCreated(deploymentCreatedState);
+
+      const {provider_url} = deploymentState.LeaseCreated;
+
+      const manifestUrl = new URL(
+        `/deployment/${dseq}/manifest`,
+        provider_url
+      );
+
+      await sendManifestToProvider(
+        manifestUrl.toString(),
+        manifest_sorted_json,
+        cert!
+      );
+    } else {
+      throw new Error("Deployment state is not in LeaseCreated state");
+    }
+  } catch (e) {
+    console.error("Failed to send manifest to provider", e);
+    throw e;
+  }
+}

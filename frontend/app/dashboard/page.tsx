@@ -31,7 +31,7 @@ import {
   isDeploymentFailed,
 } from "@/helpers/deployment";
 import {displayIcp} from "@/helpers/ui";
-import {queryLeaseStatus, sendManifestToProvider} from "@/services/deployment";
+import {queryLeaseStatus, sendManifestToProviderFlow} from "@/services/deployment";
 import {DeploymentTier} from "@/types/deployment";
 import {ChevronsUpDown} from "lucide-react";
 import {useRouter} from "next/navigation";
@@ -126,25 +126,14 @@ export default function Dashboard() {
   const checkDeploymentState = useCallback(async () => {
     for (const deployment of deployments) {
       const lastState = deployment.deployment.state_history[deployment.deployment.state_history.length - 1][1];
+      const deploymentCreatedState = deployment.deployment.state_history.find(([_, state]) => "DeploymentCreated" in state)![1];
       if ("LeaseCreated" in lastState) {
         try {
           const cert = await loadOrCreateCertificate(backendActor!);
 
-          const deploymentCreatedState = deployment.deployment.state_history.find(([_, state]) => "DeploymentCreated" in state)!;
-          const {manifest_sorted_json, dseq} = extractDeploymentCreated(
-            deploymentCreatedState[1]
-          );
-
-          const {provider_url} = lastState.LeaseCreated;
-
-          const manifestUrl = new URL(
-            `/deployment/${dseq}/manifest`,
-            provider_url
-          );
-
-          await sendManifestToProvider(
-            manifestUrl.toString(),
-            manifest_sorted_json,
+          await sendManifestToProviderFlow(
+            lastState,
+            deploymentCreatedState,
             cert!
           );
 
@@ -163,7 +152,7 @@ export default function Dashboard() {
         }
       }
     }
-  }, [deployments]);
+  }, [backendActor, deployments, loadOrCreateCertificate]);
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
