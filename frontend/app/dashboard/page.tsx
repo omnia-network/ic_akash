@@ -31,12 +31,11 @@ import {
   isDeploymentFailed,
 } from "@/helpers/deployment";
 import {displayIcp} from "@/helpers/ui";
-import {confirmDeployment, queryLeaseStatus} from "@/services/deployment";
+import {confirmDeployment, queryLeaseStatus, updateDeploymentState} from "@/services/deployment";
 import {DeploymentTier} from "@/types/deployment";
 import {ChevronsUpDown} from "lucide-react";
 import {useRouter} from "next/navigation";
 import {useCallback, useEffect, useState} from "react";
-import {extractOk} from "@/helpers/result";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -128,6 +127,8 @@ export default function Dashboard() {
       const lastState = deployment.deployment.state_history[deployment.deployment.state_history.length - 1][1];
       const deploymentCreatedState = deployment.deployment.state_history.find(([_, state]) => "DeploymentCreated" in state)![1];
       if ("LeaseCreated" in lastState) {
+        let leaseCreated = false;
+
         try {
           const cert = await loadOrCreateCertificate(backendActor!);
 
@@ -137,20 +138,35 @@ export default function Dashboard() {
             cert!
           );
 
-          const stepActive = {
-            Active: null,
-          };
-
-          extractOk(
-            await backendActor!.update_deployment_state(
-              deployment.id,
-              stepActive
-            )
-          );
-
-          await fetchDeployments(backendActor!);
+          leaseCreated = true;
         } catch (e) {
           console.error("Failed to update deployment:", e);
+
+          try {
+            const stepFailed = {
+              FailedOnClient: {
+                reason: JSON.stringify(e),
+              },
+            };
+            await updateDeploymentState(backendActor!, deployment.id, stepFailed);
+          } catch (e) {
+            console.error("Failed to update deployment:", e);
+          }
+        }
+
+        try {
+          if (leaseCreated) {
+
+            const stepActive = {
+              Active: null,
+            };
+
+            await updateDeploymentState(backendActor!, deployment.id, stepActive);
+
+            await fetchDeployments(backendActor!);
+          }
+        } catch (e) {
+          console.error("Failed to complete deployment:", e);
         }
       }
     }

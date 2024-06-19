@@ -2,6 +2,8 @@ import {X509CertificateData} from "@/lib/certificate";
 import {wait} from "@/helpers/timer";
 import {DeploymentState, MTlsCertificateData} from "@/declarations/backend.did";
 import {extractDeploymentCreated} from "@/helpers/deployment";
+import {BackendActor} from "@/services/backend";
+import {extractOk} from "@/helpers/result";
 
 const PROVIDER_PROXY_URL = "https://akash-provider-proxy.omnia-network.com/";
 
@@ -102,4 +104,14 @@ export const confirmDeployment = async (deploymentState: DeploymentState, deploy
     console.error("Failed to send manifest to provider", e);
     throw e;
   }
+}
+
+export const updateDeploymentState = async (backendActor: BackendActor, deploymentId: string, step: DeploymentState) => {
+  try {
+    extractOk(await backendActor.update_deployment_state(deploymentId, step));
+  } catch (e) {
+    console.error("Failed to update deployment state", e);
+    throw e;
+  }
+
 }

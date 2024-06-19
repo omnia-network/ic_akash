@@ -19,7 +19,7 @@ import {displayE8sAsIcp, icpToE8s} from "@/helpers/ui";
 import {Spinner} from "@/components/spinner";
 import {NewDeploymentForm} from "@/components/new-deployment-form";
 import {transferE8sToBackend} from "@/services/backend";
-import {confirmDeployment} from "@/services/deployment";
+import {confirmDeployment, updateDeploymentState} from "@/services/deployment";
 
 const FETCH_DEPLOYMENT_PRICE_INTERVAL_MS = 30_000; // 30 seconds
 
@@ -156,9 +156,6 @@ export default function NewDeployment() {
 
       try {
         if ("LeaseCreated" in deploymentUpdate.update) {
-          // closeWs();
-          // return;
-
           const deploymentCreatedState = deploymentSteps.find((el) =>
             el.hasOwnProperty("DeploymentCreated")
           )!;
@@ -183,12 +180,7 @@ export default function NewDeployment() {
 
           setDeploymentSteps((prev) => [...prev, stepFailed]);
 
-          extractOk(
-            await backendActor!.update_deployment_state(
-              deploymentUpdate.id,
-              stepFailed
-            )
-          );
+          await updateDeploymentState(backendActor!, deploymentUpdate.id, stepFailed);
         } catch (e) {
           console.error("Failed to update deployment:", e);
         }
@@ -207,12 +199,8 @@ export default function NewDeployment() {
             Active: null,
           };
           setDeploymentSteps((prev) => [...prev, stepActive]);
-          extractOk(
-            await backendActor!.update_deployment_state(
-              deploymentUpdate.id,
-              stepActive
-            )
-          );
+
+          await updateDeploymentState(backendActor!, deploymentUpdate.id, stepActive);
 
           await fetchDeployments(backendActor!);
 
