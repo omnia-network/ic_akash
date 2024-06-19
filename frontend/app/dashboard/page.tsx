@@ -36,6 +36,7 @@ import {DeploymentTier} from "@/types/deployment";
 import {ChevronsUpDown} from "lucide-react";
 import {useRouter} from "next/navigation";
 import {useCallback, useEffect, useState} from "react";
+import {extractOk} from "@/helpers/result";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -145,6 +146,17 @@ export default function Dashboard() {
             manifestUrl.toString(),
             manifest_sorted_json,
             cert!
+          );
+
+          const stepActive = {
+            Active: null,
+          };
+
+          extractOk(
+            await backendActor!.update_deployment_state(
+              deployment.id,
+              stepActive
+            )
           );
         } catch (e) {
           console.error(e);
