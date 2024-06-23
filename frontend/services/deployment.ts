@@ -1,9 +1,9 @@
-import {X509CertificateData} from "@/lib/certificate";
-import {wait} from "@/helpers/timer";
-import {DeploymentState, MTlsCertificateData} from "@/declarations/backend.did";
-import {extractDeploymentCreated} from "@/helpers/deployment";
-import {BackendActor} from "@/services/backend";
-import {extractOk} from "@/helpers/result";
+import { X509CertificateData } from "@/lib/certificate";
+import { wait } from "@/helpers/timer";
+import { DeploymentState, MTlsCertificateData } from "@/declarations/backend.did";
+import { extractDeploymentCreated } from "@/helpers/deployment";
+import { BackendActor } from "@/services/backend";
+import { extractOk } from "@/helpers/result";
 
 const PROVIDER_PROXY_URL = "https://akash-provider-proxy.omnia-network.com/";
 
@@ -82,9 +82,9 @@ export const queryLeaseStatus = async (queryLeaseUrl: string, certData: X509Cert
 export const confirmDeployment = async (deploymentState: DeploymentState, deploymentCreatedState: DeploymentState, cert: MTlsCertificateData) => {
   try {
     if ("LeaseCreated" in deploymentState) {
-      const {manifest_sorted_json, dseq} = extractDeploymentCreated(deploymentCreatedState);
+      const { manifest_sorted_json, dseq } = extractDeploymentCreated(deploymentCreatedState);
 
-      const {provider_url} = deploymentState.LeaseCreated;
+      const { provider_url } = deploymentState.LeaseCreated;
 
       const manifestUrl = new URL(
         `/deployment/${dseq}/manifest`,
@@ -115,3 +115,11 @@ export const updateDeploymentState = async (backendActor: BackendActor, deployme
   }
 
 }
+
+export const completeDeployment = async (backendActor: BackendActor, deploymentId: string) => {
+  const stepActive = {
+    Active: null,
+  };
+
+  await updateDeploymentState(backendActor!, deploymentId, stepActive);
+};
