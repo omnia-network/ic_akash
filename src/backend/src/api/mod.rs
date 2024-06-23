@@ -6,5 +6,5 @@ mod types;
 
 use mappings::*;
 use repositories::*;
-use services::*;
+pub use services::*;
 pub use types::*;

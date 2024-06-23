@@ -11,5 +11,5 @@ pub(super) use akash_service::*;
 pub(super) use config_service::*;
 pub(super) use deployments_service::*;
 pub(super) use ledger_service::*;
-pub(super) use log_service::*;
+pub use log_service::*;
 pub(super) use users_service::*;
