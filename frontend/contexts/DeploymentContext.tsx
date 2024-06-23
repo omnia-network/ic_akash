@@ -5,6 +5,7 @@ import { createX509, X509CertificateData } from "@/lib/certificate";
 import { type BackendActor } from "@/services/backend";
 import { createContext, useCallback, useContext, useState } from "react";
 import { getCurrentUser } from "@/services/user";
+import { completeDeployment, confirmDeployment, updateDeploymentState } from "@/services/deployment";
 
 export type Deployments = OkType<GetDeploymentsResult>;
 
@@ -25,19 +26,6 @@ export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({ children
   const [tlsCertificateData, setCertificateData] = useState<X509CertificateData | null>(null);
   const [deployments, setDeployments] = useState<Deployments>([]);
 
-  const fetchDeployments = useCallback(async (actor: BackendActor) => {
-    const res = await actor.get_deployments();
-
-    const _deployments = extractOk(res);
-    setDeployments(
-      _deployments.sort((el1, el2) =>
-        getDeploymentCreatedDate(el2.deployment).getTime() - getDeploymentCreatedDate(el1.deployment).getTime()
-      )
-    );
-
-    console.log("deployments", _deployments);
-  }, []);
-
   const loadOrCreateCertificate = useCallback(async (actor: BackendActor): Promise<X509CertificateData | null> => {
     let certData = (await getCurrentUser(actor)).mtls_certificate[0] || null;
 
@@ -57,6 +45,70 @@ export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({ children
 
     return certData!;
   }, []);
+
+  const completeDeployments = useCallback(async (actor: BackendActor, deployments: Deployments): Promise<number> => {
+    let updatedCount = 0;
+
+    for (const deployment of deployments) {
+      const lastState = deployment.deployment.state_history[deployment.deployment.state_history.length - 1][1];
+      const deploymentCreatedState = deployment.deployment.state_history.find(([_, state]) => "DeploymentCreated" in state)![1];
+      if ("LeaseCreated" in lastState) {
+        try {
+          const cert = await loadOrCreateCertificate(actor);
+
+          await confirmDeployment(
+            lastState,
+            deploymentCreatedState,
+            cert!
+          );
+          await completeDeployment(
+            actor,
+            deployment.id,
+          );
+
+          updatedCount++;
+        } catch (e) {
+          console.error("Failed to update deployment:", e);
+
+          try {
+            const stepFailed = {
+              FailedOnClient: {
+                reason: JSON.stringify(e),
+              },
+            };
+            await updateDeploymentState(actor, deployment.id, stepFailed);
+
+            updatedCount++;
+          } catch (e) {
+            console.error("Failed to update deployment:", e);
+            throw e;
+          }
+        }
+
+      }
+    }
+
+    return updatedCount;
+  }, [loadOrCreateCertificate]);
+
+  const fetchDeployments = useCallback(async (actor: BackendActor) => {
+    const res = await actor.get_deployments();
+
+    const _deployments = extractOk(res);
+
+    const updatedCount = await completeDeployments(actor, _deployments);
+    if (updatedCount > 0) {
+      return await fetchDeployments(actor);
+    }
+
+    setDeployments(
+      _deployments.sort((el1, el2) =>
+        getDeploymentCreatedDate(el2.deployment).getTime() - getDeploymentCreatedDate(el1.deployment).getTime()
+      )
+    );
+
+    console.log("deployments", _deployments);
+  }, [completeDeployments]);
 
   return (
     <DeploymentContext.Provider

@@ -1,5 +1,9 @@
 import { X509CertificateData } from "@/lib/certificate";
 import { wait } from "@/helpers/timer";
+import { DeploymentState, MTlsCertificateData } from "@/declarations/backend.did";
+import { extractDeploymentCreated } from "@/helpers/deployment";
+import { BackendActor } from "@/services/backend";
+import { extractOk } from "@/helpers/result";
 
 const PROVIDER_PROXY_URL = "https://akash-provider-proxy.omnia-network.com/";
 
@@ -73,4 +77,49 @@ export const queryLeaseStatus = async (queryLeaseUrl: string, certData: X509Cert
   }
 
   return await res.json();
+};
+
+export const confirmDeployment = async (deploymentState: DeploymentState, deploymentCreatedState: DeploymentState, cert: MTlsCertificateData) => {
+  try {
+    if ("LeaseCreated" in deploymentState) {
+      const { manifest_sorted_json, dseq } = extractDeploymentCreated(deploymentCreatedState);
+
+      const { provider_url } = deploymentState.LeaseCreated;
+
+      const manifestUrl = new URL(
+        `/deployment/${dseq}/manifest`,
+        provider_url
+      );
+
+      await sendManifestToProvider(
+        manifestUrl.toString(),
+        manifest_sorted_json,
+        cert!
+      );
+
+    } else {
+      throw new Error("Deployment state is not in LeaseCreated state");
+    }
+  } catch (e) {
+    console.error("Failed to send manifest to provider", e);
+    throw e;
+  }
+}
+
+export const updateDeploymentState = async (backendActor: BackendActor, deploymentId: string, step: DeploymentState) => {
+  try {
+    extractOk(await backendActor.update_deployment_state(deploymentId, step));
+  } catch (e) {
+    console.error("Failed to update deployment state", e);
+    throw e;
+  }
+
+}
+
+export const completeDeployment = async (backendActor: BackendActor, deploymentId: string) => {
+  const stepActive = {
+    Active: null,
+  };
+
+  await updateDeploymentState(backendActor!, deploymentId, stepActive);
 };

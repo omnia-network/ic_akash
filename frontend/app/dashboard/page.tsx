@@ -4,19 +4,8 @@ import Tier from "@/components/Tier";
 import { LoadingButton } from "@/components/loading-button";
 import { Spinner } from "@/components/spinner";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger, } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -144,7 +133,9 @@ export default function Dashboard() {
             <Card key={el.id}>
               <CardHeader>
                 <CardTitle className="text-sm font-medium">{el.deployment.params.name}</CardTitle>
-                <CardDescription><pre className="font-xs">{el.id}</pre></CardDescription>
+                <CardDescription>
+                  <pre className="font-xs">{el.id}</pre>
+                </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-1">
                 <div>

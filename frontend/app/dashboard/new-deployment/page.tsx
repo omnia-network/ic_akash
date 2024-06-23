@@ -10,9 +10,7 @@ import {
   useIcContext,
 } from "@/contexts/IcContext";
 import type { DeploymentParams, DeploymentState } from "@/declarations/backend.did";
-import { extractDeploymentCreated } from "@/helpers/deployment";
 import { extractOk } from "@/helpers/result";
-import { sendManifestToProvider } from "@/services/deployment";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -21,6 +19,7 @@ import { displayE8sAsIcp, icpToE8s } from "@/helpers/ui";
 import { Spinner } from "@/components/spinner";
 import { NewDeploymentForm } from "@/components/new-deployment-form";
 import { transferE8sToBackend } from "@/services/backend";
+import { completeDeployment, confirmDeployment, updateDeploymentState } from "@/services/deployment";
 
 const FETCH_DEPLOYMENT_PRICE_INTERVAL_MS = 30_000; // 30 seconds
 
@@ -98,6 +97,26 @@ export default function NewDeployment() {
     }
   }, [backendActor, deploymentE8sPrice, ledgerCanister, refreshLedgerData, toastError]);
 
+  const setDeploymentAsActive = useCallback(async (deploymentId: string) => {
+    try {
+      closeWs();
+
+      const stepActive = {
+        Active: null,
+      };
+      setDeploymentSteps((prev) => [...prev, stepActive]);
+
+      await completeDeployment(backendActor!, deploymentId);
+
+      setIsDeploying(false);
+      router.push("/dashboard");
+    } catch (e) {
+      console.error("Failed to complete deployment:", e);
+      setDeploymentError("Failed to complete deployment, see console for details");
+      setIsDeploying(false);
+    }
+  }, [backendActor, closeWs, router]);
+
   const onWsOpen: OnWsOpenCallback = useCallback(async () => {
     console.log("ws open");
 
@@ -153,29 +172,21 @@ export default function NewDeployment() {
         return;
       }
 
-      let leaseCreated = false;
-
       try {
         if ("LeaseCreated" in deploymentUpdate.update) {
-          const { manifest_sorted_json, dseq } = extractDeploymentCreated(
-            deploymentSteps.find((el) =>
-              el.hasOwnProperty("DeploymentCreated")
-            )!
-          );
-          const { provider_url } = deploymentUpdate.update.LeaseCreated;
+          const deploymentCreatedState = deploymentSteps.find((el) =>
+            el.hasOwnProperty("DeploymentCreated")
+          )!;
 
-          const manifestUrl = new URL(
-            `/deployment/${dseq}/manifest`,
-            provider_url
-          );
-
-          await sendManifestToProvider(
-            manifestUrl.toString(),
-            manifest_sorted_json,
+          await confirmDeployment(
+            deploymentUpdate.update,
+            deploymentCreatedState,
             tlsCertificateData!
           );
 
-          leaseCreated = true;
+          await setDeploymentAsActive(deploymentUpdate.id);
+
+          await fetchDeployments(backendActor!);
         }
       } catch (e) {
         console.error(e);
@@ -189,12 +200,7 @@ export default function NewDeployment() {
 
           setDeploymentSteps((prev) => [...prev, stepFailed]);
 
-          extractOk(
-            await backendActor!.update_deployment_state(
-              deploymentUpdate.id,
-              stepFailed
-            )
-          );
+          await updateDeploymentState(backendActor!, deploymentUpdate.id, stepFailed);
         } catch (e) {
           console.error("Failed to update deployment:", e);
         }
@@ -204,32 +210,6 @@ export default function NewDeployment() {
         );
         setIsDeploying(false);
       }
-
-      try {
-        if (leaseCreated) {
-          closeWs();
-
-          const stepActive = {
-            Active: null,
-          };
-          setDeploymentSteps((prev) => [...prev, stepActive]);
-          extractOk(
-            await backendActor!.update_deployment_state(
-              deploymentUpdate.id,
-              stepActive
-            )
-          );
-
-          await fetchDeployments(backendActor!);
-
-          setIsDeploying(false);
-          router.push("/dashboard");
-        }
-      } catch (e) {
-        console.error("Failed to complete deployment:", e);
-        setDeploymentError("Failed to complete deployment, see console for details");
-        setIsDeploying(false);
-      }
     },
     [
       tlsCertificateData,
@@ -237,8 +217,8 @@ export default function NewDeployment() {
       deploymentSteps,
       backendActor,
       fetchDeployments,
-      router,
       closeWs,
+      setDeploymentAsActive,
     ]
   );
 
