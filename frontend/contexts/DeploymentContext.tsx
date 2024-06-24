@@ -51,9 +51,9 @@ export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({ children
 
     for (const deployment of deployments) {
       const lastState = deployment.deployment.state_history[deployment.deployment.state_history.length - 1][1];
-      const deploymentCreatedState = deployment.deployment.state_history.find(([_, state]) => "DeploymentCreated" in state)![1];
       if ("LeaseCreated" in lastState) {
         try {
+          const deploymentCreatedState = deployment.deployment.state_history.find(([_, state]) => "DeploymentCreated" in state)![1];
           const cert = await loadOrCreateCertificate(actor);
 
           await confirmDeployment(
@@ -95,19 +95,17 @@ export const DeploymentProvider: React.FC<DeploymentProviderProps> = ({ children
     const res = await actor.get_deployments();
 
     const _deployments = extractOk(res);
-
-    const updatedCount = await completeDeployments(actor, _deployments);
-    if (updatedCount > 0) {
-      return await fetchDeployments(actor);
-    }
-
     setDeployments(
       _deployments.sort((el1, el2) =>
         getDeploymentCreatedDate(el2.deployment).getTime() - getDeploymentCreatedDate(el1.deployment).getTime()
       )
     );
-
     console.log("deployments", _deployments);
+
+    const updatedCount = await completeDeployments(actor, _deployments);
+    if (updatedCount > 0) {
+      return await fetchDeployments(actor);
+    }
   }, [completeDeployments]);
 
   return (
